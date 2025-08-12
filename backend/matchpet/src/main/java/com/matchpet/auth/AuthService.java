@@ -60,5 +60,11 @@ public class AuthService {
     int at = email.indexOf('@');
     return at > 0 ? email.substring(0, at) : email;
   }
+
+  public void logout(String authHeader) {
+        // 현재는 서버 저장소에 토큰 없음 → 아무 동작 필요 없음
+        // 필요시 로깅 정도만
+        System.out.println("로그아웃 요청 처리: " + authHeader);
+    }
 }
 

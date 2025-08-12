@@ -12,6 +12,7 @@ import ConnectPage from './pages/senior/ConnectPage'
 import ManagerPage from './pages/manager/ManagerPage'
 import ShelterPage from './pages/shelter/ShelterPage'
 import PetConnectPage from './pages/pet/PetConnectPage'
+import LogoutPage from './pages/auth/LogoutPage'
 
 // 공통 보호 컴포넌트
 function Protected({ children, allow }) {

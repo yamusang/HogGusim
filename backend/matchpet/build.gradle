@@ -44,9 +44,11 @@ dependencies {
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final' // 매핑
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final' // 매핑
 	implementation 'org.flywaydb:flyway-core' // Flyway (DB 마이그레이션) - 선택
+	implementation 'org.flywaydb:flyway-mysql' // Mysql
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.5' // JWT
 	runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.12.5' // JWT
 	runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.12.5' // JWT
+	runtimeOnly 'com.mysql:mysql-connector-j'
 	testImplementation 'org.testcontainers:mysql' // Test
 	testImplementation 'org.testcontainers:junit-jupiter'
 	testImplementation 'org.wiremock:wiremock-standalone:3.9.1' // Test

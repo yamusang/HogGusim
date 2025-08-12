@@ -44,3 +44,5 @@
 .btn--secondary:hover { background:#d1d5db; }
 
 .btn.is-loading { pointer-events:none; }
+
+.btn--xxl { padding: 1rem 1.6rem; font-size: 1.25rem; border-radius: 14px; }

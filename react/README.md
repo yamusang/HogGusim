@@ -1,12 +1,28 @@
-# React + Vite
+## react
+npm install
+npm install react-router-dom axios
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## native
+# 네비게이션 (스택)
+npm i @react-navigation/native @react-navigation/native-stack
+npm i react-native-screens react-native-safe-area-context
 
-Currently, two official plugins are available:
+# 통신/상태/스토리지
+npm i axios @tanstack/react-query
+npm i @react-native-async-storage/async-storage
+npm i zustand  # or 컨텍스트만 써도 OK
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+# 폼/검증
+npm i react-hook-form zod
 
-## Expanding the ESLint configuration
+# UI 유틸
+npm i @expo/vector-icons
+npm i expo-constants expo-notifications
+npm i expo-image  # 이미지 표시
+npm i @react-native-picker/picker @react-native-community/datetimepicker
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+# 사진/위치(옵션: 보호소 근접 탐색, 프로필 업로드)
+npm i expo-image-picker expo-location
+
+# 보안 토큰 저장(선택)
+npm i expo-secure-store

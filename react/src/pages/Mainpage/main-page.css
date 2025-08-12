@@ -1,114 +1,147 @@
-/* ===== 타입 스케일 3단계 ===== */
-:root { --f1:16px; --f2:19px; --f3:22px; }
-html { font-size: var(--f1); }
-html[data-fontscale="2"] { font-size: var(--f2); }
-html[data-fontscale="3"] { font-size: var(--f3); }
+/* ===== 타입 스케일 / 토큰 ===== */
+:root{ --f1:16px; --f2:19px; --f3:22px; --max:1200px; }
+/* 기본 폰트 크게 적용 */
+html{ font-size:var(--f3); }
 
-/* ===== 토큰 ===== */
 :root{
-  --bg:#f5f7fb;
-  --ink:#0b1324;
-  --muted:#5b6473;
-  --card:#fff;
-  --shadow:0 12px 28px rgba(0,0,0,.08);
-  --radius-lg:20px; --radius-md:16px;
-
-  /* 역할 포커스 컬러 */
-  --accent-purple:#a78bfa;
-  --accent-amber:#f59e0b;
-  --accent-orange:#f97316;
+  --bg:linear-gradient(135deg,#f8fafc,#eef2ff);
+  --ink:#0f172a; --muted:#64748b;
+  --card:rgba(255,255,255,.78);
+  --shadow:0 28px 70px rgba(2,6,23,.14);
+  --radius-xl:26px; --radius-lg:20px; --radius-md:16px;
+  --accent-purple:#a78bfa; --accent-amber:#f59e0b; --accent-orange:#f97316;
 }
+.container{ max-width:var(--max); margin:0 auto; padding:0 1.2rem; }
 
+/* ===== 배경 & 상단 ===== */
 .landing{
-  min-height:100dvh;
+  min-height:100dvh; color:var(--ink); position:relative; isolation:isolate;
   background:
-    radial-gradient(1000px 500px at 20% -10%, #eef2ff 0%, transparent 60%),
-    radial-gradient(1000px 500px at 90% 0%, #e0f2fe 0%, transparent 55%),
+    radial-gradient(1100px 600px at 8% -10%, rgba(167,139,250,.18), transparent 60%),
+    radial-gradient(1100px 600px at 110% 95%, rgba(245,158,11,.18), transparent 60%),
     var(--bg);
-  color:var(--ink);
-  padding: 1.2rem 1rem 3rem;
+  padding:0 0 3.2rem;
 }
-
-/* 상단바 (브랜드 + 크게보기) */
+.landing::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:
+    linear-gradient(to right, rgba(15,23,42,.05) 1px, transparent 1px) 0 0/32px 32px,
+    linear-gradient(to bottom, rgba(15,23,42,.05) 1px, transparent 1px) 0 0/32px 32px;
+  mask: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+}
 .landing__top{
-  max-width:1100px; margin:0 auto 1rem;
-  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:20; backdrop-filter:saturate(120%) blur(10px);
+  background:rgba(255,255,255,.6); border-bottom:1px solid rgba(2,6,23,.06);
 }
+.top__inner{ height:72px; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
 .brand{ display:flex; align-items:center; gap:.6rem; font-weight:900; }
-.btn-a11y{
-  background:#111827; color:#fff; border:0; border-radius:10px;
-  padding:.6rem 1rem; cursor:pointer; font-weight:700;
-}
-.btn-a11y:hover{ background:#000; }
 
-/* 히어로 */
-.hero{
-  max-width:1100px; margin:0 auto;
-  background:var(--card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: clamp(1.8rem, 3vw, 2.6rem);
-  text-align:center;
+/* ===== 히어로(슬라이드 배경) ===== */
+.hero-bg{
+  position:relative; margin:1.4rem 0 1.8rem; min-height:520px;
+  border-radius:var(--radius-xl); overflow:hidden;
+  border:1px solid rgba(99,102,241,.22); box-shadow:var(--shadow);
+  background-size:cover; background-position:center;
 }
-.hero h1{
-  font-size: clamp(2.1rem, 4vw, 3rem);
-  font-weight: 900; letter-spacing:-.02em; margin: 0 0 .4rem;
+.hero-bg::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; padding:1px; pointer-events:none;
+  background:linear-gradient(135deg, rgba(167,139,250,.85), rgba(245,158,11,.85));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
 }
-.hero__desc{ color:var(--muted); font-size:clamp(1.1rem,2.2vw,1.25rem); margin:0 0 1.6rem; }
+.hero-bg__overlay{
+  position:absolute; inset:0;
+  background:linear-gradient(90deg, rgba(0,0,0,.38), rgba(0,0,0,.14) 55%, rgba(0,0,0,.06) 80%, transparent);
+}
 
-/* 역할 카드 그리드 */
-.role-grid{
+/* ===== 중앙 정사각 타일 (버튼 크기/간격 업, 투명도 ↑) ===== */
+.hero-actions{
+  --tile: clamp(220px, 24vw, 260px);   /* 버튼 크기 ↑ */
+  --gap:  clamp(44px, 5vw, 56px);      /* 버튼 간격 ↑ */
+
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.2rem;
-}
-@media (max-width: 900px){ .role-grid{ grid-template-columns: 1fr; } }
+  grid-template-columns: repeat(3, var(--tile));
+  justify-content:center; align-items:center;
+  gap: var(--gap);
 
-.role-card{
-  display:flex; flex-direction:column; align-items:center; text-align:center;
-  gap:.8rem; padding:1.6rem 1.2rem;
-  border-radius: var(--radius-md);
-  background: var(--card);
-  box-shadow: 0 10px 20px rgba(0,0,0,.08);
-  text-decoration:none; color:inherit;
-  transition: transform .15s ease, box-shadow .2s ease, outline-color .2s ease;
-  min-height: 220px;
-  outline: 3px solid transparent;
-}
-.role-card:hover{
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 14px 28px rgba(0,0,0,.12);
-}
-.role-card:focus-visible{
-  outline-color: var(--card-accent);
-  outline-offset: 4px;
+  width:100%;
+  max-width: calc(var(--tile) * 3 + var(--gap) * 2);
 }
 
-.role-card__icon{
-  width: 96px; height: 96px; border-radius: 20px;
-  background: color-mix(in srgb, var(--card-accent) 28%, white);
-  display:grid; place-items:center;
-}
-.role-card__icon img{ width: 64px; height: 64px; object-fit: contain; }
+.role-tile{
+  width: var(--tile);
+  height: var(--tile);
+  box-sizing: border-box;
 
-.role-card__title{ font-size: clamp(1.3rem, 2.2vw, 1.6rem); font-weight: 900; }
-.role-card__desc{ color:var(--muted); }
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
 
-/* 하단 기능 */
-.features{
-  max-width:1100px; margin: 1.6rem auto 0;
-  display:grid; gap:1rem; grid-template-columns: repeat(3, 1fr);
+  text-decoration:none; color:#0f172a; font-weight:900; text-align:center;
+  background: rgba(255,255,255,0.5); /* 투명도 ↑ */
+  backdrop-filter: blur(10px) saturate(110%);
+  -webkit-backdrop-filter: blur(10px) saturate(110%);
+  border-radius:22px;
+  border:1px solid rgba(255,255,255,0.4);
+  box-shadow:0 18px 38px rgba(2,6,23,0.2);
+  outline:3px solid transparent;
+  transition: box-shadow .22s ease, background .2s ease, outline-color .2s ease;
 }
+.role-tile:hover{
+  background:rgba(255,255,255,0.6); /* 호버시 조금 더 불투명 */
+  box-shadow:0 28px 56px rgba(2,6,23,0.26);
+}
+.role-tile:focus-visible{ outline-offset:6px; }
+
+/* 아이콘 박스 */
+.icon-box{
+  width:100px; height:100px; border-radius:18px;
+  display:flex; align-items:center; justify-content:center;
+  background: color-mix(in srgb, var(--accent, #93c5fd) 26%, white);
+  border:1px solid color-mix(in srgb, var(--accent, #93c5fd) 45%, #dbeafe);
+}
+.icon-img{
+  width:72%; height:auto; object-fit:contain; display:block;
+}
+
+/* 라벨 */
+.role-tile__label{ font-size:1.14rem; letter-spacing:-.01em; margin-top:0; }
+
+/* 역할별 포커스/배경 색 */
+.role-tile.senior{ --accent: var(--accent-purple); }
+.role-tile.manager{ --accent: var(--accent-amber); }
+.role-tile.shelter{ --accent: var(--accent-orange); }
+.role-tile.senior:focus-visible,
+.role-tile.manager:focus-visible,
+.role-tile.shelter:focus-visible{
+  outline-color: color-mix(in srgb, var(--accent) 70%, #93c5fd);
+}
+
+/* 도트 네비 */
+.dots{
+  position:absolute; left:0; right:0; bottom:16px; z-index:1;
+  display:flex; gap:10px; justify-content:center;
+}
+.dot{ width:10px; height:10px; border-radius:999px; border:0; background: rgba(255,255,255,.45); cursor:pointer; }
+.dot.active{ background:#1d4ed8; }
+
+/* ===== 하단 기능 ===== */
+.features{ margin-top:2rem; display:grid; gap:1.2rem; grid-template-columns:repeat(3,1fr); }
 @media (max-width:900px){ .features{ grid-template-columns:1fr; } }
-
 .feature{
-  background:var(--card); border-radius:14px; box-shadow:var(--shadow);
-  padding:1rem 1.2rem; text-align:center;
+  background:var(--card); border-radius:var(--radius-md); box-shadow:var(--shadow);
+  padding:1.2rem 1.3rem; border:1px solid rgba(2,6,23,.06);
 }
-.feature h3{ margin:.2rem 0 .4rem; font-size:1.1rem; font-weight:800; }
+.feature h3{ margin:.1rem 0 .4rem; font-size:1.12rem; font-weight:900; }
 .feature p{ color:var(--muted); }
 
-/* 모션 민감 사용자 */
-@media (prefers-reduced-motion: reduce){
-  *{ transition:none !important; animation:none !important; }
+/* 반응형 */
+@media (max-width: 900px){
+  .hero-actions{ grid-template-columns: repeat(2, var(--tile)); max-width:none; }
+}
+@media (max-width: 560px){
+  .hero-actions{ grid-template-columns: repeat(1, var(--tile)); }
 }

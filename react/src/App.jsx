@@ -1,7 +1,6 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom'
 
-import Header from './components/layout/Header'
 import useAuth from './hooks/useAuth'
 
 // pages
@@ -26,7 +25,6 @@ function Protected({ children, allow }) {
 export default function App() {
   return (
     <>
-      <Header />
       <Routes>
         {/* 공개 */}
         <Route path="/" element={<MainPage />} />

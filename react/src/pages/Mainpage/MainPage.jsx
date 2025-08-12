@@ -21,7 +21,7 @@ export default function MainPage() {
   }
 
   return (
-    <main className="landing" role="main" aria-label="유기동물 매칭 메인">
+    <main className="landing landing--neo" role="main" aria-label="유기동물 매칭 메인">
       {/* 내부 상단바 */}
       <div className="landing__top">
         <div className="brand">

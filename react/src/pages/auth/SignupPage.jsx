@@ -13,6 +13,9 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const minLen = 8
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  const isInvalidEmail = useMemo(() => email && !emailRegex.test(email), [email])
   const isMismatch = useMemo(() => confirm.length > 0 && password !== confirm, [password, confirm])
   const isWeak = useMemo(() => password && password.length < minLen, [password])
 
@@ -20,7 +23,8 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
 
-    if (isWeak) return setError(`비밀번호는 ${minLen}자 이상이어야 합니다.`)
+    if (isInvalidEmail) return setError('올바른 이메일 형식을 입력하세요.')
+    if (isWeak) return setError(`비밀번호는 ${minLen}자리 이상이어야 합니다.`)
     if (isMismatch) return setError('비밀번호가 일치하지 않습니다.')
 
     try {
@@ -33,7 +37,7 @@ export default function SignupPage() {
     }
   };
 
-  const disabled = !email || !password || !confirm || isMismatch || isWeak
+  const disabled = !email || !password || !confirm || isInvalidEmail || isMismatch || isWeak
 
   return (
     <div className="auth auth--center">
@@ -48,6 +52,7 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            error={isInvalidEmail ? '올바른 이메일 형식이 아닙니다.' : ''}
           />
           <FormField
             label="비밀번호"
@@ -55,7 +60,8 @@ export default function SignupPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            hint={`※ ${minLen}자 이상 권장`}
+            hint={`※ 비밀번호는 ${minLen}자리 이상 입력하세요.`}
+            error={isWeak ? `비밀번호는 ${minLen}자리 이상이어야 합니다.` : ''}
           />
           <FormField
             label="비밀번호 확인"

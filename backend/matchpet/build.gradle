@@ -1,0 +1,57 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.4'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.matchpet'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'com.mysql:mysql-connector-j'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0' // Swagger(OpenAPI)
+	implementation 'com.github.ben-manes.caffeine:caffeine' // 캐시 구현체
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'// WebClient + 복원력
+	implementation platform("io.github.resilience4j:resilience4j-bom:2.2.0") // WebClient + 복원력
+	implementation 'io.github.resilience4j:resilience4j-spring-boot3' // WebClient + 복원력
+	implementation 'org.mapstruct:mapstruct:1.5.5.Final' // 매핑
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final' // 매핑
+	implementation 'org.flywaydb:flyway-core' // Flyway (DB 마이그레이션) - 선택
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.5' // JWT
+	runtimeOnly  'io.jsonwebtoken:jjwt-impl:0.12.5' // JWT
+	runtimeOnly  'io.jsonwebtoken:jjwt-jackson:0.12.5' // JWT
+	testImplementation 'org.testcontainers:mysql' // Test
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.wiremock:wiremock-standalone:3.9.1' // Test
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

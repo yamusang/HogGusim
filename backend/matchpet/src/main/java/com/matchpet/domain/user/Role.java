@@ -1,9 +1,9 @@
-// 역할 정의(SENIOR, MANAGER, SHELTER_ADMIN, ADMIN)
+// 역할 정의(SENIOR, MANAGER, SHELTER)
 
 package com.matchpet.domain.user;
 
 public enum Role {
-    SENIOR, MANAGER, SHELTER_ADMIN, ADMIN
+    SENIOR, MANAGER, SHELTER
 }
 
 /*

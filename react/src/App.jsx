@@ -114,6 +114,8 @@ export default function App() {
 
       {/* 그 외 */}
       <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 로그아웃 */}
+      <Route path="/logout" element={<LogoutPage/>} />
     </Routes>
   )
 }

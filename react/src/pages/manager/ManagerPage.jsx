@@ -41,6 +41,9 @@ export default function ManagerPage() {
 
   return (
     <div className="manager">
+       <Button onClick={() => nav('/logout')}>
+      로그아웃
+    </Button>
       <h1>추천 고령자</h1>
       {err && <div className="auth__error">{err}</div>}
       {loading ? <p>불러오는 중…</p> : (

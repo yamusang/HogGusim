@@ -57,6 +57,9 @@ export default function SeniorPage() {
 
   return (
     <div className="senior">
+       <Button onClick={() => nav('/logout')}>
+      로그아웃
+    </Button>
       <h1>추천 유기동물</h1>
 
       {/* 폴백 안내 */}

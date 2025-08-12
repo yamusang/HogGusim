@@ -45,6 +45,9 @@ export default function ShelterPage() {
 
   return (
     <div className="shelter">
+       <Button onClick={() => nav('/logout')}>
+      로그아웃
+    </Button>
       <h1>보호소 관리</h1>
 
       <div className="shelter__section">

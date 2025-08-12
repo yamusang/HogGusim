@@ -1,0 +1,17 @@
+/* src/styles/components/form-field.css */
+.form-field { display:flex; flex-direction:column; gap:.25rem; margin-bottom:1rem; }
+.form-field__label { font-weight:500; }
+.form-field__req { color:red; margin-left:0.25rem; }
+.form-field__control { position:relative; display:flex; align-items:center; }
+.form-field__input {
+  flex:1;
+  padding:.6rem .8rem;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+  font-size:1rem;
+}
+.form-field__input:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,0.3); }
+.form-field__right { margin-left:.5rem; }
+.form-field__hint { font-size:.85rem; color:#6b7280; }
+.form-field__error { font-size:.85rem; color:#ef4444; }
+.form-field--error .form-field__input { border-color:#ef4444; }

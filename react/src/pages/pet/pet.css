@@ -1,0 +1,19 @@
+.petconnect { max-width: 960px; margin: 0 auto; padding: 24px; }
+.petconnect__header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.petconnect__tools { display:flex; gap:8px; align-items:center; }
+.petconnect__petid { height:36px; padding:0 10px; border:1px solid #ddd; border-radius:10px; min-width:160px; }
+
+.petconnect__error { background:#fff3f3; color:#b00020; padding:10px 12px; border-radius:12px; margin:10px 0; }
+.petconnect__loading, .petconnect__empty { color:#666; padding:16px 4px; }
+
+.petconnect__list { display:grid; grid-template-columns:1fr; gap:12px; }
+.petconnect__card { padding:16px; }
+.petconnect__row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.petconnect__title { display:flex; align-items:center; gap:10px; font-weight:600; margin-bottom:8px; }
+.petconnect__pet { font-size:16px; }
+.petconnect__meta { display:grid; gap:4px; color:#555; font-size:14px; }
+.petconnect__actions { display:flex; flex-direction:column; gap:8px; min-width:140px; }
+@media (max-width: 640px) {
+  .petconnect__row { flex-direction:column; }
+  .petconnect__actions { flex-direction:row; }
+}

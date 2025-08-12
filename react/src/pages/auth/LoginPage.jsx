@@ -1,12 +1,14 @@
+// src/pages/auth/LoginPage.jsx
 import React, { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../../api/apiClient';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/common/FormField';
+import useAuth from '../../hooks/useAuth';
 import './auth.css';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login } = useAuth(); // ✅ 훅 호출해서 login 가져오기
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
@@ -18,23 +20,23 @@ export default function LoginPage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return; // 중복 제출 방지
+    if (loading) return;
     setErr('');
 
-    // 클라이언트 측 사전검증
+    // 클라 사전 검증
     if (!email) return setErr('이메일을 입력하세요.');
     if (isInvalidEmail) return setErr('올바른 이메일 형식을 입력하세요.');
     if (!password) return setErr('비밀번호를 입력하세요.');
 
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { email: email.trim(), password });
-      localStorage.setItem('token', data.token);
-      if (data.role) localStorage.setItem('role', data.role);
+      // ✅ 컨텍스트 login 사용 (토큰/유저 저장은 내부에서 처리)
+      const u = await login(email.trim(), password);
 
-      if (data.role === 'SENIOR') navigate('/senior');
-      else if (data.role === 'SHELTER') navigate('/shelter');
-      else if (data.role === 'MANAGER') navigate('/manager');
+      // ✅ 역할별 라우팅
+      if (u?.role === 'SENIOR') navigate('/senior');
+      else if (u?.role === 'SHELTER') navigate('/shelter');
+      else if (u?.role === 'MANAGER') navigate('/manager');
       else navigate('/');
     } catch (e2) {
       setErr(e2?.response?.data?.error?.message || '로그인 실패');

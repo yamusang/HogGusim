@@ -71,7 +71,7 @@ export default function SeniorPage() {
     )}
 
       {err && <div className="auth__error">{err}</div>}
-
+ 
       {loading ? (
         <p>불러오는 중…</p>
       ) : (

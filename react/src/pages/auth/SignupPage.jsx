@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import api from '../../api/apiClient'
 import Button from '../../components/ui/Button'
 import FormField from '../../components/common/FormField'
@@ -7,6 +7,13 @@ import './auth.css'
 
 export default function SignupPage() {
   const navigate = useNavigate()
+  const { search } = useLocation()
+  const params = new URLSearchParams(search)
+
+  // 쿼리 → 세션 → 기본값(SENIOR)
+  const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase()
+  const [role] = useState(roleParam)
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -28,12 +35,14 @@ export default function SignupPage() {
     if (isMismatch) return setError('비밀번호가 일치하지 않습니다.')
 
     try {
-      await api.post('/auth/signup', { email, password })
+      // role 포함해서 회원가입
+      await api.post('/auth/signup', { email, password, role })
+      sessionStorage.setItem('selectedRole', role) // 다음 화면에서도 유지
       alert('회원가입이 완료되었습니다. 로그인 해주세요.')
-      navigate('/login')
+      navigate(`/login?role=${role}`)
     } catch (err) {
       console.error(err)
-      setError(err.response?.data?.error?.message || '회원가입 실패')
+      setError(err?.response?.data?.error?.message || '회원가입 실패')
     }
   };
 
@@ -43,6 +52,9 @@ export default function SignupPage() {
     <div className="auth auth--center">
       <div className="auth__card">
         <h1 className="auth__title">회원가입</h1>
+        <p style={{margin:'0 0 8px', color:'#667085', fontSize:14}}>
+          선택된 역할: {role === 'SENIOR' ? '고령자' : role === 'MANAGER' ? '펫매니저' : '보호소 관리자'}
+        </p>
         {error && <div className="auth__error">{error}</div>}
 
         <form onSubmit={onSubmit} className="auth__form">
@@ -72,7 +84,12 @@ export default function SignupPage() {
             error={isMismatch ? '비밀번호가 일치하지 않습니다.' : ''}
           />
 
-          <Button presetName="primary" type="submit" disabled={disabled}>
+          <Button
+            presetName="primary"
+            type="submit"
+            disabled={disabled}
+            className="auth__submit auth__submit--primary"
+          >
             회원가입
           </Button>
         </form>

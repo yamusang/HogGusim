@@ -1,3 +1,89 @@
-/* auth.css 추가(옵션) */
-.auth__radio-group { display:flex; gap:12px; margin:6px 0 8px; }
-.auth__card { background:#fff; border-radius:16px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.06); }
+/* ===== Auth 공통 레이아웃 ===== */
+.auth {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(1000px 480px at -10% -10%, rgba(84,170,255,.08), transparent 60%),
+    radial-gradient(1000px 480px at 110% 110%, rgba(123,237,159,.08), transparent 60%),
+    #f7f8fa;
+}
+
+/* 가운데 정렬 변형 */
+.auth--center { place-items: center; }
+
+/* 카드 */
+.auth__card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.06);
+  border: 1px solid rgba(0,0,0,.04);
+}
+
+/* 타이틀/설명 */
+.auth__title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -.2px;
+  margin: 0 0 14px;
+  color: #1d2433;
+}
+
+/* 폼 */
+.auth__form {
+  display: grid;
+  gap: 14px;
+}
+
+/* 에러 */
+.auth__error {
+  margin: 8px 0 4px;
+  color: #c62828;
+  background: #ffeaea;
+  border: 1px solid #ffc6c6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+/* 버튼(공통) – 네 Button 컴포넌트에 className만 얹어도 OK */
+.auth__submit {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  font-size: 15px;
+}
+.auth__submit[disabled] { opacity: .6; cursor: not-allowed; }
+
+/* 기본/강조 색상 */
+.auth__submit--primary {
+  background: #1570ef;
+  color: #fff;
+}
+.auth__submit--primary:hover:not([disabled]) { filter: brightness(0.98); }
+
+/* 하단 링크/문구 */
+.auth__footer {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+}
+.auth__link {
+  color: #1570ef;
+  font-weight: 600;
+  text-decoration: none;
+}
+.auth__link:hover { text-decoration: underline; }
+
+/* 반응형 */
+@media (max-width: 480px) {
+  .auth__card { padding: 22px; }
+  .auth__title { font-size: 20px; }
+}

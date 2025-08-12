@@ -41,7 +41,8 @@ export default function MainPage() {
           {roles.map(r => (
             <Link
               key={r.key}
-              to={r.to}
+              to={`/login?role=${r.key.toUpperCase()}`}
+              onClick={()=>sessionStorage.setItem('selectedRole', r.key.toUpperCase())}
               role="listitem"
               className="role-card"
               style={{ ['--card-accent']: `var(${r.color})` }}

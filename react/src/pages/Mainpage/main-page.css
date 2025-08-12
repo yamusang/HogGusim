@@ -1,0 +1,12 @@
+.main { padding: 1rem; }
+.main__topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 1.2rem;
+}
+.main__brand { font-weight:800; font-size:1.1rem; }
+.main__actions { display:flex; gap:.5rem; }
+
+.main__hero { text-align:center; margin: 3rem auto; max-width: 720px; }
+.main__hero h1 { font-size:1.8rem; margin-bottom:.4rem; }
+.main__hero p { color:#6b7280; margin-bottom:1.2rem; }
+.main__roles { display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap; }

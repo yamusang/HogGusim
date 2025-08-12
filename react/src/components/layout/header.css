@@ -1,0 +1,18 @@
+/* src/components/layout/header.css */
+.header {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 16px;
+  height: 56px; padding: 0 16px;
+  background: #fff; border-bottom: 1px solid #eee;
+}
+.header__brand { display:flex; align-items:center; gap:8px; font-weight:700; color:#111; text-decoration:none; }
+.header__logo { width:24px; height:24px; object-fit:contain; }
+
+.header__nav { margin-left: 8px; }
+/* .header__actions { margin-left:auto; display:flex; gap:8px; align-items:center; } */
+.header__hello { color:#555; font-size:0.9rem; }
+
+@media (max-width:640px){
+  .header { height: 52px; padding: 0 10px; }
+  /* .header__hello { display:none; } */
+}

@@ -15,6 +15,6 @@ public class SignupCommon {
     @NotBlank @Size(min = 8, max = 72) // BCrypt는 72자 초과시 잘림
     private String password;
 
-    @Size(max = 80)
+    @NotBlank @Size(max = 80)
     private String displayName; // 옵션: 비우면 이메일의 로컬파트로 자동 생성
 }

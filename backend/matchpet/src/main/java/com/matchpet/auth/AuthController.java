@@ -11,12 +11,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+// @CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class AuthController {
 
   private final AuthService authService;
 
-  @PostMapping("/signup/senior")
+  @PostMapping("/signup")
   @ResponseStatus(HttpStatus.OK) // 200으로 통일(원하면 201로 바꿔도 됨)
   public IdResponse signupSenior(@RequestBody SignupCommon req) {
     Long id = authService.signupSenior(req);

@@ -56,18 +56,19 @@ export default function SeniorPage() {
   };
 
   return (
-    <div className="senior">
-       <Button onClick={() => nav('/logout')}>
-      로그아웃
-    </Button>
+      <div className="senior">
+    <div className="senior__header">
       <h1>추천 유기동물</h1>
+      <Button onClick={() => navigate('/logout')}>
+        로그아웃
+      </Button>
+    </div>
 
-      {/* 폴백 안내 */}
-      {isFallback && (
-        <div className="senior__notice">
-          추천 결과가 없어 전체 목록(입양 가능)에서 보여드려요.
-        </div>
-      )}
+    {isFallback && (
+      <div className="senior__notice">
+        추천 결과가 없어 전체 목록(입양 가능)에서 보여드려요.
+      </div>
+    )}
 
       {err && <div className="auth__error">{err}</div>}
 

@@ -1,44 +1,32 @@
 package com.matchpet.domain.user;
 
-import java.time.LocalDateTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
-// @AllArgsConstructor
-@NoArgsConstructor
-
 @Entity
 @Table(name = "users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, length = 100, unique = true)
     private String email;
 
-    @Column(name = "password",nullable = false, length = 100, unique = true)
+    // 비밀번호는 unique 주지 마! (동일 해시 있으면 장애)
+    @Column(name = "password", nullable = false, length = 100)
     private String password;
 
-    @Enumerated(EnumType.STRING) 
-    @Column(nullable = false, length = 255)
-    Role role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20) // 255 → 20 로 축소 권장
+    private Role role;
 
     @Column(nullable = false, length = 80)
-    private String displayName; // 로그인 응답 name 필드 매핑
+    private String displayName;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,4 +34,7 @@ public class User {
     @Column
     private LocalDateTime lastLoginAt;
 
+    @Column(length = 120)
+    private String affiliation;
 }
+

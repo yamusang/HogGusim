@@ -30,8 +30,8 @@ public class User {
     @Column(nullable = false, length = 100, unique = true)
     private String email;
 
-    @Column(name = "password_hash",nullable = false, length = 100, unique = true)
-    private String passwordHash;
+    @Column(name = "password",nullable = false, length = 100, unique = true)
+    private String password;
 
     @Enumerated(EnumType.STRING) 
     @Column(nullable = false, length = 255)
@@ -40,10 +40,10 @@ public class User {
     @Column(nullable = false, length = 80)
     private String displayName; // 로그인 응답 name 필드 매핑
 
-    // @Column(nullable = false, updatable = false)
-    // private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    // @Column
-    // private LocalDateTime lastLoginAt;
+    @Column
+    private LocalDateTime lastLoginAt;
 
 }

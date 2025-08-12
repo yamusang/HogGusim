@@ -48,24 +48,23 @@ public class JwtTokenProvider {
                 .subject(String.valueOf(userId))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expMillis)))
-                .signWith(key, Jwts.SIG.HS256)   // jjwt 0.12.x
+                .signWith(key, Jwts.SIG.HS256) // jjwt 0.12.x
                 .compact();
     }
 
     public Claims parse(String token) {
         return Jwts.parser()
-                .verifyWith(key)                 // jjwt 0.12.x
+                .verifyWith(key) // jjwt 0.12.x
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
 
     public String create(Long id, String email, Role role) {
-      Instant now = Instant.now();
+        Instant now = Instant.now();
         Map<String, Object> claims = Map.of(
                 "email", email,
-                "role", role.name()
-        );
+                "role", role.name());
         return Jwts.builder()
                 .subject(String.valueOf(id))
                 .claims(claims)
@@ -73,5 +72,18 @@ public class JwtTokenProvider {
                 .expiration(Date.from(now.plusSeconds(props.getAccessExpSeconds())))
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
+    }
+
+    public long getExpirationEpochSeconds(String token) {
+        var claims = parse(token); // ← parseClaims 오타 대신 parse 사용
+        return claims.getExpiration().toInstant().getEpochSecond();
+    }
+
+    public static String resolveBearer(String authHeader) {
+        if (authHeader == null)
+            return null;
+        if (!authHeader.startsWith("Bearer "))
+            return null;
+        return authHeader.substring(7);
     }
 }

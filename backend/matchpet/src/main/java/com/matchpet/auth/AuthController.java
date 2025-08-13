@@ -52,7 +52,6 @@ public class AuthController {
     authService.logout(authHeader);
     return ResponseEntity.noContent().build();
   }
-}
 
   // --- 내부 헬퍼 ---
   private SignupCommon coerceRole(SignupCommon req, Role forced) {

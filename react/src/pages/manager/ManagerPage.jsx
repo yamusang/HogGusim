@@ -41,7 +41,7 @@ export default function ManagerPage() {
 
   return (
     <div className="manager">
-       <Button onClick={() => nav('/logout')}>
+       <Button onClick={() => navigate('/logout')}>
       로그아웃
     </Button>
       <h1>추천 고령자</h1>

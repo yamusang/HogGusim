@@ -15,11 +15,12 @@ export default function MainPage() {
   const [idx, setIdx] = useState(0)
   const timer = useRef(null)
 
+  // 마우스 좌표 (슬라이드 내부 기준) — 스프라이트 구멍 위치용
   const [mx, setMx] = useState(-9999)
   const [my, setMy] = useState(-9999)
 
-  const next = () => setIdx(i => (i + 1) % images.length)
-  const stop = () => { if (timer.current) clearTimeout(timer.current) }
+  const next  = () => setIdx(i => (i + 1) % images.length)
+  const stop  = () => { if (timer.current) clearTimeout(timer.current) }
   const start = () => { stop(); timer.current = setTimeout(next, 5000) }
 
   useEffect(() => { start(); return stop }, [idx])
@@ -39,44 +40,57 @@ export default function MainPage() {
         </div>
       </header>
 
-      {/* 컨테이너 제거 → .hero 스스로 중앙정렬 + 여백/둥근모서리 */}
+      {/* 거의 꽉 차는 카드형 슬라이드 */}
       <section className="hero">
         <div
           className="hero__bg"
           style={{ backgroundImage: `url(${images[idx]})`, '--mx': `${mx}px`, '--my': `${my}px` }}
-          onMouseEnter={stop} onMouseLeave={() => { start(); onLeave(); }}
+          onMouseEnter={stop}
+          onMouseLeave={() => { start(); onLeave(); }}
           onMouseMove={onMove}
         >
           <div className="hero__scrim" />
           <div className="hero__glass" />
-          <div className="hero__spot-invert" />
 
           <div className="hero__copy">
             <h1 className="hero__title">따뜻한 연결, 가벼운 시작</h1>
             <p className="hero__desc">유기동물과 사람을 안전하게 잇는 우리 동네 플랫폼</p>
           </div>
 
+          {/* 오른쪽 버튼 컬럼: 슬라이드 높이에 맞춰 균등 배치 */}
           <div className="hero__roles" aria-label="역할 선택">
-            <Link to="/login?role=SENIOR" className="role-btn pastel-lavender lg"
+            <Link to="/login?role=SENIOR" className="role-btn"
                   onClick={() => sessionStorage.setItem('selectedRole','SENIOR')}>
-              {seniorIcon ? <img src={seniorIcon} alt="" /> : null}
-              <span>고령자</span>
+              <img src={seniorIcon} alt="" />
+              <div className="role-text">
+                <span className="role-title">고령자</span>
+                <span className="role-sub">도움 요청하고 산책·돌봄 매칭</span>
+              </div>
             </Link>
-            <Link to="/login?role=MANAGER" className="role-btn pastel-mint lg"
+
+            <Link to="/login?role=MANAGER" className="role-btn"
                   onClick={() => sessionStorage.setItem('selectedRole','MANAGER')}>
-              {managerIcon ? <img src={managerIcon} alt="" /> : null}
-              <span>펫매니저</span>
+              <img src={managerIcon} alt="" />
+              <div className="role-text">
+                <span className="role-title">펫매니저</span>
+                <span className="role-sub">가까운 의뢰 수락하고 활동</span>
+              </div>
             </Link>
-            <Link to="/login?role=SHELTER" className="role-btn pastel-peach lg"
+
+            <Link to="/login?role=SHELTER" className="role-btn"
                   onClick={() => sessionStorage.setItem('selectedRole','SHELTER')}>
-              {shelterIcon ? <img src={shelterIcon} alt="" /> : null}
-              <span>보호소</span>
+              <img src={shelterIcon} alt="" />
+              <div className="role-text">
+                <span className="role-title">보호소</span>
+                <span className="role-sub">분양 공고·봉사 매칭 관리</span>
+              </div>
             </Link>
           </div>
 
           <div className="hero__dots" role="tablist" aria-label="슬라이드 선택">
             {images.map((_, i) => (
-              <button key={i} className={`dot ${i===idx?'active':''}`} onClick={()=>setIdx(i)} aria-selected={i===idx} />
+              <button key={i} className={`dot ${i===idx?'active':''}`}
+                      onClick={()=>setIdx(i)} aria-selected={i===idx} />
             ))}
           </div>
         </div>

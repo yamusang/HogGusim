@@ -11,7 +11,7 @@
   --shadow-sm:0 8px 22px rgba(18, 27, 53, .06);
   --shadow-md:0 20px 44px rgba(18, 27, 53, .10);
 
-  /* 🔹 스프라이트 구멍 크기 */
+  /* 스프라이트 구멍 크기 */
   --hole-size:160px;
 }
 html{ font-size:18px }
@@ -30,9 +30,7 @@ html{ font-size:18px }
 /* ===== Topbar ===== */
 .landing__top{
   position:sticky; top:0; z-index:20;
-  background: transparent;
-  backdrop-filter:none;
-  border-bottom:none;
+  background: transparent; backdrop-filter:none; border-bottom:none;
 }
 .top__inner{ height:68px; display:flex; align-items:center; justify-content:space-between; }
 .brand{ display:flex; align-items:center; gap:8px; font-weight:900; }
@@ -40,12 +38,11 @@ html{ font-size:18px }
 /* ===== Hero ===== */
 .hero{
   margin:22px auto 30px;
-  padding: 0 12px;   /* 거의 꽉 차게 + 살짝 여백 */
+  padding: 0 12px; /* 거의 꽉 + 살짝 여백 */
 }
-
 .hero__bg{
   position: relative;
-  min-height: 640px; /* 적당히 늘림 */
+  min-height: 640px;
   width: 100%;
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -61,22 +58,38 @@ html{ font-size:18px }
   align-items: center;
   justify-content: center;
 
-  isolation: isolate; /* 블렌딩/마스크 계산 안정화 */
+  isolation: isolate; /* 블렌딩/마스크 안정화 */
 }
 
-/* 레이어 순서: scrim(0) < glass(1) < UI(2) */
+/* ✅ 버튼 뒤 배경 패널 */
+.hero__bg::after{
+  content:"";
+  position:absolute;
+  top:24px; bottom:24px; right:24px;   /* hero__roles와 동일 */
+  width:360px;                         /* hero__roles와 동일 */
+  border-radius:22px;                  /* 버튼 라운드와 맞춤 */
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  border:1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+  z-index:2;                           /* 글래스 위, 버튼 아래 */
+  pointer-events:none;
+}
+
+/* 레이어: scrim(0) < glass(1) < 패널(2) < UI(3) */
 .hero__scrim{
   position:absolute; inset:0; z-index:0; pointer-events:none;
   background:linear-gradient(90deg, rgba(0,0,0,.38), rgba(0,0,0,.14) 55%, transparent);
 }
 .hero__glass{
   position:absolute; inset:0; z-index:1; pointer-events:none;
-  background: rgba(255,255,255,0.35); /* 살짝 더 투명하게 */
+  background: rgba(255,255,255,0.35);
   backdrop-filter: blur(8px) saturate(120%);
   -webkit-backdrop-filter: blur(8px) saturate(120%);
 }
 
-/* 🔹 스크림/유리에 스프라이트 모양 '구멍' 만들기 */
+/* 스크림/유리에 스프라이트 모양 '구멍' 만들기 */
 .hero__scrim,
 .hero__glass{
   -webkit-mask:
@@ -96,65 +109,61 @@ html{ font-size:18px }
   will-change: mask-position;
 }
 
-/* 좌측 텍스트 블록 */
+/* 좌측 텍스트 */
 .hero__copy{
-  position:absolute;
-  left:36px;
-  top:42%;
-  transform:translateY(-50%);
-  z-index:2; /* 유리 위 */
-  color:#fff;
-  text-shadow:0 2px 18px rgba(0,0,0,.25);
+  position:absolute; left:36px; top:42%; transform:translateY(-50%);
+  z-index:3; color:#fff; text-shadow:0 2px 18px rgba(0,0,0,.25);
 }
-.hero__title{ font-size:2.2rem; margin:0 0 8px; font-weight:900; letter-spacing:-.01em; }
-.hero__desc{ font-size:1.05rem; margin:0; opacity:.95 }
+.hero__title{ font-size:2.3rem; margin:0 0 8px; font-weight:900; letter-spacing:-.01em }
+.hero__desc{ font-size:1.06rem; margin:0; opacity:.95 }
 
-/* 오른쪽 세로 버튼 */
+/* 오른쪽 세로 버튼 — 슬라이드 높이에 맞춰 균등 배치 */
 .hero__roles{
-  position:absolute;
-  right:40px;
-  top:50%;
-  transform:translateY(-50%);
-  z-index:2;
-  display:flex;
-  flex-direction:column;
-  gap:20px;
+  position: absolute;
+  top: 24px; bottom: 24px; right: 24px;
+  width: 360px;
+  z-index: 3; /* 패널 위 */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* 위/중간/아래 균등 */
+  gap: 0;
 }
 
 .role-btn{
-  display:flex;
-  align-items:center;
-  gap:18px;
-  min-width:320px;      /* 길게 */
-  height:80px;
-  padding:0 34px 0 0;
-  border-radius:20px;
-  text-decoration:none;
-  color:var(--ink);
-  font-weight:900;
-  font-size:1.15rem;
+  flex: 1 1 0;
+  min-height: 100px;
 
-  background: rgba(255,255,255,0.85); /* 버튼 본체는 흰색+유리 느낌 */
-  border:1px solid rgba(0,0,0,0.06);
-  box-shadow:0 8px 24px rgba(0,0,0,0.08);
+  display: grid;
+  grid-template-columns: 72px 1fr; /* 아이콘 영역 고정 */
+  align-items: center;
+  gap: 18px;
+
+  padding: 0 28px 0 0;
+  border-radius: 22px;
+  text-decoration: none;
+  color: var(--ink);
+  background: transparent; /* 패널 배경 사용 */
+  border: 0;
+  box-shadow: none;
   backdrop-filter: blur(8px) saturate(120%);
 
-  transition: transform .08s ease, box-shadow .2s ease;
+  transition: transform .08s ease;
 }
-.role-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.15) }
+.role-btn:hover{ transform:translateY(-2px); }
 
-/* 아이콘만 색 배경 */
 .role-btn img{
-  width:48px; height:48px; object-fit:contain;
-  padding:6px; border-radius:14px;
+  width: 52px; height: 52px; object-fit: contain;
+  padding: 0; border-radius: 0; background: transparent !important;
+  justify-self: center;
 }
-.pastel-lavender img{ background-color: var(--lavender); }
-.pastel-mint img{     background-color: var(--mint); }
-.pastel-peach img{    background-color: var(--peach); }
+
+.role-text{ display:flex; flex-direction:column; gap:6px }
+.role-title{ font-size:1.32rem; font-weight:900; letter-spacing:-.01em; white-space:nowrap }
+.role-sub{   font-size:1.0rem;  color:var(--muted) }
 
 /* 도트 */
 .hero__dots{
-  position:absolute; left:0; right:0; bottom:14px; z-index:2;
+  position:absolute; left:0; right:0; bottom:14px; z-index:3;
   display:flex; gap:10px; justify-content:center;
 }
 .dot{ width:10px; height:10px; border-radius:999px; border:0; background:rgba(255,255,255,.55); cursor:pointer }
@@ -177,7 +186,17 @@ html{ font-size:18px }
 @media (max-width:760px){
   .hero{ padding:0 14px }
   .hero__copy{ left:20px }
-  .hero__title{ font-size:1.85rem }
-  .hero__roles{ position:static; margin:16px 16px 0; justify-content:center }
-  .features{ grid-template-columns:1fr }
+  .hero__title{ font-size:1.9rem }
+  .hero__roles{
+    position: static; width:auto; margin:16px 16px 0;
+    gap:16px; justify-content:flex-start;
+  }
+  .role-btn{
+    flex: 0 0 auto; min-height: 78px;
+    grid-template-columns: 64px 1fr;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+  }
+  .hero__bg::after{ display:none; }
 }

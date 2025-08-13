@@ -49,6 +49,7 @@ export default function MainPage() {
         >
           <div className="hero__scrim" />
           <div className="hero__glass" />
+          <div className="hero__spot-invert" />
 
           <div className="hero__copy">
             <h1 className="hero__title">따뜻한 연결, 가벼운 시작</h1>

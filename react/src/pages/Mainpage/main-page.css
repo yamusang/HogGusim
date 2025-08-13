@@ -10,6 +10,9 @@
   --radius-xl:26px; --radius-lg:18px; --radius-md:14px;
   --shadow-sm:0 8px 22px rgba(18, 27, 53, .06);
   --shadow-md:0 20px 44px rgba(18, 27, 53, .10);
+
+  /* 🔹 스프라이트 구멍 크기 */
+  --hole-size:160px;
 }
 html{ font-size:18px }
 *{ box-sizing:border-box }
@@ -27,8 +30,8 @@ html{ font-size:18px }
 /* ===== Topbar ===== */
 .landing__top{
   position:sticky; top:0; z-index:20;
-  background: transparent; /* 투명 */
-  backdrop-filter:none;     /* 흐림 효과도 제거 */
+  background: transparent;
+  backdrop-filter:none;
   border-bottom:none;
 }
 .top__inner{ height:68px; display:flex; align-items:center; justify-content:space-between; }
@@ -37,13 +40,12 @@ html{ font-size:18px }
 /* ===== Hero ===== */
 .hero{
   margin:22px auto 30px;
-  padding: 0 12px;  /* 살짝만 여백 */
+  padding: 0 12px;   /* 거의 꽉 차게 + 살짝 여백 */
 }
-
 
 .hero__bg{
   position: relative;
-  min-height: 640px; /* 높이 늘림 */
+  min-height: 640px; /* 적당히 늘림 */
   width: 100%;
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -58,105 +60,101 @@ html{ font-size:18px }
   display: flex;
   align-items: center;
   justify-content: center;
+
+  isolation: isolate; /* 블렌딩/마스크 계산 안정화 */
 }
-/* 레이어 순서: scrim(0) < glass(1) < spot(2) < UI(3) */
+
+/* 레이어 순서: scrim(0) < glass(1) < UI(2) */
 .hero__scrim{
-  position:absolute; inset:0; z-index:0;
+  position:absolute; inset:0; z-index:0; pointer-events:none;
   background:linear-gradient(90deg, rgba(0,0,0,.38), rgba(0,0,0,.14) 55%, transparent);
 }
 .hero__glass{
   position:absolute; inset:0; z-index:1; pointer-events:none;
-  background: rgba(255,255,255,0.45);
+  background: rgba(255,255,255,0.35); /* 살짝 더 투명하게 */
   backdrop-filter: blur(8px) saturate(120%);
   -webkit-backdrop-filter: blur(8px) saturate(120%);
 }
 
-/* 강아지 모양 구멍 */
-.hero__spot-invert {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-  width: 160px;
-  height: 160px;
-  left: calc(var(--mx) - 80px);
-  top:  calc(var(--my) - 80px);
+/* 🔹 스크림/유리에 스프라이트 모양 '구멍' 만들기 */
+.hero__scrim,
+.hero__glass{
+  -webkit-mask:
+    url('../../assets/cursor/dog-shape.png') no-repeat
+      calc(var(--mx) - var(--hole-size)/2) calc(var(--my) - var(--hole-size)/2)
+      / var(--hole-size) var(--hole-size),
+    linear-gradient(#000,#000);
+  -webkit-mask-composite: xor;
 
-  -webkit-mask: url('../../assets/cursor/dog-shape.png') no-repeat center/contain;
-  mask: url('../../assets/cursor/dog-shape.png') no-repeat center/contain;
+  mask:
+    url('../../assets/cursor/dog-shape.png') no-repeat
+      calc(var(--mx) - var(--hole-size)/2) calc(var(--my) - var(--hole-size)/2)
+      / var(--hole-size) var(--hole-size),
+    linear-gradient(#000,#000);
+  mask-composite: exclude;
 
-  background-color: rgba(0,0,0,0.5);
-  mix-blend-mode: destination-out;
-
-  transition: left .05s linear, top .05s linear;
+  will-change: mask-position;
 }
 
 /* 좌측 텍스트 블록 */
 .hero__copy{
   position:absolute;
   left:36px;
-  top:42%; /* 살짝 위로 */
+  top:42%;
   transform:translateY(-50%);
-  z-index:3;
+  z-index:2; /* 유리 위 */
   color:#fff;
   text-shadow:0 2px 18px rgba(0,0,0,.25);
 }
 .hero__title{ font-size:2.2rem; margin:0 0 8px; font-weight:900; letter-spacing:-.01em; }
 .hero__desc{ font-size:1.05rem; margin:0; opacity:.95 }
 
-/* 우하단 버튼 3개 */
+/* 오른쪽 세로 버튼 */
 .hero__roles{
-  position: absolute;
-  right: 40px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  position:absolute;
+  right:40px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
 }
 
 .role-btn{
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-width: 320px;       /* 🚀 길이 늘림 */
-  height: 80px;           /* 살짝 높임 */
-  padding: 0 34px 0 0;    /* 오른쪽 공간 넉넉 */
-  border-radius: 20px;
-  text-decoration: none;
-  color: var(--ink);
-  font-weight: 900;
-  font-size: 1.15rem;
+  display:flex;
+  align-items:center;
+  gap:18px;
+  min-width:320px;      /* 길게 */
+  height:80px;
+  padding:0 34px 0 0;
+  border-radius:20px;
+  text-decoration:none;
+  color:var(--ink);
+  font-weight:900;
+  font-size:1.15rem;
 
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.85); /* 버튼 본체는 흰색+유리 느낌 */
+  border:1px solid rgba(0,0,0,0.06);
+  box-shadow:0 8px 24px rgba(0,0,0,0.08);
   backdrop-filter: blur(8px) saturate(120%);
 
   transition: transform .08s ease, box-shadow .2s ease;
 }
+.role-btn:hover{ transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,0,0,0.15) }
 
-.role-btn:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 14px 32px rgba(0,0,0,0.15);
-}
-
-/* 아이콘 박스 */
+/* 아이콘만 색 배경 */
 .role-btn img{
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  padding: 6px;
-  border-radius: 14px;
+  width:48px; height:48px; object-fit:contain;
+  padding:6px; border-radius:14px;
 }
-
-/* .pastel-lavender img{ background-color: var(--lavender); }
+.pastel-lavender img{ background-color: var(--lavender); }
 .pastel-mint img{     background-color: var(--mint); }
-.pastel-peach img{    background-color: var(--peach); } */
+.pastel-peach img{    background-color: var(--peach); }
 
 /* 도트 */
 .hero__dots{
-  position:absolute; left:0; right:0; bottom:14px; z-index:3;
+  position:absolute; left:0; right:0; bottom:14px; z-index:2;
   display:flex; gap:10px; justify-content:center;
 }
 .dot{ width:10px; height:10px; border-radius:999px; border:0; background:rgba(255,255,255,.55); cursor:pointer }
@@ -173,11 +171,11 @@ html{ font-size:18px }
 .feature p{ margin:0; color:var(--muted); line-height:1.7 }
 
 /* ===== Responsive ===== */
-@media (max-width: 1100px){
+@media (max-width:1100px){
   .features{ grid-template-columns:1fr 1fr }
 }
-@media (max-width: 760px){
-  .hero{ padding: 0 14px }
+@media (max-width:760px){
+  .hero{ padding:0 14px }
   .hero__copy{ left:20px }
   .hero__title{ font-size:1.85rem }
   .hero__roles{ position:static; margin:16px 16px 0; justify-content:center }

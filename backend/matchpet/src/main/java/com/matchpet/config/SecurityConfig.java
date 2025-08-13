@@ -28,30 +28,30 @@ public class SecurityConfig {
   private final JwtAuthFilter jwtAuthFilter;
 
   @Bean
-public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-  http
-    .csrf(csrf -> csrf.disable())
-    .cors(Customizer.withDefaults())
-    .httpBasic(b -> b.disable())
-    .formLogin(f -> f.disable())
-    .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-    .authorizeHttpRequests(auth -> auth
-      .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-      .requestMatchers("/api/auth/**").permitAll()
-      .anyRequest().authenticated() // ✅ 이제 보호
-    )
-    // ✅ 순서 보장: Blacklist → Auth
-    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-    .addFilterBefore(jwtBlacklistFilter, JwtAuthFilter.class); // ← 이 줄이 핵심
-  return http.build();
-}
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .cors(Customizer.withDefaults())
+        .httpBasic(b -> b.disable())
+        .formLogin(f -> f.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            .requestMatchers("/api/auth/**").permitAll()
+            .anyRequest().authenticated() // ✅ 이제 보호
+        )
+        // ✅ 순서 보장: Blacklist → Auth
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtBlacklistFilter, JwtAuthFilter.class); // ← 이 줄이 핵심
+    return http.build();
+  }
 
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration c = new CorsConfiguration();
     c.setAllowedOrigins(List.of("http://localhost:5173"));
-    c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-    c.setAllowedHeaders(List.of("Content-Type","Authorization"));
+    c.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    c.setAllowedHeaders(List.of("Content-Type", "Authorization"));
     c.setAllowCredentials(false);
     UrlBasedCorsConfigurationSource s = new UrlBasedCorsConfigurationSource();
     s.registerCorsConfiguration("/**", c);

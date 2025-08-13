@@ -1,21 +1,36 @@
-import api from './apiClient';
+import api from './apiClient'
 
-// 동물 목록 (필터/페이지네이션 합의 반영)
+// 목록 (보호소 필터/페이지네이션)
 export const fetchAnimals = (params) =>
-  api.get('/pets', { params }).then((r) => r.data); // { content, page, size, total }
+  api.get('/pets', { params }).then(r => r.data) // { content, totalElements, ... }
 
-// 동물 등록(보호소)
+// 단건
+export const fetchAnimalById = (id) =>
+  api.get(`/pets/${id}`).then(r => r.data)
+
+// 등록
 export const createAnimal = (payload) =>
-  api.post('/pets', payload).then((r) => r.data);
+  api.post('/pets', payload).then(r => r.data)
 
-// 이미지 업로드
+// 수정
+export const updateAnimal = (id, payload) =>
+  api.put(`/pets/${id}`, payload).then(r => r.data)
+
+// 삭제
+export const deleteAnimal = (id) =>
+  api.delete(`/pets/${id}`).then(r => r.data)
+
+// 이미지 업로드 (axios가 boundary 자동 세팅)
 export const uploadAnimalImage = (petId, file) => {
-  const fd = new FormData();
-  fd.append('file', file);
-  return api.post(`/pets/${petId}/photo`, fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-};
-// 추천(매칭) 리스트: 고령자 전용
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post(`/pets/${petId}/photo`, fd).then(r => r.data) // { photoUrl }
+}
+
+// (옵션) 추천 목록 – 백 경로에 맞춰 사용
 export const fetchRecommendedPets = ({ seniorId, page = 1, size = 10 }) =>
-  api.get('/pets/match', { params: { seniorId, page, size } }).then(r => r.data);
+  api.get('/pets/match', { params: { seniorId, page, size } }).then(r => r.data)
+// 또는 토큰 기반이면 ↓
+// export const fetchRecommendedPets = ({ page=1, size=10, ...filters } = {}) =>
+//   api.get('/match/senior/recommendations', { params: { page, size, ...filters } })
+//     .then(r => r.data)

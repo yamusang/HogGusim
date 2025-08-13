@@ -39,7 +39,8 @@ export default function MainPage() {
         </div>
       </header>
 
-      <section className="container hero">
+      {/* 컨테이너 제거 → .hero 스스로 중앙정렬 + 여백/둥근모서리 */}
+      <section className="hero">
         <div
           className="hero__bg"
           style={{ backgroundImage: `url(${images[idx]})`, '--mx': `${mx}px`, '--my': `${my}px` }}
@@ -48,7 +49,6 @@ export default function MainPage() {
         >
           <div className="hero__scrim" />
           <div className="hero__glass" />
-          <div className="hero__spot-invert" />
 
           <div className="hero__copy">
             <h1 className="hero__title">따뜻한 연결, 가벼운 시작</h1>

@@ -10,6 +10,8 @@ import seniorIcon from '../../assets/icons/senior.png'
 import managerIcon from '../../assets/icons/manager.png'
 import shelterIcon from '../../assets/icons/shelter.png'
 
+import logo from '../../assets/brand/dog.png'
+
 export default function MainPage() {
   const images = [slide1, slide2, slide3]
   const [idx, setIdx] = useState(0)
@@ -34,12 +36,6 @@ export default function MainPage() {
 
   return (
     <main className="landing" role="main" aria-label="메인">
-      <header className="landing__top">
-        <div className="container top__inner">
-          <div className="brand"><span aria-hidden>🐾</span><strong>서비스명(가칭)</strong></div>
-        </div>
-      </header>
-
       {/* 거의 꽉 차는 카드형 슬라이드 */}
       <section className="hero">
         <div
@@ -49,10 +45,13 @@ export default function MainPage() {
           onMouseLeave={() => { start(); onLeave(); }}
           onMouseMove={onMove}
         >
+          <div className="hero__tint" />
           <div className="hero__scrim" />
           <div className="hero__glass" />
 
+          {/* ⬇️ 로고를 제목 위로 배치 */}
           <div className="hero__copy">
+            <img className="hero__logo" src={logo} alt="다녀올개 로고" />
             <h1 className="hero__title">따뜻한 연결, 가벼운 시작</h1>
             <p className="hero__desc">유기동물과 사람을 안전하게 잇는 우리 동네 플랫폼</p>
           </div>

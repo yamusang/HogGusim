@@ -4,6 +4,7 @@ npm install react-router-dom axios
 
 ## native
 # 네비게이션 (스택)
+npm install
 npm i @react-navigation/native @react-navigation/native-stack
 npm i react-native-screens react-native-safe-area-context
 
@@ -26,3 +27,7 @@ npm i expo-image-picker expo-location
 
 # 보안 토큰 저장(선택)
 npm i expo-secure-store
+
+# HTTP, 스토리지
+npm i axios
+npx expo install @react-native-async-storage/async-storage

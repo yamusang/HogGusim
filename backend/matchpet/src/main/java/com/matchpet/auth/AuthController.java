@@ -52,7 +52,6 @@ public class AuthController {
     authService.logout(authHeader);
     return ResponseEntity.noContent().build();
   }
-
   // --- 내부 헬퍼 ---
   private SignupCommon coerceRole(SignupCommon req, Role forced) {
     // record가 아니라 필드 세터가 없으니, 간단히 새 객체 만들어 채워서 넘겨도 되고,
@@ -60,3 +59,6 @@ public class AuthController {
     return req; // 엔드포인트로 호출하면 프론트에서 role을 함께 보내도 무방
   }
 }
+
+  
+

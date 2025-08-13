@@ -27,37 +27,38 @@ html{ font-size:18px }
 /* ===== Topbar ===== */
 .landing__top{
   position:sticky; top:0; z-index:20;
-  background:rgba(255,255,255,.86);
-  backdrop-filter:saturate(120%) blur(8px);
-  border-bottom:1px solid #eef0f5;
+  background: transparent; /* 투명 */
+  backdrop-filter:none;     /* 흐림 효과도 제거 */
+  border-bottom:none;
 }
 .top__inner{ height:68px; display:flex; align-items:center; justify-content:space-between; }
 .brand{ display:flex; align-items:center; gap:8px; font-weight:900; }
 
 /* ===== Hero ===== */
 .hero{
-  margin:22px 0 30px;
+  margin:22px auto 30px;
+  padding: 0 12px;  /* 살짝만 여백 */
 }
-.hero__bg{
-  position:relative;
-  min-height:520px;
-  border-radius:var(--radius-xl);
-  overflow:hidden;
 
-  /* 슬라이드 이미지 중앙 정렬 */
+
+.hero__bg{
+  position: relative;
+  min-height: 640px; /* 높이 늘림 */
+  width: 100%;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+
   background-repeat: no-repeat;
   background-position: center center !important;
   background-size: cover;
 
-  box-shadow:var(--shadow-md);
-  border:1px solid #eef0f5;
+  box-shadow: var(--shadow-md);
+  border: none;
 
-  /* 안의 콘텐츠도 중앙 배치 */
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 /* 레이어 순서: scrim(0) < glass(1) < spot(2) < UI(3) */
 .hero__scrim{
   position:absolute; inset:0; z-index:0;
@@ -83,7 +84,6 @@ html{ font-size:18px }
   -webkit-mask: url('../../assets/cursor/dog-shape.png') no-repeat center/contain;
   mask: url('../../assets/cursor/dog-shape.png') no-repeat center/contain;
 
-  /* 구멍 뚫기 */
   background-color: rgba(0,0,0,0.5);
   mix-blend-mode: destination-out;
 
@@ -105,38 +105,54 @@ html{ font-size:18px }
 
 /* 우하단 버튼 3개 */
 .hero__roles{
-  position:absolute;
-  right:36px;
-  bottom:36px;
-  z-index:3;
-  display:flex;
-  gap:20px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
+
 .role-btn{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  min-width:220px;
-  height:72px;
-  padding:0 24px;
-  border-radius:24px;
-  text-decoration:none;
-  color:var(--ink);
-  border:1px solid rgba(0,0,0,.06);
-  box-shadow:var(--shadow-sm);
-  font-weight:900;
-  font-size:1.05rem;
-  background:#fff;
-  backdrop-filter: blur(6px) saturate(110%);
-  transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 320px;       /* 🚀 길이 늘림 */
+  height: 80px;           /* 살짝 높임 */
+  padding: 0 34px 0 0;    /* 오른쪽 공간 넉넉 */
+  border-radius: 20px;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 900;
+  font-size: 1.15rem;
+
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  backdrop-filter: blur(8px) saturate(120%);
+
+  transition: transform .08s ease, box-shadow .2s ease;
 }
-.role-btn img{ width:34px; height:34px; object-fit:contain; }
-.role-btn:hover{ transform:translateY(-2px); box-shadow:0 18px 40px rgba(18,27,53,.12) }
-.pastel-lavender{ background:color-mix(in srgb, var(--lavender) 70%, #fff); }
-.pastel-mint{     background:color-mix(in srgb, var(--mint) 70%, #fff); }
-.pastel-peach{    background:color-mix(in srgb, var(--peach) 70%, #fff); }
+
+.role-btn:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.15);
+}
+
+/* 아이콘 박스 */
+.role-btn img{
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+/* .pastel-lavender img{ background-color: var(--lavender); }
+.pastel-mint img{     background-color: var(--mint); }
+.pastel-peach img{    background-color: var(--peach); } */
 
 /* 도트 */
 .hero__dots{
@@ -161,6 +177,7 @@ html{ font-size:18px }
   .features{ grid-template-columns:1fr 1fr }
 }
 @media (max-width: 760px){
+  .hero{ padding: 0 14px }
   .hero__copy{ left:20px }
   .hero__title{ font-size:1.85rem }
   .hero__roles{ position:static; margin:16px 16px 0; justify-content:center }

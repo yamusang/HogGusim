@@ -62,12 +62,13 @@ export default function MainPage() {
 
           {/* ➡ 오른쪽: 버튼 3개 (수직) */}
           <nav className="hero__roles-vertical" aria-label="역할 선택">
+            <div className='hero_nav'><p>당신의 역할을 선택해주세요</p></div>
             <Link to="/login?role=SENIOR" className="role-btn"
                   onClick={() => sessionStorage.setItem('selectedRole','SENIOR')}>
               <img src={seniorIcon} alt="" />
               <div className="role-text">
                 <span className="role-title">고령자</span>
-                <span className="role-sub">도움 요청하고 산책·돌봄 매칭</span>
+                <div><span className="role-sub">도움 요청하고 산책·돌봄 매칭</span></div>
               </div>
             </Link>
 
@@ -76,7 +77,7 @@ export default function MainPage() {
               <img src={managerIcon} alt="" />
               <div className="role-text">
                 <span className="role-title">펫매니저</span>
-                <span className="role-sub">가까운 의뢰 수락하고 활동</span>
+                <div><span className="role-sub">가까운 의뢰 수락하고 활동</span></div>
               </div>
             </Link>
 
@@ -85,7 +86,7 @@ export default function MainPage() {
               <img src={shelterIcon} alt="" />
               <div className="role-text">
                 <span className="role-title">보호소</span>
-                <span className="role-sub">분양 공고·봉사 매칭 관리</span>
+                <div><span className="role-sub">분양 공고·봉사 매칭 관리</span></div>
               </div>
             </Link>
           </nav>

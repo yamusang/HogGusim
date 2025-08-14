@@ -4,7 +4,7 @@ import api from '../api/apiClient'
 export const AuthContext = createContext(null)
 
 export default function AuthProvider({ children }) {
-  const [user, setUser] = useState(null) // { role, token, ... }
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -13,7 +13,6 @@ export default function AuthProvider({ children }) {
     setLoading(false)
   }, []);
 
-  // 합의한 로그인: POST /auth/login -> { token, role }
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password })
     localStorage.setItem('token', data.token)

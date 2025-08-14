@@ -34,7 +34,6 @@ export default function ManagerPage() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, managerId]);
 
   const selectSenior = (senior) => {
-    // 매칭 상세 페이지로 이동
     localStorage.setItem('selectedSenior', JSON.stringify(senior))
     navigate(`/manager/connect?seniorId=${senior.id}`)
   };

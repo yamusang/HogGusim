@@ -1,23 +1,22 @@
-// src/pages/senior/SeniorPage.jsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
-import { fetchRecommendedPets, fetchAnimals } from '../../api/animals';
-import Card from '../../components/common/Card';
-import Badge from '../../components/common/Badge';
-import Button from '../../components/ui/Button';
-import './senior.css';
+import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import useAuth from '../../hooks/useAuth'
+import { fetchRecommendedPets, fetchAnimals } from '../../api/animals'
+import Card from '../../components/common/Card'
+import Badge from '../../components/common/Badge'
+import Button from '../../components/ui/Button'
+import './senior.css'
 
 export default function SeniorPage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();                // { id|seniorId, role, ... }
-  const seniorId = user?.id || user?.seniorId;
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const seniorId = user?.id || user?.seniorId
 
-  const [page, setPage] = useState(1);
-  const [data, setData] = useState({ content: [], total: 0, size: 10 });
-  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState({ content: [], total: 0, size: 10 })
+  const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('');
-  const [isFallback, setIsFallback] = useState(false); // 추천 실패 시 전체 목록 표시 여부
+  const [isFallback, setIsFallback] = useState(false)
 
   const load = async () => {
     if (!seniorId) return;
@@ -25,13 +24,10 @@ export default function SeniorPage() {
     setErr('');
     setIsFallback(false);
     try {
-      // 1) 매칭 추천 호출
       let res = await fetchRecommendedPets({ seniorId, page, size: 10 });
-
-      // 2) 추천 결과가 비어있으면 AVAILABLE 전체 목록으로 폴백
       if (!res?.content?.length) {
         const fallback = await fetchAnimals({
-          available: true,          // 백엔드 합의: AVAILABLE만
+          available: true,        
           page,
           size: 10,
           sort: 'createdAt,DESC',

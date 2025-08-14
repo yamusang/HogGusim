@@ -77,7 +77,6 @@ export default function ShelterPage() {
   )
 }
 
-/* ===== 프론트 정규화 ===== */
 function normalizePet(raw) {
   return {
     id: raw.id,
@@ -106,7 +105,6 @@ function toLocalStatus(v) {
   return 'INFO'
 }
 
-/* ===== 카드 컴포넌트 ===== */
 function PetProfileCard({ pet, onOpen, getBadgeVariant }) {
   const { photoUrl, name, breed, age, status, temperament, neutered, weightKg } = pet
   const ageText = age != null && age !== '' ? `${age}살` : '-'

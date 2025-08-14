@@ -3,7 +3,7 @@ import useAuth from '../hooks/useAuth';
 
 export function RequireAuth({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return null;        // 스피너 넣어도 됨
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }

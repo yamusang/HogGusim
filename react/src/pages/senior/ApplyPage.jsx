@@ -1,10 +1,9 @@
-// src/pages/senior/ApplyPage.jsx
 import React, { useMemo, useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import Button from '../../components/ui/Button'
 import FormField from '../../components/common/FormField'
 import { createApplication } from '../../api/applications'
-import { fetchAnimals } from '../../api/animals' // petId로 단건 조회 API가 있다면 이거 사용
+import { fetchAnimals } from '../../api/animals'
 import './senior.css'
 
 export default function ApplyPage() {
@@ -14,7 +13,6 @@ export default function ApplyPage() {
 
   const [selected, setSelected] = useState(null)
 
-  // 폼 데이터 상태
   const [form, setForm] = useState({
     name: '',
     gender: '',
@@ -32,17 +30,14 @@ export default function ApplyPage() {
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // 공용 변경 함수
   const set = (k) => (e) =>
     setForm((f) => ({
       ...f,
       [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
     }));
 
-  // 선택 강아지 정보 불러오기
   useEffect(() => {
     try {
-      // 1차: localStorage에서 가져오기
       const s = localStorage.getItem('selectedPet')
       if (s) {
         const parsed = JSON.parse(s)
@@ -53,7 +48,6 @@ export default function ApplyPage() {
       }
     } catch {}
 
-    // 2차: petId로 API 호출 (만약 단일 조회 API 있으면)
     if (petId) {
       fetchAnimals({ page: 1, size: 1, id: petId })
         .then((res) => {
@@ -100,8 +94,6 @@ export default function ApplyPage() {
   return (
     <div className="senior">
       <h1>신청서</h1>
-
-      {/* 선택 강아지 미리보기 */}
       {selected && (
         <div className="apply__pet-preview">
           <img src={selected.photoUrl} alt={selected.name} />

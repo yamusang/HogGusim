@@ -1,4 +1,3 @@
-/* src/styles/components/form-field.css */
 .form-field { display:flex; flex-direction:column; gap:.25rem; margin-bottom:1rem; }
 .form-field__label { font-weight:500; }
 .form-field__req { color:red; margin-left:0.25rem; }
@@ -15,3 +14,4 @@
 .form-field__hint { font-size:.85rem; color:#6b7280; }
 .form-field__error { font-size:.85rem; color:#ef4444; }
 .form-field--error .form-field__input { border-color:#ef4444; }
+

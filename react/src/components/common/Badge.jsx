@@ -1,7 +1,4 @@
 import React from 'react';
-
-// variant: available | pending | matched | adopted | info | warn | danger
-// size: sm | md
 export default function Badge({
   children,
   variant = 'info',

@@ -1,7 +1,7 @@
-// src/components/ui/Button.jsx
-import React, { forwardRef } from 'react';
-import { Link } from 'react-router-dom';
-import './button.css';
+import React, { forwardRef } from 'react'
+import { Link } from 'react-router-dom'
+import './button.css'
+
 
 const preset = {
   primary: 'btn--primary',
@@ -25,8 +25,8 @@ const Button = forwardRef(function Button(
     children,
     presetName = 'primary',
     sizeName = 'md',
-    to,                // 있으면 <Link>
-    as,                // 'a' 등 커스텀
+    to,                
+    as,                
     type = 'button',
     loading = false,
     disabled = false,

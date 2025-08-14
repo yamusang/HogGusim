@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import './main-page.css'
 
 import slide1 from '../../assets/hero/slide1.jpg'
-import slide2 from '../../assets/hero/slide2.jpg'
+import slide2 from '../../assets/hero/slide2.jfif'
 import slide3 from '../../assets/hero/slide3.webp'
+import slide4 from '../../assets/hero/slide4.jfif'
 
 import seniorIcon from '../../assets/icons/senior.png'
 import managerIcon from '../../assets/icons/manager.png'
@@ -12,13 +13,12 @@ import shelterIcon from '../../assets/icons/shelter.png'
 
 import logo from '../../assets/brand/dog.png'
 
-/** 하단 인포카드 아이콘 */
 import iconView from '../../assets/icons/view.png'
 import iconProcess from '../../assets/icons/process.png'
 import iconLocation from '../../assets/icons/location.png'
 
 export default function MainPage() {
-  const images = [slide1, slide2, slide3]
+  const images = [slide1, slide2, slide3, slide4]
   const [idx, setIdx] = useState(0)
   const timer = useRef(null)
 
@@ -40,7 +40,6 @@ export default function MainPage() {
 
   return (
     <main className="landing" role="main" aria-label="메인">
-      {/* ✅ 헤더 바 제거하고, 로고를 슬라이드 안 텍스트 상단으로 이동 */}
       <section className="hero">
         <div
           className="hero__bg"
@@ -53,14 +52,13 @@ export default function MainPage() {
           <div className="hero__scrim" />
           <div className="hero__glass" />
 
-          {/* ⬅ 왼쪽: 로고 + 제목 + 부가설명 */}
           <div className="hero__copy">
-            <img className="hero__logo" src={logo} alt="다녀올개 로고" />
-            <h1 className="hero__title">따뜻한 연결, 가벼운 시작</h1>
-            <p className="hero__desc">유기동물과 사람을 안전하게 잇는 우리 동네 플랫폼</p>
+            <img className="hero__logo fade-up d0" src={logo} alt="다녀올개 로고" />
+            <h1 className="hero__title fade-up d1">따뜻한 연결, 가벼운 시작</h1>
+            <p className="hero__desc fade-up d2">유기동물과 사람을 안전하게 잇는 우리 동네 플랫폼</p>
           </div>
 
-          {/* ➡ 오른쪽: 버튼 3개 (수직) */}
+
           <nav className="hero__roles-vertical" aria-label="역할 선택">
             <div className='hero_nav'><p>당신의 역할을 선택해주세요</p></div>
             <Link to="/login?role=SENIOR" className="role-btn"

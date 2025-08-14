@@ -20,12 +20,10 @@ html{ font-size:18px }
   background:
     radial-gradient(900px 520px at -10% -20%, var(--peach) 0%, transparent 60%),
     radial-gradient(900px 520px at 110% 110%, var(--butter) 0%, transparent 60%),
-    linear-gradient(180deg, #FFF8F0 0%, #FFF1E6 100%);
+    linear-gradient(180deg, #FFF8F0 0%, #ffc89e 100%);
 }
 
-/* ⬇ brand-bar는 제거했으니 없어도 됨 */
 
-/* ===== Hero ===== */
 .hero{ margin:10px auto 0; padding:0 12px }
 .hero__bg{
   position:relative; min-height:600px;
@@ -34,13 +32,15 @@ html{ font-size:18px }
   box-shadow:var(--shadow-md);
   isolation:isolate;
 }
-.hero__tint{ position:absolute; inset:0; z-index:0; pointer-events:none;
+.hero__tint{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
   background:
     radial-gradient(120% 100% at 10% 0%, rgba(255, 198, 150, .25), transparent 60%),
     radial-gradient(120% 100% at 100% 100%, rgba(255, 226, 186, .28), transparent 55%);
   mix-blend-mode:soft-light;
 }
-.hero__scrim{ position:absolute; inset:0; z-index:0; pointer-events:none;
+.hero__scrim{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
   background:linear-gradient(90deg, rgba(60,30,0,.34), rgba(60,30,0,.12) 55%, transparent);
 }
 .hero__glass{
@@ -49,7 +49,6 @@ html{ font-size:18px }
   backdrop-filter: blur(8px) saturate(120%);
 }
 
-/* 구멍 효과 */
 .hero__scrim, .hero__glass{
   -webkit-mask:
     url('../../assets/cursor/dog-shape.png') no-repeat
@@ -65,103 +64,59 @@ html{ font-size:18px }
   mask-composite: exclude;
 }
 
-/* ⬅ 왼쪽 카피 (로고 + 제목 + 설명) */
-.hero_nav {
-  position: absolute;
-  top: 45%;
-  left: 50%;
-  transform: translate(-50%, -280%); /* -180% → -280%로 위로 올림 */
-  text-align: center;
-  width: max-content;
-}
 
-.hero_nav p {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #000000;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+.hero_nav { text-align:center; margin-bottom:8px; }
+.hero_nav p{
+  font-size:1.5rem; font-weight:700; color:#fff; letter-spacing:.5px;
+  text-shadow:0 2px 4px rgba(0,0,0,.25);
 }
 .hero__copy{
-  position:absolute;
-  top:50%;
-  left:40px;
-  transform:translateY(-50%);
-  z-index:3;
-  text-align:left;
-  max-width:520px;
-  color:#fff; /* 기본 글색 밝게*/
+  position:absolute; top:50%; left:40px; transform:translateY(-50%);
+  z-index:3; text-align:left; max-width:520px; color:#fff;
 }
+
 .hero__logo{
-  height:120px; width:auto;
-  margin-bottom:10px;
+  height:120px; width:auto; display:block;
   filter: drop-shadow(0 6px 14px rgba(0,0,0,.18));
 }
+
+
 .hero__title{
-  font-size:2.0rem; font-weight:900; margin:0 0 8px;
-  color:#fff;            /* 하얀색 */
+  font-size:2.0rem; font-weight:900; margin:0 0 8px; color:#fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.25);
 }
 .hero__desc{
-  font-size:1.2rem; margin:0 0 20px; color:#f5f5f5; /* 밝은 회색 */
+  font-size:1.2rem; margin:0 0 20px; color:#f5f5f5;
 }
 
-/* ➡ 오른쪽 버튼 3개 */
+
 .hero__roles-vertical{
-  margin-top: 0;
-  position:absolute;
-  top:50%;
-  right:40px;
-  transform:translateY(-50%);
-  display:flex; flex-direction:column; gap:16px;
-  z-index:3;
+  margin-top:0; position:absolute; top:50%; right:40px; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:16px; z-index:3;
 }
-.role-btn {
-  min-height: 110px; /* 높이 키움 */
-  display: grid;
-  grid-template-columns: 70px 1fr; /* 아이콘 영역 확대 */
-  align-items: center;
-  gap: 16px;
-  padding: 0 28px 0 0;
-
-  /* ✅ 반투명 컬러 배경 (따뜻한 주황톤) */
-  background: rgba(255, 255, 255, 0.85); 
-  border: 1px solid rgba(255, 255, 255, 0.15);
-
-  border-radius: 20px;
-  text-decoration: none;
-  color: #fff; /* 글씨색 하얀색 */
-  box-shadow: 0 8px 18px rgba(0,0,0,0.15);
-
-  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+.role-btn{
+  min-height:110px;
+  display:grid; grid-template-columns:70px 1fr; align-items:center; gap:16px;
+  padding:0 28px 0 0;
+  background:rgba(255,255,255,.85);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:20px; text-decoration:none; color:#fff;
+  box-shadow:0 8px 18px rgba(0,0,0,.15);
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
 }
-
-.role-btn:hover {
-  transform: translateY(-3px);
-  background: rgba(255, 184, 120, 0.95); /* hover 시 조금 더 진하게 */
-  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+.role-btn:hover{
+  transform:translateY(-3px);
+  background:rgba(255,184,120,.95);
+  box-shadow:0 12px 28px rgba(0,0,0,.18);
 }
-
-/* 아이콘도 밝게 */
-.role-btn img {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-  justify-self: center;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+.role-btn img{
+  width:60px; height:60px; object-fit:contain; justify-self:center;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
 }
+.role-title{ font-size:1.3rem; font-weight:900; color:#000; margin-bottom:4px }
+.role-sub{ font-size:1rem; color:rgba(0,0,0,.9) }
 
-/* 텍스트 컬러 변경 */
-.role-title {
-  font-size: 1.3rem;
-  font-weight: 900;
-  color: #000000;
-  margin-bottom: 4px;
-}
-.role-sub {
-  font-size: 1rem;
-  color: rgba(0, 0, 0, 0.9);
-}
 
-/* 도트 */
 .hero__dots{
   position:absolute; left:0; right:0; bottom:12px; z-index:3;
   display:flex; gap:10px; justify-content:center;
@@ -169,7 +124,7 @@ html{ font-size:18px }
 .dot{ width:10px; height:10px; border-radius:999px; border:0; background:rgba(255,255,255,.55) }
 .dot.active{ background:var(--amber) }
 
-/* ===== 하단 Info Cards ===== */
+
 .features.center{ display:flex; justify-content:center; gap:16px; margin:24px 0 34px }
 .info-cards{ display:flex; justify-content:center; gap:20px; margin:24px 0 34px }
 .info-card{
@@ -181,11 +136,33 @@ html{ font-size:18px }
 }
 .info-card:hover{ transform:translateY(-3px); box-shadow:0 12px 24px rgba(0,0,0,.12) }
 .info-text{ display:flex; flex-direction:column; line-height:1.3 }
-.info-text strong{ font-size:1.12rem; font-weight:800; color:#000000; margin-bottom:4px }
-.info-text span{ font-size:.95rem; color:#000000 }
+.info-text strong{ font-size:1.12rem; font-weight:800; color:#000; margin-bottom:4px }
+.info-text span{ font-size:.95rem; color:#000 }
 .info-icon{ width:50px; height:50px; object-fit:contain }
 
-/* 반응형 */
+
+.fade-up{
+  opacity:0; transform:translateY(14px);
+  animation:fadeUp .9s cubic-bezier(.22,.8,.36,1) forwards;
+}
+
+.d0{ animation-delay:.05s }
+.d1{ animation-delay:.20s }
+.d2{ animation-delay:.35s } 
+.d3{ animation-delay:.55s }  
+.d4{ animation-delay:.70s }  
+.d5{ animation-delay:.85s }  
+.d6{ animation-delay:1.00s } 
+
+@keyframes fadeUp{
+  to{ opacity:1; transform:translateY(0) }
+}
+
+
+@media (prefers-reduced-motion: reduce){
+  .fade-up{ animation:none; opacity:1; transform:none }
+}
+
 
 @media (max-width: 900px){
   .hero__bg{ min-height:500px }

@@ -10,7 +10,6 @@ export default function SignupPage() {
   const { search } = useLocation()
   const params = new URLSearchParams(search)
 
-  // 쿼리 → 세션 → 기본값(SENIOR)
   const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase()
   const [role] = useState(roleParam)
 
@@ -35,9 +34,8 @@ export default function SignupPage() {
     if (isMismatch) return setError('비밀번호가 일치하지 않습니다.')
 
     try {
-      // role 포함해서 회원가입
       await api.post('/auth/signup', { email, password, role })
-      sessionStorage.setItem('selectedRole', role) // 다음 화면에서도 유지
+      sessionStorage.setItem('selectedRole', role) 
       alert('회원가입이 완료되었습니다. 로그인 해주세요.')
       navigate(`/login?role=${role}`)
     } catch (err) {

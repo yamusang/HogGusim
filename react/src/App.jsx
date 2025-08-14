@@ -14,21 +14,20 @@ import ShelterPage from './pages/shelter/ShelterPage'
 import PetConnectPage from './pages/pet/PetConnectPage'
 import LogoutPage from './pages/auth/LogoutPage'
 
-// 공통 보호 컴포넌트
+
 function Protected({ children, allow }) {
   const { user, loading } = useAuth()
-  if (loading) return null // TODO: 스피너 컴포넌트 연결 가능
+  if (loading) return null 
   if (!user) return <Navigate to="/login" replace />
   if (allow && !allow.includes(user.role)) return <Navigate to="/" replace />
   return children
 }
 
-// 이미 로그인되어 있으면 로그인/회원가입 접근 차단
 function RedirectIfAuthed({ children }) {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return children
-  // 역할별 기본 대시보드로
+
   if (user.role === 'SENIOR') return <Navigate to="/senior" replace />
   if (user.role === 'MANAGER') return <Navigate to="/manager" replace />
   if (user.role === 'SHELTER') return <Navigate to="/shelter" replace />

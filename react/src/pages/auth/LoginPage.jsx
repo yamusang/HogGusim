@@ -7,10 +7,10 @@ import './auth.css'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { search } = useLocation()                                // ← () 호출 빠지면 안 됨!
+  const { search } = useLocation()                                
   const params = new URLSearchParams(search)
   const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase()
-  sessionStorage.setItem('selectedRole', roleParam)               // 보강 저장
+  sessionStorage.setItem('selectedRole', roleParam)              
 
   const { login } = useAuth()
   const [email, setEmail] = useState('')
@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // 이메일 정규식
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   const isInvalidEmail = useMemo(() => email && !emailRegex.test(email), [email])
 
@@ -27,17 +27,14 @@ export default function LoginPage() {
     if (loading) return
     setErr('')
 
-    // 클라 사전 검증
+
     if (!email) return setErr('이메일을 입력하세요.')
     if (isInvalidEmail) return setErr('올바른 이메일 형식을 입력하세요.')
     if (!password) return setErr('비밀번호를 입력하세요.')
 
     setLoading(true)
     try {
-      // 컨텍스트 login 사용
       const u = await login(email.trim(), password)
-
-      // 역할별 라우팅
       if (u?.role === 'SENIOR') navigate('/senior')
       else if (u?.role === 'SHELTER') navigate('/shelter')
       else if (u?.role === 'MANAGER') navigate('/manager')
@@ -55,7 +52,6 @@ export default function LoginPage() {
     <div className="auth auth--center">
       <div className="auth__card">
         <h1 className="auth__title">로그인</h1>
-        {/* 선택된 역할 안내(선택) */}
         <p style={{margin:'0 0 8px', color:'#667085', fontSize:14}}>
           선택된 역할: {roleParam === 'SENIOR' ? '고령자' : roleParam === 'MANAGER' ? '펫매니저' : '보호소 관리자'}
         </p>

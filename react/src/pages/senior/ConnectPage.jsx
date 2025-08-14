@@ -20,7 +20,7 @@ export default function ConnectPage() {
     setErr('');
     try {
       const res = await fetchMyApplications(seniorId);
-      setApps(res.content || res); // API 응답 구조에 맞게 수정
+      setApps(res.content || res);
     } catch (e) {
       setErr(e.message || '매칭 현황을 불러오지 못했습니다.');
     } finally {

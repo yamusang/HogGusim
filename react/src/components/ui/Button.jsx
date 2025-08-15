@@ -1,83 +1,46 @@
-import React, { forwardRef } from 'react'
-import { Link } from 'react-router-dom'
-import './button.css'
+import React from 'react';
+import '../../styles/components/button.css';
 
-
-const preset = {
+// presetName과 variant 둘 다 지원 (variant가 들어오면 우선)
+const presetMap = {
   primary: 'btn--primary',
-  secondary: 'btn--secondary',
-  login: 'btn--login',
-  signup: 'btn--signup',
-  signin: 'btn--signin',
+  login: 'btn--primary',
+  ghost: 'btn--ghost',
   senior: 'btn--senior',
   manager: 'btn--manager',
   shelter: 'btn--shelter',
-  apply: 'btn--apply',
-  connect: 'btn--connect',
-  danger: 'btn--danger',
-  ghost: 'btn--ghost',
+  secondary: 'btn--secondary', // ✅ 추가
+  danger: 'btn--danger',       // ✅ 추가
 };
+const sizeMap = { sm:'btn--sm', md:'btn--md', lg:'btn--lg' };
 
-const size = { sm: 'btn--sm', md: 'btn--md', lg: 'btn--lg', xl: 'btn--xl' };
-
-const Button = forwardRef(function Button(
-  {
-    children,
-    presetName = 'primary',
-    sizeName = 'md',
-    to,                
-    as,                
-    type = 'button',
-    loading = false,
-    disabled = false,
-    className = '',
-    ...rest
-  },
-  ref
-) {
-  const classes = [
+export default function Button({
+  presetName = 'login',
+  variant,                // ✅ alias
+  sizeName = 'md',
+  loading = false,
+  full = false,
+  className = '',
+  children,
+  disabled,
+  ...rest
+}){
+  const key = (variant || presetName || 'login');
+  const cls = [
     'btn',
-    preset[presetName] || preset.primary,
-    size[sizeName] || size.md,
+    presetMap[key] || presetMap.login,
+    sizeMap[sizeName] || sizeMap.md,
+    full ? 'btn--full' : '',
     loading ? 'is-loading' : '',
-    disabled ? 'is-disabled' : '',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+    className
+  ].filter(Boolean).join(' ');
 
-  const content = (
-    <>
-      {loading && <span className="btn__spinner" aria-hidden="true" />}
-      <span className="btn__label">{children}</span>
-    </>
-  );
-
-  if (to) return (
-    <Link
-    to={to}
-    className={classes}
-    aria-disabled={disabled || loading || undefined}
-    tabIndex={disabled || loading ? -1 : undefined}
-    ref={ref}
-    {...rest}
-    >
-        {content}
-    </Link>
-  )
-  const Comp = as || 'button'
   return (
-    <Comp
-      type={Comp === 'button' ? type : undefined}
-      className={classes}
-      disabled={disabled || loading}
-      ref={ref}
-      {...rest}
-    >
-      {content}
-    </Comp>
+    <button className={cls} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
+      <span className="btn__inner">
+        {children}
+        {loading && <span className="btn__spinner" aria-hidden="true" />}
+      </span>
+    </button>
   );
-});
-
-export default Button
-// .
+}

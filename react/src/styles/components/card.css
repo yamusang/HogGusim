@@ -1,17 +1,2 @@
-.badge {
-  display:inline-flex; align-items:center; gap:.35rem;
-  padding:.22rem .55rem; border-radius:9999px; font-weight:700;
-  line-height:1; border:1px solid transparent; white-space:nowrap;
-}
-.badge--sm { font-size:.78rem; }
-.badge--md { font-size:.9rem; padding:.3rem .65rem; }
-
-.badge--available { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
-.badge--pending   { background:#fffbeb; color:#92400e; border-color:#fde68a; }
-.badge--matched   { background:#eff6ff; color:#1e40af; border-color:#bfdbfe; }
-.badge--adopted   { background:#f5f3ff; color:#5b21b6; border-color:#ddd6fe; }
-.badge--info  { background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
-.badge--warn  { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
-.badge--danger{ background:#fef2f2; color:#991b1b; border-color:#fecaca; }
-
-/*  */
+.card{ background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px }
+.card--soft{ background:#fff6ef }

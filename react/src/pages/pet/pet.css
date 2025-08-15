@@ -1,20 +1,34 @@
-.petconnect { max-width: 960px; margin: 0 auto; padding: 24px; }
-.petconnect__header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
-.petconnect__tools { display:flex; gap:8px; align-items:center; }
-.petconnect__petid { height:36px; padding:0 10px; border:1px solid #ddd; border-radius:10px; min-width:160px; }
-
-.petconnect__error { background:#fff3f3; color:#b00020; padding:10px 12px; border-radius:12px; margin:10px 0; }
-.petconnect__loading, .petconnect__empty { color:#666; padding:16px 4px; }
-
-.petconnect__list { display:grid; grid-template-columns:1fr; gap:12px; }
-.petconnect__card { padding:16px; }
-.petconnect__row { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
-.petconnect__title { display:flex; align-items:center; gap:10px; font-weight:600; margin-bottom:8px; }
-.petconnect__pet { font-size:16px; }
-.petconnect__meta { display:grid; gap:4px; color:#555; font-size:14px; }
-.petconnect__actions { display:flex; flex-direction:column; gap:8px; min-width:140px; }
-@media (max-width: 640px) {
-  .petconnect__row { flex-direction:column; }
-  .petconnect__actions { flex-direction:row; }
+.petconnect{ max-width:1100px; margin:24px auto; padding:0 16px }
+.petconnect__header{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px }
+.petconnect__header h1{ margin:0; font-size:1.4rem; font-weight:900 }
+.petconnect__tools{ display:flex; gap:8px; align-items:center }
+.petconnect__petid{
+  height:40px; padding:0 12px; border:1px solid #f1e2d8; border-radius:10px; outline:none;
 }
-/*  */
+.petconnect__petid:focus{ border-color:#dc977d }
+
+.petconnect__error{
+  background:#fee4e2; color:#b42318; border:1px solid #fecdca;
+  border-radius:12px; padding:10px 12px; margin:10px 0;
+}
+.petconnect__loading{ color:#6b5e54; margin:10px 0 }
+.petconnect__empty{
+  display:grid; place-items:center; height:160px; color:#7b6a5f; border:1px dashed #efddcf; border-radius:14px; background:#fffdfb
+}
+
+.petconnect__list{ display:grid; gap:12px; margin-top:12px }
+.petconnect__card{ padding:16px }
+
+.petconnect__row{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px }
+.petconnect__main{ display:grid; gap:8px }
+
+.petconnect__title{ display:flex; align-items:center; gap:10px; font-weight:800 }
+.petconnect__pet{ font-size:1.05rem }
+
+.petconnect__meta{ display:flex; flex-wrap:wrap; gap:8px 16px; color:#5c5047 }
+.petconnect__actions{ display:flex; gap:8px; align-items:center }
+
+@media (max-width:720px){
+  .petconnect__row{ flex-direction:column; }
+  .petconnect__actions{ justify-content:flex-end }
+}

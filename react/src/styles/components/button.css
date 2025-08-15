@@ -1,0 +1,36 @@
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  border:0; border-radius:16px; padding:0 16px;
+  font-weight:700; cursor:pointer; box-shadow:0 12px 30px rgba(0,0,0,.08);
+  transition:.2s transform ease,.2s opacity ease,.2s box-shadow ease;
+  height:40px;
+}
+.btn--sm{ height:36px; font-size:.95rem; padding:0 14px }
+.btn--md{ height:40px }
+.btn--lg{ height:46px; font-size:1.05rem; padding:0 18px }
+
+.btn--full{ width:100% }
+.btn:active{ transform:translateY(1px) }
+.btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none }
+
+.btn--primary{ background:#dc977d; color:#fff }
+.btn--ghost{ background:#fff; color:#1b1a16; border:1px solid var(--ring,#f4d7c9); box-shadow:none }
+.btn--senior{ background:#F2D6C9 }
+.btn--manager{ background:#FFE9B6 }
+.btn--shelter{ background:#DDE9FF }
+
+.btn__inner{ position:relative; display:inline-flex; align-items:center; gap:8px }
+.is-loading .btn__inner{ pointer-events:none }
+.btn__spinner{
+  width:16px; height:16px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.6);
+  border-top-color: rgba(255,255,255,1);
+  animation:spin .8s linear infinite;
+}
+.btn--ghost .btn__spinner{
+  border-color: rgba(27,26,22,.25);
+  border-top-color: rgba(27,26,22,.75);
+}
+.btn--secondary{ background:#ffffff; color:#1b1a16; border:1px solid #e7dacd; box-shadow:none }
+.btn--danger{ background:#ef4444; color:#fff }
+@keyframes spin{ to{ transform:rotate(360deg) } }

@@ -1,159 +1,77 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import useAuth from '../../hooks/useAuth'
-import { fetchMyApplications, getApplicationsByPet, approveApplication, rejectApplication } from '../../api/applications'
-import Badge from '../../components/common/Badge'
-import Card from '../../components/common/Card'
-import Button from '../../components/ui/Button'
-import './pet.css'
+import React, { useEffect, useState } from 'react';
+import '../../styles/base.css';
+import './pet.css';
+import Card from '../../components/common/Card';
+import Button from '../../components/ui/Button';
+import { listByPet, approve, reject } from '../../api/applications';
+import { fetchAnimals } from '../../api/animals';
 
-export default function PetConnectPage() {
-  const { user } = useAuth()
-  const role = user?.role // 'SENIOR' | 'SHELTER' | 'MANAGER'
-  const [params] = useSearchParams()
-  const navigate = useNavigate()
-  const petIdParam = params.get('petId')
+export default function PetConnectPage(){
+  const [pet, setPet] = useState(null);
+  const [apps, setApps] = useState([]);
 
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState('')
-
-  const isSenior = role === 'SENIOR'
-  const isShelter = role === 'SHELTER'
-
-  const load = async () => {
-    try {
-      setLoading(true)
-      setErr('')
-      if (isSenior) {
-        const list = await fetchMyApplications()
-        setItems(list || [])
-      } else if (isShelter) {
-        if (!petIdParam) {
-          setItems([])
-          return
-        }
-        const list = await getApplicationsByPet(Number(petIdParam))
-        setItems(list || [])
-      } else {
-        setErr('지원되지 않는 역할입니다.')
+  // 데모: 첫 번째 AVAILABLE 동물 선택
+  useEffect(()=>{
+    (async ()=>{
+      const list = await fetchAnimals({ available:true, page:0, size:1, sort:'createdAt,DESC' });
+      const p = list?.content?.[0];
+      setPet(p || null);
+      if (p) {
+        const a = await listByPet(p.id);
+        setApps(a || []);
       }
-    } catch (e) {
-      setErr(e.message || '목록을 불러오지 못했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
+    })();
+  },[]);
 
-  useEffect(() => { load() }, [role, petIdParam])
+  const onApprove = async (id)=>{
+    await approve(id);
+    const a = await listByPet(pet.id);
+    setApps(a);
+  };
 
-  const title = useMemo(() => {
-    if (isSenior) return '내 신청 현황'
-    if (isShelter) return `신청 확인${petIdParam ? ` (Pet #${petIdParam})` : ''}`
-    return '매칭 확인'
-  }, [isSenior, isShelter, petIdParam])
+  const onReject = async (id)=>{
+    await reject(id);
+    const a = await listByPet(pet.id);
+    setApps(a);
+  };
 
-  const onApprove = async (appId) => {
-    try {
-      await approveApplication(appId)
-      setItems(prev => prev.map(it => it.id === appId ? { ...it, status: 'ACCEPTED' } : it))
-    } catch (e) {
-      alert(e.message || '승인 실패')
-    }
-  }
-
-  const onReject = async (appId) => {
-    try {
-      await rejectApplication(appId)
-      setItems(prev => prev.map(it => it.id === appId ? { ...it, status: 'REJECTED' } : it))
-    } catch (e) {
-      alert(e.message || '거절 실패')
-    }
-  }
+  if (!pet) return <div className="container pet-wrap">연결할 동물을 불러오는 중...</div>;
 
   return (
-    <div className="petconnect">
-      <div className="petconnect__header">
-        <h1>{title}</h1>
-
-        {isShelter && (
-          <div className="petconnect__tools">
-            <input
-              className="petconnect__petid"
-              placeholder="petId 입력"
-              defaultValue={petIdParam || ''}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const v = e.currentTarget.value.trim()
-                  navigate(v ? `?petId=${v}` : '')
-                }
-              }}
-            />
-            <Button variant="secondary" onClick={load}>새로고침</Button>
+    <div className="container pet-wrap">
+      <div className="pet-grid">
+        <Card>
+          <img className="pet-photo" src={pet.photoUrl || ''} alt="" />
+          <div className="section">
+            <div className="kv"><b>이름</b><span>{pet.name}</span></div>
+            <div className="kv"><b>품종</b><span>{pet.breed}</span></div>
+            <div className="kv"><b>나이</b><span>{pet.age}</span></div>
+            <div className="kv"><b>중성화</b><span>{pet.neutered ? '예' : '아니오'}</span></div>
+            <div className="kv"><b>상태</b><span>{pet.status}</span></div>
           </div>
-        )}
-      </div>
+        </Card>
 
-      {err && <div className="petconnect__error">{err}</div>}
-      {loading && <div className="petconnect__loading">불러오는 중...</div>}
-
-      {!loading && !items.length && (
-        <div className="petconnect__empty">
-          {isShelter ? 'petId를 선택하면 신청 목록이 보여요.' : '신청 내역이 없습니다.'}
+        <div>
+          <h2 style={{margin:'0 0 12px'}}>신청 목록</h2>
+          <div className="grid">
+            {apps.length === 0 && <Card>신청이 없습니다.</Card>}
+            {apps.map(a=>(
+              <Card key={a.id}>
+                <div className="kv"><b>이름</b><span>{a.name}</span></div>
+                <div className="kv"><b>성별</b><span>{a.gender}</span></div>
+                <div className="kv"><b>나이</b><span>{a.age}</span></div>
+                <div className="kv"><b>주소</b><span>{a.address}</span></div>
+                <div className="kv"><b>요일</b><span>{a.days?.join(', ')}</span></div>
+                <div className="kv"><b>약관</b><span>{a.agreeBodycam ? '바디캠 동의' : '미동의'}</span></div>
+                <div className="action-row">
+                  <Button onClick={()=>onApprove(a.id)} variant="manager">승인</Button>
+                  <Button onClick={()=>onReject(a.id)} variant="ghost">거절</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
         </div>
-      )}
-
-      <div className="petconnect__list">
-        {items.map(app => (
-          <Card key={app.id} className="petconnect__card">
-            <div className="petconnect__row">
-              <div className="petconnect__main">
-                <div className="petconnect__title">
-                  <span className="petconnect__pet">
-                    🐶 {app.petName || `Pet #${app.petId}`}
-                  </span>
-                  <Badge
-                    tone={
-                      app.status === 'PENDING' ? 'warning'
-                      : app.status === 'ACCEPTED' ? 'success'
-                      : 'danger'
-                    }
-                    text={app.status?.toLowerCase()}
-                  />
-                </div>
-
-                <div className="petconnect__meta">
-                  <span>신청자: {app.name} ({app.gender}) · {app.age}세</span>
-                  <span>연락처: {app.phone}</span>
-                  <span>주소: {app.address}</span>
-                  <span>선호시간: {app.timeRange} / {Array.isArray(app.days) ? app.days.join(', ') : app.days}</span>
-                  {app.date && <span>희망일: {new Date(app.date).toLocaleDateString()}</span>}
-                  {app.experience && <span>경험: {app.experience}</span>}
-                </div>
-              </div>
-
-              {isShelter && (
-                <div className="petconnect__actions">
-                  <Button
-                    disabled={app.status !== 'PENDING'}
-                    onClick={() => onApprove(app.id)}
-                  >
-                    수락
-                  </Button>
-                  <Button
-                    variant="danger"
-                    disabled={app.status !== 'PENDING'}
-                    onClick={() => onReject(app.id)}
-                  >
-                    거절
-                  </Button>
-                </div>
-              )}
-            </div>
-          </Card>
-        ))}
       </div>
     </div>
-  )
+  );
 }
-// 

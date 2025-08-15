@@ -1,70 +1,55 @@
-// src/components/common/FormField.jsx
 import React from 'react';
-import '../../styles/components/form-field.css'
+import '../../styles/components/form-field.css';
 
-export default function FormField({
-  id,
-  label,
-  type = 'text',
-  value = '',
-  onChange,
-  placeholder = '',
-  required = false,
-  error = '',
-  hint = '',
-  as,              // 'textarea' | 'select'
-  options = [],    // select용 [{value,label}]
-  rightSlot,
-  className = '',
-  ...rest
-}) {
-  const InputTag = as === 'textarea' ? 'textarea' : as === 'select' ? 'select' : 'input'
+/**
+ * 지원 형태
+ * - <FormField label="..." type="text" value onChange />
+ * - <FormField label="...">{custom input}</FormField>
+ * props: id, label, help, hint, error, type, value, onChange, required, placeholder
+ */
+export default function FormField(props){
+  const {
+    id,
+    label,
+    help,
+    hint,
+    error,
+    type = 'text',
+    value,
+    onChange,
+    required,
+    placeholder,
+    children,
+    ...rest
+  } = props;
 
-  const control =
-    InputTag === 'select' ? (
-      <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        required={required}
-        className="form-field__input"
-        {...rest}
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    ) : (
-      <InputTag
-        id={id}
-        type={InputTag === 'input' ? type : undefined}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className="form-field__input"
-        {...rest}
-      />
-    )
+  const helpText = hint ?? help;
 
   return (
-    <div className={`form-field ${error ? 'form-field--error' : ''} ${className}`}>
+    <div className="field">
       {label && (
-        <label htmlFor={id} className="form-field__label">
-          {label} {required && <span className="form-field__req">*</span>}
+        <label htmlFor={id} className="field__label">
+          {label}{required && <span aria-hidden="true" style={{marginLeft:4,color:'#b42318'}}>*</span>}
         </label>
       )}
 
-      <div className="form-field__control">
-        {control}
-        {rightSlot && <div className="form-field__right">{rightSlot}</div>}
-      </div>
+      {children ? (
+        children
+      ) : (
+        <input
+          id={id}
+          className={`input${error ? ' input--error' : ''}`}
+          type={type}
+          value={value}
+          onChange={onChange}
+          required={required}
+          placeholder={placeholder}
+          {...rest}
+        />
+      )}
 
-      {hint && !error && <div className="form-field__hint">{hint}</div>}
-      {error && <div className="form-field__error">{error}</div>}
+      {helpText && !error && <div className="help">{helpText}</div>}
+      {error && <div className="error">{error}</div>}
     </div>
   );
 }
-// .

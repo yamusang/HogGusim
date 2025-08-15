@@ -1,99 +1,16 @@
+/* 공통 카드 스타일 */
+.auth-wrap{ min-height:calc(100dvh - 0px); display:grid; place-items:center; padding:40px 16px; background:linear-gradient(180deg,#fffaf6 0%,#ffffff 60%) }
+.auth-card{ width:100%; max-width:420px }
+.auth-title{ font-size:1.4rem; font-weight:800; margin-bottom:12px }
+.auth-sub{ color:#8d7f75; margin-bottom:20px }
 
-.auth {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: linear-gradient(135deg, #f9fafb, #eef2ff);
-}
-
-
-.auth__card {
-  width: 100%;
-  max-width: 480px;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 32px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-
-.auth__title {
-  font-size: 26px;
-  font-weight: 800;
-  margin-bottom: 18px;
-  color: #2d3748;
-  text-align: center;
-}
-
-
-.auth__desc {
-  font-size: 18px;
-  color: #4a5568;
-  text-align: center;
-  margin-bottom: 20px;
-  line-height: 1.5;
-}
-
-
-.auth__form {
-  display: grid;
-  gap: 16px;
-}
-
-
-.auth__form input {
-  padding: 14px;
-  font-size: 18px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e0;
-}
-
-.auth__submit {
-  width: 100%;
-  padding: 14px;
-  border-radius: 10px;
-  border: none;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-.auth__submit--primary {
-  background: #4f46e5;
-  color: #fff;
-}
-.auth__submit--primary:hover {
-  background: #4338ca;
-}
-
-
-.auth__error {
-  color: #c53030;
-  background: #fff5f5;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-
-.auth__footer {
-  text-align: center;
-  font-size: 16px;
-  margin-top: 20px;
-  color: #4a5568;
-}
-.auth__link {
-  color: #4f46e5;
-  font-weight: 600;
-}
-.auth__link:hover {
-  text-decoration: underline;
-}
-
-@media (max-width: 480px) {
-  .auth__title { font-size: 22px; }
-  .auth__desc { font-size: 16px; }
-}
-/*  */
+/* Login/Signup 전용 */
+.auth.auth--center{ min-height:100dvh; display:grid; place-items:center; padding:40px 16px; background:linear-gradient(180deg,#fffaf6 0%,#ffffff 60%) }
+.auth__card{ width:100%; max-width:420px; background:#fff; border:1px solid #f4d7c9; border-radius:16px; box-shadow:0 12px 28px rgba(0,0,0,.08); padding:20px }
+.auth__title{ font-size:1.5rem; font-weight:900; margin:0 0 8px }
+.auth__form{ margin-top:8px }
+.auth__submit{ margin-top:8px; }
+.auth__footer{ margin-top:14px; font-size:.95rem; color:#7b6a5f }
+.auth__link{ color:#dc977d; font-weight:700; text-decoration:none }
+.auth__link:hover{ text-decoration:underline }
+.auth__error{ background:#fee4e2; color:#b42318; border:1px solid #fecdca; border-radius:12px; padding:10px 12px; margin:8px 0 }

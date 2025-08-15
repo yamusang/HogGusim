@@ -8,3 +8,4 @@ export default function LogoutPage(){
   useEffect(() => { logout(); nav('/', { replace:true }) }, [])
   return null
 }
+//.

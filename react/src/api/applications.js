@@ -19,3 +19,4 @@ export const fetchMyApplications = () =>
   api.get('/applications/me').then(r => r.data)
 // (선호하면 별칭 추가)
 // export const getMyApplications = fetchMyApplications
+// .

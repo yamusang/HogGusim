@@ -5,9 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class MatchpetApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(MatchpetApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(MatchpetApplication.class, args);
+  }
 }

@@ -36,5 +36,13 @@ public class User {
 
     @Column(length = 120)
     private String affiliation;
+
+    // ✅ INSERT 직전에 자동 세팅
+    @PrePersist
+    void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 }
 

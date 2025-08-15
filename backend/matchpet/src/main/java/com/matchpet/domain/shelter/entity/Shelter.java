@@ -1,26 +1,27 @@
 package com.matchpet.domain.shelter.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter; import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
-@Entity @Table(name = "shelters")
+@Entity
+@Table(name = "shelters",
+    uniqueConstraints = @UniqueConstraint(name = "uq_shelter_external_id", columnNames = {"external_id"}))
 @Getter @Setter
 public class Shelter {
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(unique = true) private String externalId;
-  private String name;
-  private String tel;
-  private String address;
-  private String region;
-  private BigDecimal lat;
-  private BigDecimal lng;
+  /** 외부 보호소 식별자(있으면) */
+  @Column(name = "external_id", length = 64)
+  private String externalId;
 
-  @CreationTimestamp private LocalDateTime createdAt;
-  @UpdateTimestamp  private LocalDateTime updatedAt;
+  // ExternalAnimalIngestService에서 사용하는 필드
+  private String name;     // s.setName(...)
+  private String tel;      // s.setTel(...)
+  private String address;  // s.setAddress(...)
+  private String region;   // s.setRegion(...)
+  private BigDecimal lat;  // s.setLat(...)
+  private BigDecimal lng;  // s.setLng(...)
 }

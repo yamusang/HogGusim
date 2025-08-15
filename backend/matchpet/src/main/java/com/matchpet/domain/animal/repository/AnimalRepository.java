@@ -10,9 +10,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.Optional;
 
-/**
- * AnimalRepository
- */
 public interface AnimalRepository extends
         JpaRepository<Animal, Long>,
         JpaSpecificationExecutor<Animal> {
@@ -27,7 +24,6 @@ public interface AnimalRepository extends
     @EntityGraph(attributePaths = {"shelter"})
     Page<Animal> findAll(Pageable pageable);
 
-    // ← 상세 조회용 (N+1 방지)
     @EntityGraph(attributePaths = {"shelter"})
     Optional<Animal> findWithShelterById(Long id);
 }

@@ -1,14 +1,17 @@
 {
-    "configurations": [
-        {
-            "type": "java",
-            "name": "Spring Boot-MatchpetApplication<matchpet>",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "mainClass": "com.matchpet.MatchpetApplication",
-            "projectName": "matchpet",
-            "args": "",
-            "envFile": "${workspaceFolder}/.env"
-        }
-    ]
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-MatchpetApplication<matchpet>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.matchpet.MatchpetApplication",
+      "projectName": "matchpet",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env",
+      "env": {
+        "ANIMAL_DECODING_KEY": "your-secret-key"
+      }
+    }
+  ]
 }

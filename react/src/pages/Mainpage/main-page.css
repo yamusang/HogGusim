@@ -29,7 +29,10 @@
 html{ font-size:18px }
 *{ box-sizing:border-box }
 img{ display:block; max-width:100% }
-.container{ max-width:var(--max); margin:0 auto; padding:0 20px }
+.container{ max-width:var(--max); 
+  margin:0 auto; 
+  padding:0 20px 
+}
 
 /* ==============================
    PAGE BG
@@ -39,7 +42,7 @@ img{ display:block; max-width:100% }
   background:
     radial-gradient(900px 520px at -10% -20%, var(--peach) 0%, transparent 60%),
     radial-gradient(900px 520px at 110% 110%, var(--butter) 0%, transparent 60%),
-    linear-gradient(180deg, #ffddb6 0%, #ffffff 100%);
+    linear-gradient(180deg, #ffd500ee 0%, #ffffff 100%);
 }
 
 /* ==============================
@@ -54,7 +57,7 @@ img{ display:block; max-width:100% }
 
 .hero__bg{
   position:relative; min-height:600px;
-  width:100%; border-radius:var(--radius-xl); overflow:hidden;
+  width:100%; overflow:hidden;
   background-repeat:no-repeat; background-position:center; background-size:cover;
   box-shadow:var(--shadow-md);
   isolation:isolate;
@@ -77,11 +80,11 @@ img{ display:block; max-width:100% }
 .hero__copy{
   display:flex; flex-direction:column; gap:12px; max-width:520px;
   color:#fff;
-  margin-top: calc(var(--hero-top-offset) + 60px);
+  margin-top: calc(var(--hero-top-offset) + 170px);
 }
-.hero__logo{ height:100px; width:320px; display:block; filter:drop-shadow(0 6px 14px rgba(0,0,0,.18)) }
-.hero__title{ font-size:2rem; font-weight:900; margin:0; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.25) }
-.hero__desc{ font-size:1.06rem; margin:0; color:#fafafa }
+.hero__logo{ height:90px; width:310px; display:block; filter:drop-shadow(0 6px 14px rgba(0,0,0,.18)) }
+.hero__title{ font-size:1.9rem; font-weight:900; margin:0; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.25) }
+.hero__desc{ font-size:1.3rem; margin:0; color:#fafafa }
 
 /* ==============================
    RIGHT PANEL (균등 간격 + 확대 버전)
@@ -89,19 +92,22 @@ img{ display:block; max-width:100% }
 .hero__panel{
   position:absolute; z-index:2; top:0; right:0; height:100%; width:420px;
   display:grid;
-  grid-template-rows: auto 1fr;   /* 1행: 제목, 2행: 역할리스트 */
+  grid-template-rows: auto 1fr;
   gap:12px;
   padding:20px;
-  border-radius:0 var(--radius-xl) var(--radius-xl) 0;
+  /* border-radius:0 var(--radius-xl) var(--radius-xl) 0; */
   background:rgba(20,14,6,.28);
   box-shadow:0 14px 36px rgba(0,0,0,.22);
   color:#fff;
 }
 
-.hero_nav{ margin:0 0 6px }
+.hero_nav{
+  margin: 0 0 2px; /* 제목-버튼 간격 줄임 */
+}
+
 .hero_nav p{
   margin:0;
-  font-size: 1.25rem; /* 기존 1.05rem → 키움 */
+  font-size: 1.5rem;
   font-weight:900;
   color:#fff;
   letter-spacing:.2px;
@@ -121,19 +127,25 @@ img{ display:block; max-width:100% }
 
 /* 버튼 카드 - 크기 확대 */
 .hero__roles-vertical .role-btn{
-  min-height:110px; /* 기존 96px → 키움 */
-  display:grid; grid-template-columns: 1fr 72px; /* 아이콘 칸 넓힘 */
+  min-height:110px;
+  display:grid; grid-template-columns: 1fr 72px;
   align-items:center; gap:16px;
-  padding:0 20px 0 24px; /* 좌우 여백 넓힘 */
+  padding:0 20px 0 24px;
   background:#fff; color:#111; text-decoration:none; border:none;
   border-radius:16px; box-shadow:0 10px 22px rgba(0,0,0,.12);
   transition:transform .16s ease, box-shadow .16s ease, filter .16s ease;
 }
 .hero__roles-vertical .role-btn .role-text{ order:1 }
-.role-title{ font-weight:bolder }
+.role-title{ 
+  font-weight:bolder;
+  font-size: larger;
+}
+.role-sub{
+  font-size: large;
+}
 .hero__roles-vertical .role-btn .icon-wrap{
   order:2; justify-self:end;
-  width:64px; height:64px; /* 아이콘 확대 */
+  width:64px; height:64px;
   display:grid; place-items:center;
 }
 .hero__roles-vertical .role-btn img{
@@ -203,7 +215,7 @@ img{ display:block; max-width:100% }
   .hero__panel{
     position:static; width:auto; height:auto;
     display:flex; flex-direction:column; gap:12px;
-    border-radius:20px;
+    /* border-radius:20px; */
     box-shadow:0 14px 36px rgba(0,0,0,.22);
   }
   .hero__roles-vertical{

@@ -48,10 +48,6 @@ export default function ShelterPage() {
       <Button onClick={() => navigate('/logout')}>로그아웃</Button>
       <h1>보호소 관리</h1>
 
-      <div className="shelter__section">
-        <h2>동물 등록</h2>
-        <RegisterPetForm onSuccess={load} />
-      </div>
 
       <div className="shelter__section">
         <h2>내 보호소 동물 목록</h2>
@@ -72,6 +68,10 @@ export default function ShelterPage() {
             {animals.length === 0 && <p>등록된 동물이 없습니다.</p>}
           </div>
         )}
+      </div>
+      <div className="shelter__section">
+        <h2>동물 등록</h2>
+        <RegisterPetForm onSuccess={load} />
       </div>
     </div>
   )

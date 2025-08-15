@@ -1,0 +1,12 @@
+export const ROLES = {
+  SENIOR: 'SENIOR',
+  MANAGER: 'MANAGER',
+  SHELTER: 'SHELTER',
+};
+
+export const PET_STATUS = {
+  AVAILABLE: 'AVAILABLE',
+  PENDING: 'PENDING',
+  MATCHED: 'MATCHED',
+  RETURNED: 'RETURNED',
+};

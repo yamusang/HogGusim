@@ -1,31 +1,31 @@
-import React, { createContext, useEffect, useState } from 'react'
-import api from '../api/apiClient'
+import React, { createContext, useEffect, useState } from 'react';
+import api from '../api/apiClient';
 
-export const AuthContext = createContext(null)
+export const AuthContext = createContext(null);
 
 export default function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user')
-    if (stored) setUser(JSON.parse(stored))
-    setLoading(false)
+    const stored = localStorage.getItem('user');
+    if (stored) setUser(JSON.parse(stored));
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password })
-    localStorage.setItem('token', data.token)
-    const u = { role: data.role, token: data.token }
-    localStorage.setItem('user', JSON.stringify(u))
-    setUser(u)
-    return u
+    const { data } = await api.post('/auth/login', { email, password });
+    const u = { role: data.role, token: data.token, displayName: data.displayName };
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(u));
+    setUser(u);
+    return u;
   };
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setUser(null)
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
   };
 
   return (
@@ -34,4 +34,3 @@ export default function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-//.

@@ -1,52 +1,50 @@
-import React, { useMemo, useState } from 'react'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
-import Button from '../../components/ui/Button'
-import FormField from '../../components/common/FormField'
-import useAuth from '../../hooks/useAuth'
-import './auth.css'
+import React, { useMemo, useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import Button from '../../components/ui/Button';
+import FormField from '../../components/common/FormField';
+import useAuth from '../../hooks/useAuth';
+import './auth.css';
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const { search } = useLocation()                                
-  const params = new URLSearchParams(search)
-  const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase()
-  sessionStorage.setItem('selectedRole', roleParam)              
+  const navigate = useNavigate();
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase();
+  sessionStorage.setItem('selectedRole', roleParam);
 
-  const { login } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [err, setErr] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
 
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  const isInvalidEmail = useMemo(() => email && !emailRegex.test(email), [email])
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isInvalidEmail = useMemo(() => email && !emailRegex.test(email), [email]);
 
   const onSubmit = async (e) => {
-    e.preventDefault()
-    if (loading) return
-    setErr('')
+    e.preventDefault();
+    if (loading) return;
+    setErr('');
 
+    if (!email) return setErr('이메일을 입력하세요.');
+    if (isInvalidEmail) return setErr('올바른 이메일 형식을 입력하세요.');
+    if (!password) return setErr('비밀번호를 입력하세요.');
 
-    if (!email) return setErr('이메일을 입력하세요.')
-    if (isInvalidEmail) return setErr('올바른 이메일 형식을 입력하세요.')
-    if (!password) return setErr('비밀번호를 입력하세요.')
-
-    setLoading(true)
+    setLoading(true);
     try {
-      const u = await login(email.trim(), password)
-      if (u?.role === 'SENIOR') navigate('/senior')
-      else if (u?.role === 'SHELTER') navigate('/shelter')
-      else if (u?.role === 'MANAGER') navigate('/manager')
-      else navigate('/')
+      const u = await login(email.trim(), password);
+      if (u?.role === 'SENIOR') navigate('/senior');
+      else if (u?.role === 'SHELTER') navigate('/shelter');
+      else if (u?.role === 'MANAGER') navigate('/manager');
+      else navigate('/');
     } catch (e2) {
-      setErr(e2?.response?.data?.error?.message || '로그인 실패')
+      setErr(e2?.response?.data?.error?.message || '로그인 실패');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const disabled = !email || !password || isInvalidEmail || loading
+  const disabled = !email || !password || isInvalidEmail || loading;
 
   return (
     <div className="auth auth--center">
@@ -95,6 +93,5 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-//.

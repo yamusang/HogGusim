@@ -1,32 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import './main-page.css'
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import './main-page.css';
 
-import slide1 from '../../assets/hero/slide1.jpg'
-import slide2 from '../../assets/hero/slide2.jfif'
-import slide3 from '../../assets/hero/slide3.webp'
-import slide4 from '../../assets/hero/slide4.jfif'
+import slide1 from '../../assets/hero/slide1.jpg';
+import slide2 from '../../assets/hero/slide2.jfif';
+import slide3 from '../../assets/hero/slide3.webp';
+import slide4 from '../../assets/hero/slide4.jfif';
 
-import seniorIcon from '../../assets/icons/senior.png'
-import managerIcon from '../../assets/icons/manager.png'
-import shelterIcon from '../../assets/icons/shelter.png'
+import seniorIcon from '../../assets/icons/senior.png';
+import managerIcon from '../../assets/icons/manager.png';
+import shelterIcon from '../../assets/icons/shelter.png';
+import logo from '../../assets/brand/dog.png';
 
-import logo from '../../assets/brand/dog.png'
-
-import iconView from '../../assets/icons/view.png'
-import iconProcess from '../../assets/icons/process.png'
-import iconLocation from '../../assets/icons/location.png'
+import iconView from '../../assets/icons/view.png';
+import iconProcess from '../../assets/icons/process.png';
+import iconLocation from '../../assets/icons/location.png';
 
 export default function MainPage() {
-  const images = [slide1, slide2, slide3, slide4]
-  const [idx, setIdx] = useState(0)
-  const timer = useRef(null)
+  const images = [slide1, slide2, slide3, slide4];
+  const [idx, setIdx] = useState(0);
+  const timer = useRef(null);
 
-  const next  = () => setIdx(i => (i + 1) % images.length)
-  const stop  = () => { if (timer.current) clearTimeout(timer.current) }
-  const start = () => { stop(); timer.current = setTimeout(next, 5000) }
+  const next  = () => setIdx(i => (i + 1) % images.length);
+  const stop  = () => { if (timer.current) clearTimeout(timer.current) };
+  const start = () => { stop(); timer.current = setTimeout(next, 5000) };
 
-  useEffect(() => { start(); return stop }, [idx])
+  useEffect(() => { start(); return stop; }, [idx]);
 
   return (
     <main className="landing" role="main" aria-label="메인">
@@ -37,7 +36,6 @@ export default function MainPage() {
           onMouseEnter={stop}
           onMouseLeave={start}
         >
-          {/* tint/scrim/glass 제거됨 */}
           <div className="hero__inner">
             <div className="hero__columns">
               <div className="hero__copy">
@@ -49,11 +47,7 @@ export default function MainPage() {
               <aside className="hero__panel" role="region" aria-label="역할 빠른 선택">
                 <div className="hero_nav"><p>당신의 역할을 선택해주세요</p></div>
                 <nav className="hero__roles-vertical" aria-label="역할 선택">
-                  <Link
-                    to="/login?role=SENIOR"
-                    className="role-btn"
-                    onClick={() => sessionStorage.setItem('selectedRole','SENIOR')}
-                  >
+                  <Link to="/login?role=SENIOR" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','SENIOR')}>
                     <span className="icon-wrap"><img src={seniorIcon} alt="" /></span>
                     <div className="role-text">
                       <span className="role-title">고령자</span>
@@ -61,11 +55,7 @@ export default function MainPage() {
                     </div>
                   </Link>
 
-                  <Link
-                    to="/login?role=MANAGER"
-                    className="role-btn"
-                    onClick={() => sessionStorage.setItem('selectedRole','MANAGER')}
-                  >
+                  <Link to="/login?role=MANAGER" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','MANAGER')}>
                     <span className="icon-wrap"><img src={managerIcon} alt="" /></span>
                     <div className="role-text">
                       <span className="role-title">펫매니저</span>
@@ -73,11 +63,7 @@ export default function MainPage() {
                     </div>
                   </Link>
 
-                  <Link
-                    to="/login?role=SHELTER"
-                    className="role-btn"
-                    onClick={() => sessionStorage.setItem('selectedRole','SHELTER')}
-                  >
+                  <Link to="/login?role=SHELTER" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','SHELTER')}>
                     <span className="icon-wrap"><img src={shelterIcon} alt="" /></span>
                     <div className="role-text">
                       <span className="role-title">보호소</span>
@@ -131,6 +117,5 @@ export default function MainPage() {
         </article>
       </section>
     </main>
-  )
+  );
 }
-//.

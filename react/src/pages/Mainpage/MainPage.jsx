@@ -45,7 +45,7 @@ export default function MainPage() {
               </div>
 
               <aside className="hero__panel" role="region" aria-label="역할 빠른 선택">
-                <div className="hero_nav"><p>당신의 역할을 선택해주세요</p></div>
+                <div className="hero_nav"><p>당신의 역할을 선택해주세요.</p></div>
                 <nav className="hero__roles-vertical" aria-label="역할 선택">
                   <Link to="/login?role=SENIOR" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','SENIOR')}>
                     <span className="icon-wrap"><img src={seniorIcon} alt="" /></span>

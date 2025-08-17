@@ -1,61 +1,71 @@
 package com.matchpet.domain.animal.entity;
 
-import com.matchpet.domain.animal.enums.AnimalStatus;
-import com.matchpet.domain.animal.enums.NeuterStatus;
-import com.matchpet.domain.animal.enums.Sex;
-import com.matchpet.domain.shelter.entity.Shelter;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "animals",
-    uniqueConstraints = @UniqueConstraint(name = "uq_animals_external_id", columnNames = "external_id"))
+@Table(name = "animals", indexes = {
+        @Index(name = "idx_animals_desertion_no", columnList = "desertion_no", unique = true),
+        @Index(name = "idx_animals_external_id", columnList = "external_id")
+})
 @Getter @Setter
+@NoArgsConstructor @AllArgsConstructor @Builder
 public class Animal {
 
-  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  /** 외부 유기동물 ID (공공데이터 desertionNo) */
-  @Column(name = "external_id", nullable = false, length = 32)
-  private String externalId;
+    /** 외부 시스템의 식별자(우리 시스템에서 참조용). DB에 NOT NULL 이므로 항상 채운다. */
+    @Column(name = "external_id", length = 64, nullable = false)
+    private String externalId;
 
-  // ── AnimalMapper / ExternalAnimalIngestService가 요구하는 필드들 ──
-  private String thumbnailUrl;     // a.getThumbnailUrl()
-  private String species;          // a.getSpecies()
-  private String breed;            // a.getBreed()
-  private String color;            // a.getColor()
-  private Integer ageMonths;       // a.getAgeMonths()
-  @Enumerated(EnumType.STRING)
-  private Sex sex;                 // a.getSex()
-  @Enumerated(EnumType.STRING)
-  private NeuterStatus neuterStatus; // a.getNeuterStatus()
-  @Enumerated(EnumType.STRING)
-  private AnimalStatus status;     // a.getStatus()
+    @Column(name = "desertion_no", length = 30, nullable = false, unique = true)
+    private String desertionNo;
 
-  private LocalDate intakeDate;    // a.getIntakeDate()
-  private String description;      // a.getDescription()
+    @Column(name = "happen_dt")
+    private LocalDate happenDt;
 
-  // ── 공공데이터 원문 필드(있어도 무방) ──
-  private LocalDate happenDt;
-  private String happenPlace;
-  private String kindCd;
-  private String colorCd;
-  private String ageText;
-  private String weightText;
-  private String sexCd;      // 원문 M/F/Q
-  private String neuterYn;   // 원문 Y/N/U
-  private String processState;
-  private String orgNm;
-  private String popfile;
-  private String specialMark;
-  private LocalDate noticeSdt;
-  private LocalDate noticeEdt;
+    @Column(name = "happen_place", length = 255)
+    private String happenPlace;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "shelter_id")
-  private Shelter shelter;         // a.getShelter().getName() 사용
+    @Column(name = "kind_cd", length = 60)
+    private String kindCd;
+
+    @Column(name = "color_cd", length = 60)
+    private String colorCd;
+
+    @Column(name = "age", length = 40)
+    private String age;
+
+    @Column(name = "weight", length = 40)
+    private String weight;
+
+    @Column(name = "sex_cd", length = 3)
+    private String sexCd;
+
+    @Column(name = "neuter_yn", length = 1)
+    private String neuterYn;
+
+    @Column(name = "special_mark", length = 500)
+    private String specialMark;
+
+    @Column(name = "care_nm", length = 120)
+    private String careNm;
+
+    @Column(name = "care_tel", length = 60)
+    private String careTel;
+
+    @Column(name = "care_addr", length = 255)
+    private String careAddr;
+
+    @Column(name = "process_state", length = 60)
+    private String processState;
+
+    @Column(name = "filename", length = 300)
+    private String filename;
+
+    @Column(name = "popfile", length = 300)
+    private String popfile;
 }

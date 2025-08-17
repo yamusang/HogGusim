@@ -29,7 +29,7 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-        // 개발 편의: CSRF 전체 비활성 (운영 전환 시 선택적으로 재활성 고려)
+        // 개발 편의: CSRF 비활성 (운영 전 재검토)
         .csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
         .httpBasic(b -> b.disable())
@@ -39,7 +39,7 @@ public class SecurityConfig {
             // OPTIONS 프리플라이트
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-            // Actuator
+            // Actuator (헬스/인포만 허용, 나머지 차단)
             .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
             .requestMatchers("/actuator/**").denyAll()
 
@@ -48,21 +48,22 @@ public class SecurityConfig {
 
             // 프론트 조회 공개
             .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/external/animals/**").permitAll()
 
-            // ✅ 인제스트(수집) 공개
+            // ✅ 인제스트(수집) 공개 - 둘 다 허용 (/api/internal/... 과 /internal/...)
+            .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/internal/ingest/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/admin/ingest/**").permitAll()
 
             // 로그인/회원가입 등 공개
             .requestMatchers("/api/auth/**").permitAll()
 
-            // 외부 프록시 조회 공개
-            .requestMatchers(HttpMethod.GET, "/api/external/animals/**").permitAll()
-
-            // 나머지는 인증 필요
-            .anyRequest().authenticated());
+            // 그 외는 인증 필요
+            .anyRequest().authenticated()
+        );
 
     // JWT 필터 체인
+    // 주의: 공개 엔드포인트에서 토큰이 없을 때도 통과하도록 JwtAuthFilter가 "헤더 없으면 계속 진행" 방식이어야 함
     http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
     http.addFilterBefore(jwtBlacklistFilter, JwtAuthFilter.class);
 
@@ -72,7 +73,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    // 개발 중 전체 허용 (운영에선 허용 도메인 명시 권장)
+    // 개발 중 전체 허용 (운영에서는 허용 도메인만 명시 권장)
     cfg.setAllowedOriginPatterns(List.of("*"));
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("*"));

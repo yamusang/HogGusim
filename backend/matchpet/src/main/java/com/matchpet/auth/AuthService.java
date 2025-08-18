@@ -13,6 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+// ⬇︎ 추가
+import com.matchpet.domain.animal.repository.AnimalRepository;
+import org.springframework.util.StringUtils;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -22,6 +26,9 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenProvider jwtTokenProvider;
   private final TokenBlacklistService tokenBlacklistService;
+
+  // ⬇︎ 추가: 보호소명 검증을 위해 주입
+  private final AnimalRepository animalRepository;
 
   // 이메일 중복 체크
   private void checkEmailDup(String email) {
@@ -42,15 +49,16 @@ public class AuthService {
     return dn.length() > 80 ? dn.substring(0, 80) : dn;
   }
 
-  // ⚠️ affiliation 자동 보정 (프론트가 안 줄 때 기본값)
+  // ⚠️ affiliation 자동 보정 (프론트가 안 줄 때 기본값) — MANAGER만 사용
   private String coalesceAffiliation(Role role, String affiliation) {
-    if (role == Role.MANAGER || role == Role.SHELTER) {
-      if (affiliation == null || affiliation.isBlank()) {
-        return "미지정"; // 기본값
+    if (role == Role.MANAGER) {
+      if (!StringUtils.hasText(affiliation)) {
+        return "미지정";
       }
       return affiliation.trim();
     }
-    return null; // SENIOR는 null
+    // SENIOR/SHELTER는 여기서 기본값을 만들지 않음 (SHELTER는 별도 검증)
+    return null;
   }
 
   // 기본: SENIOR 가입
@@ -85,18 +93,23 @@ public class AuthService {
     return userRepository.save(u).getId();
   }
 
-  // SHELTER 가입
+  // SHELTER 가입 — ✅ 보호소명 존재 검증 추가
   public Long signupShelter(SignupCommon req) {
     log.info("[signupShelter] email={}, role={}, affiliation='{}'",
         req.getEmail(), req.getRole(), req.getAffiliation());
     checkEmailDup(req.getEmail());
+
+    // ⬇︎ 핵심: affiliation 필수 + DB 존재 여부 체크
+    validateShelterAffiliationOr400(req);
+
+    String normalizedAff = normalizeAffiliation(req.getAffiliation());
 
     User u = new User();
     u.setEmail(req.getEmail());
     u.setPassword(passwordEncoder.encode(req.getPassword()));
     u.setDisplayName(resolveDisplayName(req));
     u.setRole(Role.SHELTER);
-    u.setAffiliation(coalesceAffiliation(Role.SHELTER, req.getAffiliation()));
+    u.setAffiliation(normalizedAff); // 정규화된 보호소명 저장
 
     return userRepository.save(u).getId();
   }
@@ -125,10 +138,34 @@ public class AuthService {
   }
 
   public void logout(String authHeader) {
-  String token = JwtTokenProvider.resolveBearer(authHeader);
-  if (token != null) {
-    long exp = jwtTokenProvider.getExpirationEpochSeconds(token);
-    tokenBlacklistService.add(token, exp);
+    String token = JwtTokenProvider.resolveBearer(authHeader);
+    if (token != null) {
+      long exp = jwtTokenProvider.getExpirationEpochSeconds(token);
+      tokenBlacklistService.add(token, exp);
+    }
   }
-}
+
+  // ============== 아래는 유틸/검증 ==============
+
+  /** SHELTER 가입 시 affiliation(보호소명) 검증: 필수 + DB 존재 여부 확인 */
+  private void validateShelterAffiliationOr400(SignupCommon req) {
+    if (req.getRole() != Role.SHELTER) return;
+
+    String aff = normalizeAffiliation(req.getAffiliation());
+    if (!StringUtils.hasText(aff)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "affiliation(보호소명)은 필수입니다.");
+    }
+    boolean ok = animalRepository.existsByCareNmStrict(aff);
+    if (!ok) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록되지 않은 보호소명입니다: " + aff);
+    }
+  }
+
+  /** 비교/저장 일관성을 위한 간단 정규화(앞뒤 공백 제거 + 내부 연속 공백 1칸) */
+  private static String normalizeAffiliation(String s) {
+    if (s == null) return "";
+    String t = s.trim();
+    t = t.replaceAll("\\s+", " ");
+    return t;
+  }
 }

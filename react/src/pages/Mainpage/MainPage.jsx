@@ -16,6 +16,8 @@ import iconView from '../../assets/icons/view.png';
 import iconProcess from '../../assets/icons/process.png';
 import iconLocation from '../../assets/icons/location.png';
 
+import FeaturedDogsSlider from '../../components/FeatureDogsSlider'; // ✅ 추가
+
 export default function MainPage() {
   const images = [slide1, slide2, slide3, slide4];
   const [idx, setIdx] = useState(0);
@@ -45,30 +47,34 @@ export default function MainPage() {
               </div>
 
               <aside className="hero__panel" role="region" aria-label="역할 빠른 선택">
-                <div className="hero_nav"><p>당신의 역할을 선택해주세요.</p></div>
+                <div className="hero_nav"><p>{"<당신의 역할을 선택해주세요>"}</p></div>
+
                 <nav className="hero__roles-vertical" aria-label="역할 선택">
+                  {/* SENIOR: 텍스트 먼저, 아이콘 나중 */}
                   <Link to="/login?role=SENIOR" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','SENIOR')}>
-                    <span className="icon-wrap"><img src={seniorIcon} alt="" /></span>
                     <div className="role-text">
                       <span className="role-title">고령자</span>
-                      <div><span className="role-sub">도움 요청하고 산책·돌봄 매칭</span></div>
+                      <span className="role-sub">도움 요청하고 산책·돌봄 매칭</span>
                     </div>
+                    <span className="icon-wrap"><img src={seniorIcon} alt="" /></span>
                   </Link>
 
+                  {/* MANAGER */}
                   <Link to="/login?role=MANAGER" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','MANAGER')}>
-                    <span className="icon-wrap"><img src={managerIcon} alt="" /></span>
                     <div className="role-text">
                       <span className="role-title">펫매니저</span>
-                      <div><span className="role-sub">가까운 의뢰 수락하고 활동</span></div>
+                      <span className="role-sub">가까운 의뢰 수락하고 활동</span>
                     </div>
+                    <span className="icon-wrap"><img src={managerIcon} alt="" /></span>
                   </Link>
 
+                  {/* SHELTER */}
                   <Link to="/login?role=SHELTER" className="role-btn" onClick={() => sessionStorage.setItem('selectedRole','SHELTER')}>
-                    <span className="icon-wrap"><img src={shelterIcon} alt="" /></span>
                     <div className="role-text">
                       <span className="role-title">보호소</span>
-                      <div><span className="role-sub">분양 공고·봉사 매칭 관리</span></div>
+                      <span className="role-sub">분양 공고·봉사 매칭 관리</span>
                     </div>
+                    <span className="icon-wrap"><img src={shelterIcon} alt="" /></span>
                   </Link>
                 </nav>
               </aside>
@@ -115,6 +121,11 @@ export default function MainPage() {
           </div>
           <img src={iconLocation} alt="지역 중심" className="info-icon" />
         </article>
+      </section>
+
+      {/* 🔽 여기 추가 */}
+      <section className="section-spacing" aria-label="보호 중인 강아지">
+        <FeaturedDogsSlider title="보호 중인 강아지" take={20} />
       </section>
     </main>
   );

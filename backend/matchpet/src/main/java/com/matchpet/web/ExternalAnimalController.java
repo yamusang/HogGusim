@@ -32,8 +32,6 @@ public class ExternalAnimalController {
     ) {
         LocalDate f = parseDateFlexible(from);
         LocalDate t = parseDateFlexible(to);
-        if (uprCd == null || uprCd.isBlank()) uprCd = "6260000"; // 기본: 부산
-
         ExternalResponse r = api.call(f, t, uprCd, pageNo, pageSize);
         return ResponseEntity.ok(r);
     }

@@ -5,7 +5,6 @@ import com.matchpet.config.AnimalApiProps;
 import com.matchpet.external.dto.ExternalResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientResponseException;
@@ -16,6 +15,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -24,15 +24,13 @@ public class AnimalApiClient {
 
     private static final DateTimeFormatter BASIC = DateTimeFormatter.BASIC_ISO_DATE; // yyyyMMdd
 
-    @Qualifier("externalRestTemplate")
     private final RestTemplate restTemplate;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final AnimalApiProps props;
 
     public ExternalResponse call(LocalDate from, LocalDate to, String uprCd, int pageNo, int numOfRows) {
-        String endpoint = props.getOperationUrl();
-        String serviceKey = props.getServiceKey(); // ← 인코딩키 우선
+        String endpoint = props.getResolvedEndpoint();
+        String serviceKey = props.getServiceKey();
         URI uri = UriComponentsBuilder.fromHttpUrl(endpoint)
                 .queryParam("serviceKey", serviceKey)
                 .queryParam("bgnde", from.format(BASIC))
@@ -45,12 +43,10 @@ public class AnimalApiClient {
                 .toUri();
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setAcceptCharset(java.util.List.of(StandardCharsets.UTF_8));
-        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        headers.setAcceptCharset(List.of(StandardCharsets.UTF_8));
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
         try {
-            log.debug("Calling external API: {}?serviceKey=***&bgnde={}&endde={}&upr_cd={}&pageNo={}&numOfRows={}&_type=json",
-                    endpoint, from.format(BASIC), to.format(BASIC), uprCd, pageNo, Math.min(numOfRows, props.getPageSizeMax()));
             ResponseEntity<ExternalResponse> resp =
                     restTemplate.exchange(uri, HttpMethod.GET, new HttpEntity<>(headers), ExternalResponse.class);
             return resp.getBody();

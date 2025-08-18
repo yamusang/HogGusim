@@ -14,7 +14,8 @@ import org.springframework.util.StringUtils;
  * - serviceKey는 encodingKey(인코딩키) 우선, 없으면 decodingKey(평문) 사용
  */
 @Slf4j
-@Getter @Setter
+@Getter
+@Setter
 @Component
 @ConfigurationProperties(prefix = "animal.api")
 public class AnimalApiProps {
@@ -56,11 +57,27 @@ public class AnimalApiProps {
             resolvedEndpoint = b + ep;
         }
 
-        // 서비스키 결정
+        // 서비스키 결정 (인코딩키 우선)
         serviceKey = StringUtils.hasText(encodingKey) ? encodingKey : decodingKey;
 
-        log.info("AnimalApiProps: endpoint={}, pageSizeMax={}, timeoutMs={}",
-                resolvedEndpoint, pageSizeMax, timeoutMs);
+        // 어떤 키를 선택했는지 로그 남기기
+        boolean hasEnc = StringUtils.hasText(encodingKey);
+        boolean hasDec = StringUtils.hasText(decodingKey);
+        String picked = hasEnc ? "encodingKey" : (hasDec ? "decodingKey" : "NONE");
+
+        log.info("AnimalApiProps initialized: endpoint={}, pageSizeMax={}, timeoutMs={}, keyPicked={}",
+                resolvedEndpoint, pageSizeMax, timeoutMs, picked);
+
+        // 키 없으면 부팅 단계에서 강제 종료 → 빨리 문제 알 수 있게
+        if (!StringUtils.hasText(serviceKey)) {
+            throw new IllegalStateException(
+                    "서비스키가 없습니다. ANIMAL_ENCODING_KEY 또는 ANIMAL_DECODING_KEY 환경변수를 설정하세요.");
+        }
+
+        // 혹시 따옴표 포함된 상태로 들어온 경우 제거
+        if (serviceKey.startsWith("\"") && serviceKey.endsWith("\"")) {
+            serviceKey = serviceKey.substring(1, serviceKey.length() - 1);
+        }
     }
 
     private static String normalize(String s) {

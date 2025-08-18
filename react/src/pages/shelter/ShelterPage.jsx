@@ -8,18 +8,15 @@ import './shelter.css';
 
 /**
  * 보호소 대시보드
- * - 회원가입 폼과 무관. 관리용 페이지 전용.
- * - /shelter 에 매핑됨 (App.jsx Protected allow=['SHELTER'])
+ * - /shelter (SHELTER 전용)
  */
 export default function ShelterPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
-  // ---- shelter meta
+  // ---- shelter meta (이름은 로그인 시 저장된 affiliation 사용)
   const [shelterName, setShelterName] = useState('');
-  const [shelterMeta, setShelterMeta] = useState(null);
   const [metaLoading, setMetaLoading] = useState(true);
-  const [metaError, setMetaError] = useState('');
 
   // ---- animals list (recent)
   const [animals, setAnimals] = useState([]);
@@ -27,6 +24,8 @@ export default function ShelterPage() {
   const [animalsError, setAnimalsError] = useState('');
 
   const displayEmail = user?.email || '';
+  const shelterId = user?.shelterId || user?.id || null;
+
   // 이름 폴백: Auth에 저장된 affiliation → 세션/로컬 보관명
   const inferredName = useMemo(() => {
     return (
@@ -37,58 +36,30 @@ export default function ShelterPage() {
     );
   }, [user]);
 
-  // --- load shelter meta (optional endpoint: /shelters/me)
+  // --- set header name only (백의 /shelters/me 호출 제거)
   useEffect(() => {
-    let ignore = false;
-    (async () => {
-      setMetaLoading(true);
-      setMetaError('');
-      try {
-        // 1) 선반영: 헤더에 이름 즉시 표시
-        setShelterName(inferredName);
-
-        // 2) 백엔드에서 상세 정보가 있으면 가져와서 덮어쓰기
-        // 존재하지 않는다면 이 호출은 404일 수 있으니 무시 가능
-        const { data } = await api.get('/shelters/me'); // <-- 서버에 맞게 변경 가능
-        if (!ignore && data) {
-          setShelterMeta(data);
-          if (data?.careNm || data?.name) {
-            setShelterName(data.careNm || data.name);
-          }
-        }
-      } catch (e) {
-        // 상세 정보가 필수는 아님 (이름만으로도 동작)
-        setMetaError(
-          e?.message || e?.response?.data?.message || '보호소 정보를 불러오지 못했어요.'
-        );
-      } finally {
-        if (!ignore) setMetaLoading(false);
-      }
-    })();
-    return () => (ignore = true);
+    setMetaLoading(true);
+    setShelterName(inferredName || '보호소');
+    setMetaLoading(false);
   }, [inferredName]);
 
-  // --- load animals owned by this shelter
+  // --- load animals owned by this shelter (/animals?shelterId=)
   useEffect(() => {
     let ignore = false;
     (async () => {
       setAnimalsLoading(true);
       setAnimalsError('');
       try {
-        // 서버 스펙 예시:
-        // GET /animals?shelter=부산OO보호소&size=10&sort=regDt,DESC
         const params = new URLSearchParams();
-        if (inferredName) params.set('shelter', inferredName);
+        if (shelterId) params.set('shelterId', String(shelterId));
         params.set('size', '10');
-        params.set('sort', 'regDt,DESC');
+        params.set('sort', 'createdAt,DESC');
 
         const { data } = await api.get(`/animals?${params.toString()}`);
-        // 백엔드 구조에 맞춰 파싱
         const list =
           Array.isArray(data) ? data :
           Array.isArray(data?.content) ? data.content :
           [];
-
         if (!ignore) setAnimals(list);
       } catch (e) {
         setAnimalsError(
@@ -99,10 +70,10 @@ export default function ShelterPage() {
       }
     })();
     return () => (ignore = true);
-  }, [inferredName]);
+  }, [shelterId]);
 
   const goNewPet = () => navigate('/shelter/pets/new');
-  const goAllPets = () => navigate('/pet/connect'); // 공용 목록(권한 있음)
+  const goAllPets = () => navigate('/pet/connect');
   const goLogout = () => navigate('/logout');
 
   return (
@@ -116,9 +87,6 @@ export default function ShelterPage() {
           <p className="shelter__subtitle">
             관리자: {displayEmail || '이메일 확인 불가'}
           </p>
-          {metaError && (
-            <p className="shelter__hint" aria-live="polite">{metaError}</p>
-          )}
         </div>
 
         <div className="shelter__actions">

@@ -57,92 +57,59 @@ const pickPageMeta = (data) => ({
 });
 
 /** ==============================
- * 공통 GET 폴백: /animals → 실패 시 /pets
- * ============================== */
-const getWithFallback = async (path, opts) => {
-  try {
-    const r = await api.get(path, opts);
-    return r.data;
-  } catch {
-    const alt = path.replace(/^\/animals/, '/pets');
-    const r2 = await api.get(alt, opts);
-    return r2.data;
-  }
-};
-
-/** ==============================
- * 목록 (정규화 포함)
+ * 목록 (정규화 포함)  — /animals 고정
  * ============================== */
 export const fetchAnimals = async (params = {}) => {
-  const data = await getWithFallback('/animals', { params });
+  const { data } = await api.get('/animals', { params });
   const items = pickApiItems(data) || data?.content || data?.items || [];
   const meta  = pickPageMeta(data);
   return { ...meta, content: (items || []).map(normalizePet) };
 };
 
 /** ==============================
- * 보호소 기준 목록 (careNm/affiliation 또는 shelterId로 필터)
+ * 보호소 기준 목록 (shelterId로 필터)
  * ============================== */
-export const fetchAnimalsByShelter = async ({ shelterId, careNm, page = 1, size = 100 } = {}) => {
-  const { content } = await fetchAnimals({ page, size });
-  let list = content;
-  if (careNm) list = list.filter(a => (a.careNm || '').trim() === careNm.trim());
-  if (shelterId) list = list.filter(a => String(a._raw?.shelterId || '') === String(shelterId));
-  return list;
+export const fetchAnimalsByShelter = async ({ shelterId, page = 1, size = 100 } = {}) => {
+  const { content } = await fetchAnimals({ shelterId, page, size });
+  return content;
 };
 
 /** ==============================
  * 추천 목록
  * ============================== */
-export const fetchRecommendedPets = async (params = {}) => {
-  const data = await getWithFallback('/animals/recommended', { params });
+export const fetchRecommendedAnimals = async (params = {}) => {
+  const { data } = await api.get('/animals/recommended', { params });
   const items = pickApiItems(data) || data?.content || data?.items || [];
   return (items || []).map(normalizePet);
 };
+// (하위호환)
+export const fetchRecommendedPets = fetchRecommendedAnimals;
 
 /** ==============================
  * 생성 / 업로드
  * ============================== */
 export const createAnimal = async (payload = {}) => {
-  try {
-    const { data } = await api.post('/animals', payload);
-    return data;
-  } catch {
-    const { data } = await api.post('/pets', payload);
-    return data;
-  }
+  const { data } = await api.post('/animals', payload);
+  return data;
 };
 
 export const uploadAnimalPhoto = async (animalId, file) => {
   const fd = new FormData();
   fd.append('file', file);
-  try {
-    const { data } = await api.post(`/animals/${animalId}/photo`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
-  } catch {
-    const { data } = await api.post(`/pets/${animalId}/photo`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
-  }
+  const { data } = await api.post(`/animals/${animalId}/photo`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
 };
 
 /** ==============================
  * Slider용 유틸/API
  * ============================== */
-
-/** 강아지 여부 판별 (오픈API kindCd: "[개] 믹스" 고려) */
 const isDog = (a) => {
   const s = (a.species || a._raw?.kindCd || '').toString().toLowerCase();
   return s.includes('개') || s.includes('dog');
 };
-
-/** 사진 있는 것만 */
 const hasPhoto = (a) => !!a.photoUrl;
-
-/** 간단 셔플 */
 const shuffle = (arr=[]) => {
   const r = arr.slice();
   for (let i=r.length-1; i>0; i--) {
@@ -151,8 +118,6 @@ const shuffle = (arr=[]) => {
   }
   return r;
 };
-
-/** 중복 제거 (id 기준) */
 const uniqById = (arr=[]) => {
   const seen = new Set();
   return arr.filter(x => {
@@ -163,41 +128,23 @@ const uniqById = (arr=[]) => {
   });
 };
 
-/**
- * 메인 슬라이드: 보호 중인 강아지들
- * - 우선 /animals?kind=DOG 요청 (지원 시 서버 필터)
- * - 폴백: 전체 받아서 프론트에서 강아지/사진 필터
- * - 결과: normalizePet 적용된 리스트
- */
+/** 메인 슬라이드: 보호 중인 강아지들 */
 export const fetchFeaturedDogs = async ({
-  take = 18,            // 슬라이드에 뿌릴 개수
+  take = 18,
   page = 1,
-  size = 120,           // 넉넉히 가져와서 전처리 후 자르기
-  status = 'AVAILABLE', // 필요 없으면 null/'' 가능
+  size = 120,
+  status = 'AVAILABLE',
   sort = 'createdAt,DESC',
 } = {}) => {
-  // 1) 서버 필터 시도
-  let items = [];
-  try {
-    const data = await getWithFallback('/animals', {
-      params: { page, size, status, kind: 'DOG', sort }
-    });
-    const raw = pickApiItems(data) || data?.content || data?.items || [];
-    items = (raw || []).map(normalizePet);
-  } catch {
-    // 2) 폴백: 클라이언트 필터
-    const { content } = await fetchAnimals({ page, size, status, sort });
-    items = content;
-  }
-
-  return shuffle(
-    uniqById(items.filter(isDog).filter(hasPhoto))
-  ).slice(0, take);
+  const { data } = await api.get('/animals', {
+    params: { page, size, status, kind: 'DOG', sort }
+  });
+  const raw = pickApiItems(data) || data?.content || data?.items || [];
+  const items = (raw || []).map(normalizePet);
+  return shuffle(uniqById(items.filter(isDog).filter(hasPhoto))).slice(0, take);
 };
 
-/**
- * 최신 강아지(사진 포함) – 정렬을 최신 기준으로 강제하고 싶을 때
- */
+/** 최신 강아지(사진 포함) */
 export const fetchLatestDogs = async ({ take = 18 } = {}) => {
   const { content } = await fetchAnimals({ page: 1, size: 120, sort: 'createdAt,DESC' });
   return content.filter(isDog).filter(hasPhoto).slice(0, take);

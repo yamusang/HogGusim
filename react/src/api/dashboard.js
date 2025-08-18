@@ -2,6 +2,7 @@
 import api from './apiClient';
 
 // 대시보드: 보호소 내 등록 현황 + 최근 목록
+// 백엔드에 /shelters/me/overview 가 없으면 404일 수 있으니, 있는 경우만 사용
 export const fetchShelterOverview = async ({ from, to } = {}) => {
   const params = {};
   if (from) params.from = from;
@@ -10,7 +11,7 @@ export const fetchShelterOverview = async ({ from, to } = {}) => {
   return data; // { counts: {...}, recent: [...] }
 };
 
-// 폴백: /pets 목록을 받아 프론트에서 집계
+// 폴백: /animals 목록을 받아 프론트에서 집계
 export const computeOverviewFromPets = (pets = []) => {
   const counts = pets.reduce((acc, p) => {
     const k = (p.status || 'UNKNOWN').toUpperCase();

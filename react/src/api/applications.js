@@ -6,8 +6,8 @@ export const createApplication = (payload) =>
 export const myApplications = () =>
   api.get('/applications/me').then((r) => r.data);
 
-export const listByPet = (petId) =>
-  api.get(`/pets/${petId}/applications`).then((r) => r.data);
+export const listByPet = (animalId) =>
+  api.get(`/animals/${animalId}/applications`).then((r) => r.data);
 
 export const approve = (id) =>
   api.post(`/applications/${id}/approve`).then((r) => r.data);

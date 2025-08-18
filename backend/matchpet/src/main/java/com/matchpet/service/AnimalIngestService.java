@@ -60,7 +60,7 @@ public class AnimalIngestService {
     if (externalId == null) { c.skipped++; return; }
 
     // 1) desertion_no 우선 조회 (중복키 방지)
-    Animal a = null;
+    Animal a = null;    
     if (desertionNo != null) {
         a = repo.findByDesertionNo(desertionNo).orElse(null);
     }

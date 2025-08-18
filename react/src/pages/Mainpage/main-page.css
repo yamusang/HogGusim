@@ -25,7 +25,7 @@
   --shadow-md:0 20px 44px rgba(77,47,0,.10);
 
   /* 히어로/패널 */
-  --panel-w:530px;         /* 패널(=버튼 영역) 너비 */
+  --panel-w:530px;
   --hero-pad-y:40px;
   --hero-pad-left:24px;
   --hero-pad-right:24px;
@@ -35,9 +35,7 @@
 }
 
 html{ font-size:18px }
-/* ↑ 상단 공백 제거 */
 html, body { margin:0; padding:0; }
-
 *{ box-sizing:border-box }
 img{ display:block; max-width:100% }
 .container{ max-width:var(--max); margin:0 auto; padding:0 20px }
@@ -51,48 +49,25 @@ img{ display:block; max-width:100% }
     radial-gradient(900px 520px at -10% -20%, var(--peach) 0%, transparent 60%),
     radial-gradient(900px 520px at 110% 110%, var(--butter) 0%, transparent 60%),
     linear-gradient(180deg, #f0c0c0 0%, #ffffff 100%);
-  /* 필요하면 안쪽 여백만 살짝: padding-top:8px; */
 }
 
 /* ==============================
    HERO
 ============================== */
-.hero{
-  margin:0 auto;  /* ← 위 여백 0으로 */
-  padding:0;
-  display:flex;
-  justify-content:center;
-}
-
+.hero{ margin:0 auto; padding:0; display:flex; justify-content:center; }
 .hero__bg{
-  position:relative; min-height:600px;
-  width:100%; overflow:hidden;
+  position:relative; min-height:600px; width:100%; overflow:hidden;
   background-repeat:no-repeat; background-position:center; background-size:cover;
-  box-shadow:var(--shadow-md);
-  isolation:isolate;
-  border-radius: 12px;
+  box-shadow:var(--shadow-md); isolation:isolate; border-radius:12px;
 }
-
-/* 컨텐츠 래퍼 - 패널 너비 고려 */
-
-
-
 .hero__inner{
   position:absolute; inset:0; z-index:1;
   display:flex; justify-content:flex-start; align-items:flex-start;
   padding: var(--hero-pad-y) calc(var(--hero-pad-right) + var(--panel-w)) var(--hero-pad-y) var(--hero-pad-left);
 }
-
-.hero__columns{
-  display:grid; grid-template-columns:1fr;
-  column-gap: clamp(24px, 5vw, 48px);
-  width:100%; margin:0; align-items:start; justify-items:stretch;
-}
-
-/* 왼쪽 카피 */
+.hero__columns{ display:grid; grid-template-columns:1fr; column-gap: clamp(24px, 5vw, 48px); width:100%; margin:0; align-items:start; }
 .hero__copy{
-  display:flex; flex-direction:column; gap:12px; max-width:520px;
-  color:#fff;
+  display:flex; flex-direction:column; gap:12px; max-width:520px; color:#fff;
   margin-top: calc(var(--hero-top-offset) + 170px);
 }
 .hero__logo{ height:90px; width:310px; display:block; filter:drop-shadow(0 6px 14px rgba(0,0,0,.18)) }
@@ -105,85 +80,76 @@ img{ display:block; max-width:100% }
 .hero__panel{
   position:absolute; z-index:2; top:0; right:0; height:100%; width:var(--panel-w);
   display:grid; grid-template-rows: auto 1fr; gap:12px;
-  padding:20px;
-  background:rgba(20,14,6,.28);
-  box-shadow:0 14px 36px rgba(0,0,0,.22);
-  color:#fff;
+  padding:20px; background:rgba(20,14,6,.28);
+  box-shadow:0 14px 36px rgba(0,0,0,.22); color:#fff;
 }
-
-/* 제목: “당신의 역할을 선택해주세요” */
-.hero_nav{
-  margin: 2px 0 20px;
-}
-.hero_nav p{
-  margin:0;
-  font-size: 2.05rem;
-  font-weight:900;
-  color:#fff;
-  letter-spacing:.2px;
-  text-shadow:0 2px 8px rgba(0,0,0,.25);
-}
+.hero_nav{ margin: 3px 0 20px 10px; }
+.hero_nav p{ margin:0; font-size:1.8rem; font-weight:900; color:#fff; letter-spacing:.2px; text-shadow:0 2px 8px rgba(0,0,0,.25) }
 
 /* ==============================
-   Roles (Vertical buttons)
+   Roles (텍스트 왼쪽 상단, 아이콘 오른쪽 중앙)
 ============================== */
 .hero__roles-vertical{
-  display:flex; flex-direction:column;
-  justify-content:flex-start; align-items:stretch;
-  gap:16px; overflow:hidden; padding-right:0;
-  margin-top:-4px;           /* 버튼 묶음 살짝 위로 */
+  display:flex; flex-direction:column; gap:16px; overflow:hidden; padding-right:0; margin-top:-4px;
 }
-
-/* 공통 버튼 스타일 */
 .hero__roles-vertical .role-btn{
   width:100%;
   min-height:140px;
-  display:grid; grid-template-columns: 1fr 80px;
-  align-items:center; gap:16px;
-  padding:0 30px;
-  background: rgba(255,255,255,.70);   /* 기본 글라스 */
+  display:grid;
+  grid-template-columns: 1fr 92px;  /* 왼쪽 텍스트 / 오른쪽 아이콘 */
+  align-items:center;               /* 아이콘 수직 중앙 */
+  gap:16px;
+  padding:18px 30px;
+  background: rgba(255,255,255,.70);
   backdrop-filter: blur(6px);
   border:1px solid rgba(0,0,0,.06);
   color:#0f172a; text-decoration:none; border-radius:16px;
   box-shadow:0 10px 22px rgba(0,0,0,.12);
   transition:transform .16s ease, box-shadow .16s ease, background .16s ease, filter .16s ease;
 }
-.hero__roles-vertical .role-btn:hover{
-  transform:translateY(-3px);
-  box-shadow:0 16px 32px rgba(0,0,0,.16);
-  filter:brightness(.98);
-}
+.hero__roles-vertical .role-btn:hover{ transform:translateY(-3px); box-shadow:0 16px 32px rgba(0,0,0,.16); filter:brightness(.98); }
 .role-btn:focus-visible{ outline:3px solid var(--amber); outline-offset:3px }
 
-/* 역할별 색상 */
+/* 텍스트 블록: 왼쪽 상단 고정 + 자연스러운 줄바꿈 */
+.role-text{
+  align-self:flex-start;     /* 상단으로 */
+  justify-self:start;        /* 왼쪽으로 */
+  text-align:left;
+  word-break:keep-all;       /* 줄바꿈 자연스럽게 (한국어 단어 단위) */
+  text-wrap:balance;
+}
+.role-title {
+  display: block;       /* 제목을 블록 요소로 */
+  font-weight: 800;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  margin-bottom: 15px;   /* 설명과 간격 */
+}
+
+.role-sub {
+  display: block;       /* 설명도 블록으로 */
+  font-size: 1.15rem;
+  opacity: .92;
+  font-weight: bold;
+  line-height: 1.3;
+}
+
+/* 아이콘: 오른쪽 정렬 + 중앙 */
+.icon-wrap{ justify-self:end; align-self:center; width:92px; height:92px; display:grid; place-items:center; }
+.hero__roles-vertical .role-btn img{ width:78px; height:78px; filter:none; }
+
+/* 역할별 색상 (원하면 사용) */
 .role-btn--senior{  background: var(--glass-violet); border-color: rgba(167,139,250,.35); }
 .role-btn--manager{ background: var(--glass-amber);  border-color: rgba(253,186,116,.35); }
 .role-btn--shelter{ background: var(--glass-sky);    border-color: rgba(147,197,253,.35); }
-
 .role-btn--senior:hover{  background: rgba(167,139,250,.88); }
 .role-btn--manager:hover{ background: rgba(253,186,116,.88); }
 .role-btn--shelter:hover{ background: rgba(147,197,253,.88); }
 
-/* 텍스트 크기 */
-.hero__roles-vertical .role-btn .role-text{ order:1 }
-.role-title{ font-weight:800; font-size:1.6rem; line-height:1.2 }
-.role-sub{   font-size:1.15rem; opacity:.92 }
-
-/* 아이콘: 원본 색 유지 */
-.hero__roles-vertical .role-btn .icon-wrap{
-  order:2; justify-self:end; width:80px; height:80px; display:grid; place-items:center;
-}
-.hero__roles-vertical .role-btn img{
-  width:72px; height:72px; filter:none;
-}
-
 /* ==============================
    Slider dots
 ============================== */
-.hero__dots{
-  position:absolute; left:0; right:0; bottom:12px; z-index:1;
-  display:flex; gap:10px; justify-content:center;
-}
+.hero__dots{ position:absolute; left:0; right:0; bottom:12px; z-index:1; display:flex; gap:10px; justify-content:center; }
 .dot{ width:10px; height:10px; border-radius:999px; border:0; background:rgba(255,255,255,.55) }
 .dot.active{ background:var(--amber) }
 .dot:focus{ outline:none; box-shadow: var(--focus) }
@@ -212,7 +178,6 @@ img{ display:block; max-width:100% }
 .fade-up{ opacity:0; transform:translateY(14px); animation:fadeUp .9s cubic-bezier(.22,.8,.36,1) forwards }
 .d0{ animation-delay:.05s } .d1{ animation-delay:.20s } .d2{ animation-delay:.35s }
 @keyframes fadeUp{ to{ opacity:1; transform:translateY(0) } }
-
 @media (prefers-reduced-motion: reduce){
   .fade-up{ animation:none; opacity:1; transform:none }
   .role-btn{ transition:none }
@@ -229,22 +194,13 @@ img{ display:block; max-width:100% }
     padding: var(--hero-pad-y) var(--hero-pad-right) var(--hero-pad-y) var(--hero-pad-left);
   }
   .hero__columns{ grid-template-columns:1fr; row-gap:16px; width:100%; margin:0 }
-
-  .hero__panel{
-    position:static; width:auto; height:auto;
-    display:flex; flex-direction:column; gap:12px;
-    box-shadow:0 14px 36px rgba(0,0,0,.22);
-  }
+  .hero__panel{ position:static; width:auto; height:auto; display:flex; flex-direction:column; gap:12px; box-shadow:0 14px 36px rgba(0,0,0,.22) }
   .hero_nav{ margin-top:12px }
   .hero__roles-vertical{ gap:12px; overflow:auto; padding-right:2px; margin-top:0 }
-  .hero__roles-vertical .role-btn{
-    min-height:120px;
-    grid-template-columns: 1fr 72px;
-  }
-  .hero__roles-vertical .role-btn img{ width:64px; height:64px }
+  .hero__roles-vertical .role-btn{ min-height:120px; padding:16px 22px; grid-template-columns:1fr 82px; }
+  .icon-wrap{ width:82px; height:82px }
+  .hero__roles-vertical .role-btn img{ width:68px; height:68px }
 }
 
 /* 접근성 */
-a:focus-visible, button:focus-visible{
-  outline:none; box-shadow: var(--focus); border-radius: 12px;
-}
+a:focus-visible, button:focus-visible{ outline:none; box-shadow: var(--focus); border-radius: 12px; }

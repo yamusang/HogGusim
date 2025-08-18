@@ -1,6 +1,5 @@
-// src/contexts/AuthContext.jsx
 import React, { createContext, useEffect, useMemo, useState } from 'react';
-import api, { setAuth, clearAuth } from '../api/apiClient'; // ✅ 토큰 유틸 사용 (일괄 관리) :contentReference[oaicite:0]{index=0}
+import api, { setAuth, clearAuth } from '../api/apiClient';
 
 export const AuthContext = createContext(null);
 
@@ -14,7 +13,7 @@ export default function AuthProvider({ children }) {
       const raw = localStorage.getItem('user');
       if (raw) {
         const parsed = JSON.parse(raw);
-        // SHELTER인데 affiliation이 없으면 로컬 저장값으로 폴백
+        // SHELTER면 affiliation 폴백
         if (parsed?.role === 'SHELTER' && !parsed?.affiliation) {
           const aff =
             localStorage.getItem('selectedCareNm') ||
@@ -24,11 +23,11 @@ export default function AuthProvider({ children }) {
         }
         setUser(parsed);
       }
-    } catch (_) {}
+    } catch {}
     setLoading(false);
   }, []);
 
-  // 응답 → 표준 유저 오브젝트로 정리
+  // 응답 → 표준화
   const normalizeUser = (data) => {
     const roleUpper = (data?.role || '').toUpperCase();
 
@@ -63,7 +62,7 @@ export default function AuthProvider({ children }) {
       orgNm: data?.orgNm ?? null,
     };
 
-    // 폴백: 로컬에 저장된 보호소명
+    // SHELTER 폴백
     if (u.role === 'SHELTER' && !u.affiliation) {
       const aff =
         localStorage.getItem('selectedCareNm') ||
@@ -71,14 +70,9 @@ export default function AuthProvider({ children }) {
         '';
       if (aff) u.affiliation = aff;
     }
-
     return u;
   };
 
-  /**
-   * 로그인
-   * - login(email, password, role?) 시그 유지 (role은 옵션)
-   */
   const login = async (email, password, role) => {
     const payload = { email, password };
     if (role) payload.role = role;
@@ -87,8 +81,8 @@ export default function AuthProvider({ children }) {
     const u = normalizeUser(data);
 
     if (!u.token) throw new Error('로그인 응답에 토큰이 없습니다.');
+    if (!u.role) throw new Error('로그인 응답에 역할이 없습니다.');
 
-    // ✅ 토큰/유저를 apiClient 유틸로 저장 (재발급 인터셉터와 일관) :contentReference[oaicite:1]{index=1}
     setAuth({
       accessToken: u.token,
       refreshToken: data?.refreshToken,
@@ -101,12 +95,11 @@ export default function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    // ✅ 인증/선택값 일괄 삭제 (apiClient 유틸 + 로컬 키) :contentReference[oaicite:2]{index=2}
     clearAuth();
     localStorage.removeItem('selectedCareNm');
     sessionStorage.removeItem('affiliation');
     sessionStorage.removeItem('selectedRole');
-    setUser(null); // 라우팅 가드가 즉시 풀리도록 컨텍스트 먼저 비움
+    setUser(null);
   };
 
   const value = useMemo(

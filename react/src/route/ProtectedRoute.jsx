@@ -1,4 +1,3 @@
-// route/ProtectedRoute.jsx
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
@@ -16,7 +15,7 @@ export const routeForRole = (role) => {
 export function ProtectedRoute() {
   const { user, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return null; // 로딩 스피너 넣어도 됨
+  if (loading) return null;
   if (!user) return <Navigate to={`/login?from=${encodeURIComponent(loc.pathname)}`} replace />;
   return <Outlet />;
 }

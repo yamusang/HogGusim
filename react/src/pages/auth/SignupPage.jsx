@@ -1,11 +1,10 @@
-// src/pages/auth/SignupPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/apiClient';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/common/FormField';
 import { fetchCareNames } from '../../api/shelters';
-import './auth.css';
+import './auth.css'; // ✅ 통일
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -15,40 +14,34 @@ export default function SignupPage() {
   const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase();
   const [role] = useState(roleParam);
 
-  // ===== form states =====
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [affiliation, setAffiliation] = useState(''); // SHELTER 소속 선택값
-  const [error, setError] = useState('');
-
-  // 보호소 드롭다운 옵션
+  const [affiliation, setAffiliation] = useState(''); // 선택된 보호소(이름)
   const [careList, setCareList] = useState([]);
   const [loadingCare, setLoadingCare] = useState(false);
 
-  // ===== validations =====
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);      // ✅ 제출 로딩
+
   const minLen = 8;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   const isInvalidEmail = useMemo(() => !!email && !emailRegex.test(email), [email]);
   const isMismatch = useMemo(() => confirm.length > 0 && password !== confirm, [password, confirm]);
   const isWeak = useMemo(() => !!password && password.length < minLen, [password]);
-
   const isAffiliationRequired = role === 'SHELTER';
 
-  // 보호소 드롭다운 옵션 로드
   useEffect(() => {
     if (!isAffiliationRequired) return;
     (async () => {
       setLoadingCare(true);
       try {
-        const names = await fetchCareNames(); // shelters.js: 전용 엔드포인트→폴백까지 처리됨
-        setCareList(names || []);
-        // 이전 선택 복구
+        const names = await fetchCareNames();
+        const list = (names || []).filter(Boolean);
+        setCareList(list);
         const saved = localStorage.getItem('selectedCareNm');
-        if (saved && names?.includes(saved)) setAffiliation(saved);
-      } catch {
-        // 무시
+        if (saved && list.includes(saved)) setAffiliation(saved);
       } finally {
         setLoadingCare(false);
       }
@@ -56,6 +49,7 @@ export default function SignupPage() {
   }, [isAffiliationRequired]);
 
   const disabled =
+    loading ||                   // ✅ 로딩 중 차단
     !email ||
     !password ||
     !confirm ||
@@ -64,9 +58,9 @@ export default function SignupPage() {
     isWeak ||
     (isAffiliationRequired && !affiliation);
 
-  // ===== submit =====
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;        // ✅ 더블클릭 차단
     setError('');
 
     if (isInvalidEmail) return setError('올바른 이메일 형식을 입력하세요.');
@@ -74,31 +68,41 @@ export default function SignupPage() {
     if (isMismatch) return setError('비밀번호가 일치하지 않습니다.');
     if (isAffiliationRequired && !affiliation) return setError('보호소를 선택하세요.');
 
-    // 서버에 맞는 최소 필드만 전송
     const payload = {
       email: email.trim(),
       password,
       role,
-      ...(isAffiliationRequired ? { affiliation } : {}),
+      ...(isAffiliationRequired ? { affiliation } : {}), // ✅ 이름 그대로 전송
     };
 
+    setLoading(true);
     try {
       await api.post('/auth/signup', payload);
-      // UX용 저장(선택): 다음 로그인 페이지에서 선택 역할/소속 복원
+
+      // 다음 로그인 UX용 저장
       sessionStorage.setItem('selectedRole', role);
       if (isAffiliationRequired) {
         sessionStorage.setItem('affiliation', affiliation);
         localStorage.setItem('selectedCareNm', affiliation);
       }
+
       alert('회원가입이 완료되었습니다. 로그인 해주세요.');
-      navigate(`/login?role=${role}`);
+      navigate(`/login?role=${role}`, { replace: true }); // ✅ 히스토리 교체
     } catch (err) {
-      const msg =
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.message ||
-        err?.message ||
-        '회원가입 실패';
-      setError(msg);
+      const status = err?.status || err?.response?.status;
+      if (status === 409) {
+        // ✅ 중복 명확 안내
+        setError('이미 가입된 이메일입니다. 다른 이메일로 진행하거나 로그인하세요.');
+      } else {
+        const msg =
+          err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          '회원가입 실패';
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -112,7 +116,7 @@ export default function SignupPage() {
 
         {error && <div className="auth__error">{error}</div>}
 
-        <form onSubmit={onSubmit} className="auth__form">
+        <form onSubmit={onSubmit} className="auth__form" noValidate>
           <FormField
             label="이메일"
             type="email"
@@ -141,7 +145,6 @@ export default function SignupPage() {
             error={isMismatch ? '비밀번호가 일치하지 않습니다.' : ''}
           />
 
-          {/* SHELTER 전용: 보호소 드롭다운 */}
           {role === 'SHELTER' && (
             <div className="form-field">
               <label className="form-field__label">보호소 선택</label>
@@ -166,6 +169,7 @@ export default function SignupPage() {
             presetName="primary"
             type="submit"
             disabled={disabled}
+            loading={loading}             // ✅ 로딩 스피너 표시
             className="auth__submit auth__submit--primary"
           >
             회원가입

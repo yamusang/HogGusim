@@ -1,5 +1,6 @@
+// src/App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
@@ -12,14 +13,31 @@ import ConnectPage from './pages/senior/ConnectPage';
 import ManagerPage from './pages/manager/ManagerPage';
 import ShelterPage from './pages/shelter/ShelterPage';
 import PetConnectPage from './pages/pet/PetConnectPage';
-import LogoutPage from './pages/auth/LogoutPage'; // ✅ 분리한 로그아웃 사용
+import LogoutPage from './pages/auth/LogoutPage';
+import PetNewPage from './pages/shelter/PetNewPage';
 
-// ── Guards
+// ---- helpers
+const toUpper = (v) => (v || '').toUpperCase();
+const routeForRole = (role) => {
+  switch (toUpper(role)) {
+    case 'SENIOR':  return '/senior';
+    case 'MANAGER': return '/manager';
+    case 'SHELTER': return '/shelter';
+    default:        return '/';
+  }
+};
+
+// ---- Guards
 function Protected({ children, allow }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  if (allow && !allow.includes(user.role)) return <Navigate to="/" replace />;
+  const loc = useLocation();
+  if (loading) return null;                 // 원하면 스피너로 교체
+  if (!user) return <Navigate to={`/login?from=${encodeURIComponent(loc.pathname)}`} replace />;
+
+  if (allow && !allow.map(toUpper).includes(toUpper(user.role))) {
+    // 로그인은 되어있지만 역할이 다른 경우 → 자신의 홈으로 보냄
+    return <Navigate to={routeForRole(user.role)} replace />;
+  }
   return children;
 }
 
@@ -28,13 +46,11 @@ function RedirectIfAuthed({ children }) {
   if (loading) return null;
   if (!user) return children;
 
-  if (user.role === 'SENIOR')  return <Navigate to="/senior" replace />;
-  if (user.role === 'MANAGER') return <Navigate to="/manager" replace />;
-  if (user.role === 'SHELTER') return <Navigate to="/shelter" replace />;
-  return <Navigate to="/" replace />;
+  // 이미 로그인 상태면 역할 홈으로
+  return <Navigate to={routeForRole(user.role)} replace />;
 }
 
-// ── App
+// ---- App
 export default function App() {
   return (
     <BrowserRouter>
@@ -42,6 +58,7 @@ export default function App() {
         <Routes>
           {/* 공개 */}
           <Route path="/" element={<MainPage />} />
+
           <Route
             path="/login"
             element={
@@ -58,6 +75,9 @@ export default function App() {
               </RedirectIfAuthed>
             }
           />
+
+          {/* 로그아웃은 보호 밖(공개) */}
+          <Route path="/logout" element={<LogoutPage />} />
 
           {/* 고령자 */}
           <Route
@@ -96,8 +116,16 @@ export default function App() {
               </Protected>
             }
           />
+          <Route
+            path="/shelter/pets/new"
+            element={
+              <Protected allow={['SHELTER']}>
+                <PetNewPage />
+              </Protected>
+            }
+          />
 
-          {/* 공용 */}
+          {/* 공용(로그인 필요) */}
           <Route
             path="/pet/connect"
             element={
@@ -106,9 +134,6 @@ export default function App() {
               </Protected>
             }
           />
-
-          {/* 로그아웃 */}
-          <Route path="/logout" element={<LogoutPage />} />
 
           {/* 기타 */}
           <Route path="*" element={<Navigate to="/" replace />} />

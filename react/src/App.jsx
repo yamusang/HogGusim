@@ -1,11 +1,10 @@
-// src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
 // pages
-import MainPage from './pages/MainPage/MainPage';
+import MainPage from './pages/Mainpage/MainPage'; // ← 실제 폴더명 확인!
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import SeniorPage from './pages/senior/SeniorPage';
@@ -16,7 +15,7 @@ import PetConnectPage from './pages/pet/PetConnectPage';
 import LogoutPage from './pages/auth/LogoutPage';
 import PetNewPage from './pages/shelter/PetNewPage';
 
-// ---- helpers
+// helpers
 const toUpper = (v) => (v || '').toUpperCase();
 const routeForRole = (role) => {
   switch (toUpper(role)) {
@@ -27,15 +26,14 @@ const routeForRole = (role) => {
   }
 };
 
-// ---- Guards
+// Guards
 function Protected({ children, allow }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
-  if (loading) return null;                 // 원하면 스피너로 교체
+  if (loading) return null;
   if (!user) return <Navigate to={`/login?from=${encodeURIComponent(loc.pathname)}`} replace />;
 
   if (allow && !allow.map(toUpper).includes(toUpper(user.role))) {
-    // 로그인은 되어있지만 역할이 다른 경우 → 자신의 홈으로 보냄
     return <Navigate to={routeForRole(user.role)} replace />;
   }
   return children;
@@ -45,12 +43,10 @@ function RedirectIfAuthed({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return children;
-
-  // 이미 로그인 상태면 역할 홈으로
   return <Navigate to={routeForRole(user.role)} replace />;
 }
 
-// ---- App
+// App
 export default function App() {
   return (
     <BrowserRouter>
@@ -76,7 +72,7 @@ export default function App() {
             }
           />
 
-          {/* 로그아웃은 보호 밖(공개) */}
+          {/* 로그아웃은 공개 */}
           <Route path="/logout" element={<LogoutPage />} />
 
           {/* 고령자 */}

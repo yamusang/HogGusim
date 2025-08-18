@@ -1,9 +1,9 @@
-// src/pages/auth/LoginPage.jsx
 import React, { useMemo, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/common/FormField';
 import useAuth from '../../hooks/useAuth';
+import { routeForRole } from '../../route/ProtectedRoute'; // 있으면 재사용, 없으면 간단히 분기
 import './auth.css';
 
 export default function LoginPage() {
@@ -12,7 +12,6 @@ export default function LoginPage() {
   const params = new URLSearchParams(search);
 
   const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase();
-  // UI/링크용으로만 저장 (요청 바디엔 사용 X)
   sessionStorage.setItem('selectedRole', roleParam);
 
   const { login } = useAuth();
@@ -35,14 +34,9 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      // ✅ role은 서버에 보내지 않음
       const u = await login(email.trim(), password);
-
-      const r = (u?.role || roleParam || '').toUpperCase();
-      if (r === 'SENIOR') navigate('/senior');
-      else if (r === 'SHELTER') navigate('/shelter');
-      else if (r === 'MANAGER') navigate('/manager');
-      else navigate('/');
+      const to = routeForRole(u?.role) || '/';
+      navigate(to, { replace: true });
     } catch (e2) {
       const msg =
         e2?.response?.data?.error?.message ||

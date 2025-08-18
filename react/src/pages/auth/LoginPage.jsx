@@ -1,3 +1,4 @@
+// src/pages/auth/LoginPage.jsx
 import React, { useMemo, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Button from '../../components/ui/Button';
@@ -9,7 +10,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const params = new URLSearchParams(search);
+
   const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase();
+  // UI/링크용으로만 저장 (요청 바디엔 사용 X)
   sessionStorage.setItem('selectedRole', roleParam);
 
   const { login } = useAuth();
@@ -32,13 +35,20 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      // ✅ role은 서버에 보내지 않음
       const u = await login(email.trim(), password);
-      if (u?.role === 'SENIOR') navigate('/senior');
-      else if (u?.role === 'SHELTER') navigate('/shelter');
-      else if (u?.role === 'MANAGER') navigate('/manager');
+
+      const r = (u?.role || roleParam || '').toUpperCase();
+      if (r === 'SENIOR') navigate('/senior');
+      else if (r === 'SHELTER') navigate('/shelter');
+      else if (r === 'MANAGER') navigate('/manager');
       else navigate('/');
     } catch (e2) {
-      setErr(e2?.response?.data?.error?.message || '로그인 실패');
+      const msg =
+        e2?.response?.data?.error?.message ||
+        e2?.response?.data?.message ||
+        e2?.message || '로그인 실패';
+      setErr(msg);
     } finally {
       setLoading(false);
     }

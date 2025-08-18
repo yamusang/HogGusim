@@ -1,151 +1,200 @@
 package com.matchpet.service;
 
-import com.matchpet.config.ExternalAnimalProperties;
 import com.matchpet.domain.animal.entity.Animal;
 import com.matchpet.domain.animal.repository.AnimalRepository;
-import com.matchpet.domain.shelter.entity.Shelter;                 // ← entity 패키지
-import com.matchpet.domain.shelter.repository.ShelterRepository;  // ← repository 패키지
-import com.matchpet.dto.AnimalApiResponse;
+import com.matchpet.external.AnimalApiClient;
+import com.matchpet.external.dto.ExternalResponse;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
+import java.lang.reflect.Method;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnimalIngestService {
 
-  private final AnimalRepository animalRepo;
-  private final ShelterRepository shelterRepo;
-  private final WebClient animalWebClient;            // WebClientConfig#animalWebClient
-  private final ExternalAnimalProperties props;       // baseUrl/decodingKey/timeout
+    private final AnimalApiClient api;
+    private final AnimalRepository repo;
 
-  /**
-   * 공공데이터(유기동물) 기간+지역 수집 (페이지네이션 포함)
-   * - desertionNo → animals.external_id 로 upsert
-   * - 보호소(careNm+careAddr) → shelters.name/address 로 upsert 후 FK 연결
-   *
-   * @param from    시작일(YYYY-MM-DD)
-   * @param to      종료일(YYYY-MM-DD)
-   * @param uprCd   시/도 코드(예: 부산 6260000)
-   * @param pageSize 페이지 크기(권장: 500)
-   * @return insert+update 총 건수
-   */
-  @Transactional
-  public int ingest(LocalDate from, LocalDate to, String uprCd, int pageSize) {
-    int saved = 0;
-    int page = 1;
+    @Transactional
+    public IngestCounters ingest(LocalDate from, LocalDate to, String uprCd, int pageSize) {
+        IngestCounters c = new IngestCounters();
+        int pageNo = 1;
 
-    while (true) {
-      // 람다 캡쳐로 인한 effectively final 문제 회피
-      final int currentPage = page;
+        while (true) {
+            ExternalResponse res = api.call(from, to, uprCd, pageNo, pageSize);
+            List<ExternalResponse.Item> items = safeItems(res);
+            if (items.isEmpty()) {
+                log.info("no items; stop at pageNo={}", pageNo);
+                break;
+            }
 
-      var resp = animalWebClient.get()
-          .uri(uri -> uri
-              .path("/abandonmentPublic_v2")
-              .queryParam("serviceKey", props.decodingKey()) // 반드시 Decoding 키
-              .queryParam("bgnde", from.format(DateTimeFormatter.BASIC_ISO_DATE))
-              .queryParam("endde", to.format(DateTimeFormatter.BASIC_ISO_DATE))
-              .queryParam("upr_cd", uprCd)
-              .queryParam("pageNo", currentPage)
-              .queryParam("numOfRows", pageSize)
-              .queryParam("_type", "json")
-              .build())
-          .accept(MediaType.APPLICATION_JSON)
-          .retrieve()
-          .bodyToMono(AnimalApiResponse.class)
-          .block();
+            c.total += items.size();
+            for (ExternalResponse.Item it : items) {
+                upsertOne(it, c);
+            }
 
-      var items = Optional.ofNullable(resp)
-          .map(AnimalApiResponse::response).map(AnimalApiResponse.Response::body)
-          .map(AnimalApiResponse.Body::items).map(AnimalApiResponse.Items::item)
-          .orElse(List.of());
-
-      if (items.isEmpty()) {
-        log.info("[ingest] no items: uprCd={}, page={}, size={}", uprCd, currentPage, pageSize);
-        break;
-      }
-
-      for (var it : items) {
-        try {
-          // ── 보호소 upsert (careNm + careAddr 기준) ──
-          Shelter shelter = null;
-          if (notBlank(it.careNm()) && notBlank(it.careAddr())) {
-            shelter = shelterRepo.findByNameAndAddress(it.careNm(), it.careAddr())
-                .orElseGet(() -> {
-                  var s = new Shelter();
-                  s.setName(it.careNm());
-                  s.setAddress(it.careAddr());
-                  return s;
-                });
-            // 최신화 필드
-            shelter.setTel(it.careTel());
-            // orgNm(지자체/기관명)을 임시로 region 필드에 보관(필요시 별도 컬럼 확장)
-            shelter.setRegion(it.orgNm());
-            shelter = shelterRepo.save(shelter);
-          }
-
-          // ── 동물 upsert (externalId = desertionNo) ──
-          final String externalId = it.desertionNo();
-          if (isBlank(externalId)) {
-            // 외부키가 없으면 스킵
-            continue;
-          }
-          var a = animalRepo.findByExternalId(externalId).orElseGet(Animal::new);
-          if (a.getId() == null) a.setExternalId(externalId);
-
-          // 원문 필드 보관
-          a.setHappenDt(parse(it.happenDt()));
-          a.setHappenPlace(it.happenPlace());
-          a.setKindCd(it.kindCd());
-          a.setColorCd(it.colorCd());
-          a.setAgeText(it.age());
-          a.setWeightText(it.weight());
-          a.setSexCd(it.sexCd());
-          a.setNeuterYn(it.neuterYn());
-          a.setProcessState(it.processState());
-          a.setOrgNm(it.orgNm());
-          a.setPopfile(it.popfile());
-          a.setSpecialMark(it.specialMark());
-          a.setNoticeSdt(parse(it.noticeSdt()));
-          a.setNoticeEdt(parse(it.noticeEdt()));
-          a.setShelter(shelter);
-
-          animalRepo.save(a);
-          saved++;
-        } catch (Exception e) {
-          log.warn("[ingest] skip item desertionNo={} cause={}", it.desertionNo(), e.toString());
+            int totalCount = safeInt(() -> res.getResponse().getBody().getTotalCount(), 0);
+            int rows       = safeInt(() -> res.getResponse().getBody().getNumOfRows(), pageSize);
+            int lastPage   = (int) Math.ceil((double) totalCount / Math.max(1, rows));
+            if (pageNo >= lastPage) break;
+            pageNo++;
         }
-      }
 
-      // 다음 페이지 유무 판단
-      Integer total = Optional.ofNullable(resp)
-          .map(AnimalApiResponse::response).map(AnimalApiResponse.Response::body)
-          .map(AnimalApiResponse.Body::totalCount).orElse(0);
-
-      if (currentPage * pageSize >= total) break;
-      page++; // ← 여기서 증가(람다에서 page 캡쳐 안 함)
+        log.info("ingest done: {}", c);
+        return c;
     }
 
-    log.info("[ingest] done: uprCd={}, from={}, to={}, totalUpsert={}", uprCd, from, to, saved);
-    return saved;
-  }
+    private void upsertOne(ExternalResponse.Item it, IngestCounters c) {
+    // 외부 키 구성
+    String desertionNo = trimToNull(it.getDesertionNo());
+    String externalId  = buildExternalId(it, desertionNo);
+    if (externalId == null) { c.skipped++; return; }
 
-  // ───────────────── helpers ─────────────────
+    // 1) desertion_no 우선 조회 (중복키 방지)
+    Animal a = null;
+    if (desertionNo != null) {
+        a = repo.findByDesertionNo(desertionNo).orElse(null);
+    }
+    // 2) external_id 로도 조회
+    if (a == null) {
+        a = repo.findByExternalId(externalId).orElse(null);
+    }
 
-  private static LocalDate parse(String yyyymmdd) {
-    if (yyyymmdd == null || yyyymmdd.isBlank()) return null;
-    return LocalDate.parse(yyyymmdd, DateTimeFormatter.BASIC_ISO_DATE);
-  }
+    // 3) 없으면 신규, 있으면 갱신
+    boolean isNew = false;
+    if (a == null) {
+        a = new Animal();
+        isNew = true;
+        a.setExternalId(externalId);
+        a.setDesertionNo(desertionNo); // 있을 때만
+    } else {
+        // 키 동기화(기존 행이 예전에 다른 external_id로 들어간 경우 보정)
+        if (a.getExternalId() == null || !a.getExternalId().equals(externalId)) {
+            a.setExternalId(externalId);
+        }
+        if (desertionNo != null && (a.getDesertionNo() == null || !a.getDesertionNo().equals(desertionNo))) {
+            a.setDesertionNo(desertionNo);
+        }
+    }
 
-  private static boolean notBlank(String s) { return s != null && !s.isBlank(); }
-  private static boolean isBlank(String s) { return s == null || s.isBlank(); }
+    // ===== 기본 =====
+    a.setHappenDt(it.getHappenDt());
+    a.setHappenPlace(trimToNull(it.getHappenPlace()));
+
+    a.setKindCd(trimToNull(it.getKindCd()));
+    a.setColorCd(trimToNull(it.getColorCd()));
+
+    a.setAge(trimToNull(it.getAge()));
+    a.setWeight(trimToNull(it.getWeight()));
+
+    a.setSexCd(trimToNull(it.getSexCd()));
+    a.setNeuterYn(trimToNull(it.getNeuterYn()));
+    a.setProcessState(trimToNull(it.getProcessState()));
+    a.setSpecialMark(trimToNull(it.getSpecialMark()));
+
+    // ===== 보호소/기관 =====
+    a.setCareNm(trimToNull(it.getCareNm()));
+    a.setCareTel(trimToNull(it.getCareTel()));
+    a.setCareAddr(trimToNull(it.getCareAddr()));
+    a.setOrgNm(trimToNull(it.getOrgNm()));
+    a.setChargeNm(trimToNull(getStringViaReflection(it, "getCareOwnerNm"))); // 있으면 사용
+
+    // ===== 공고 =====
+    a.setNoticeNo(trimToNull(it.getNoticeNo()));
+    a.setNoticeSdt(it.getNoticeSdt());
+    a.setNoticeEdt(it.getNoticeEdt());
+
+    // ===== 이미지/파일명 =====
+    String p1 = trimToNull(getStringViaReflection(it, "getPopfile1"));
+    String p2 = trimToNull(getStringViaReflection(it, "getPopfile2"));
+    String chosen = firstNonBlank(p1, p2);
+    if (chosen != null) {
+        a.setPopfile(chosen);
+        a.setFilename(extractFileName(chosen));
+    } else if (a.getPopfile() == null) {
+        a.setFilename(null);
+    }
+
+    repo.save(a);
+    if (isNew) c.inserted++; else c.updated++;
+}
+
+    // ===== 안전 접근 유틸 =====
+    private static List<ExternalResponse.Item> safeItems(ExternalResponse res) {
+        try {
+            if (res == null) return Collections.emptyList();
+            var body = res.getResponse().getBody();
+            if (body == null || body.getItems() == null || body.getItems().getItem() == null) {
+                return Collections.emptyList();
+            }
+            return body.getItems().getItem();
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private static int safeInt(IntSupplier s, int def) {
+        try { Integer v = s.getAsInt(); return v == null ? def : v; } catch (Exception e) { return def; }
+    }
+
+    @FunctionalInterface
+    private interface IntSupplier { Integer getAsInt(); }
+
+    private static String trimToNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
+    private static String firstNonBlank(String... arr) {
+        if (arr == null) return null;
+        for (String s : arr) {
+            if (s != null && !s.isBlank()) return s.trim();
+        }
+        return null;
+    }
+
+    private static String extractFileName(String urlOrName) {
+        if (urlOrName == null) return null;
+        String s = urlOrName.trim();
+        int q = s.indexOf('?'); if (q > -1) s = s.substring(0, q);
+        int slash = s.lastIndexOf('/');
+        return (slash > -1) ? s.substring(slash + 1) : s;
+    }
+
+    private static String buildExternalId(ExternalResponse.Item it, String desertionNo) {
+        // desertionNo 최우선. 없으면 orgNm / noticeNo 중 하나라도 사용
+        if (desertionNo != null) return desertionNo;
+        String org = trimToNull(it.getOrgNm());
+        String nn  = trimToNull(it.getNoticeNo());
+        return firstNonBlank(org, nn);
+    }
+
+    /** DTO에 해당 getter가 없을 수도 있으므로 리플렉션으로 안전 접근 */
+    private static String getStringViaReflection(Object obj, String getterName) {
+        try {
+            Method m = obj.getClass().getMethod(getterName);
+            Object v = m.invoke(obj);
+            return v != null ? v.toString() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    @Getter @ToString
+    public static class IngestCounters {
+        private int total;
+        private int inserted;
+        private int updated;
+        private int skipped;
+    }
 }

@@ -1,43 +1,113 @@
 // src/api/animals.js
 import api from './apiClient';
 
-/** 🔎 동물 목록 (필터/페이지네이션 가능)
- *  ex) fetchAnimals({ available: true, page:1, size:10, sort:'createdAt,DESC' })
- */
-export const fetchAnimals = (params = {}) =>
-  api.get('/pets', { params }).then((r) => r.data);
+/** 절대 URL 보정 */
+export const toAbsoluteUrl = (url) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (api.defaults.baseURL || '').replace(/\/+$/, '');
+  const rel  = (`/${String(url)}`).replace(/\/+/, '/');
+  return `${base}${rel}`;
+};
 
-/** ⭐ 추천 동물 목록 (SeniorPage에서 사용)
- *  백엔드 경로가 다르면 '/pets/recommended'만 실제 경로로 바꿔줘.
- */
-export const fetchRecommendedPets = ({ seniorId, page = 1, size = 10 } = {}) =>
-  api
-    .get('/pets/recommended', { params: { seniorId, page, size } })
-    .then((r) => r.data);
+/** 🔁 백엔드 DTO(Item) → 앱 표준 모델 */
+export const normalizePet = (it) => {
+  if (!it) return null;
+  const sc = (it.sexCd || '').toUpperCase();
+  const gender = sc === 'M' ? '수컷' : sc === 'F' ? '암컷' : '미상';
 
-/** 단건 조회 */
-export const fetchAnimalById = (petId) =>
-  api.get(`/pets/${petId}`).then((r) => r.data);
+  return {
+    id: it.desertionNo ?? it.id ?? null,
+    name: it.name ?? null,
+    species: it.kindCd || it.species || '',
+    color: it.colorCd || it.color || '',
+    gender,
+    age: it.age || '',
+    weight: it.weight || '',
+    neuter: it.neuterYn || it.neuter || '',
+    status: it.processState || it.status || 'AVAILABLE',
+    happenDt: it.happenDt || null,
+    createdAt: it.createdAt || it.happenDt || null,
+    photoUrl: it.popfile ? toAbsoluteUrl(it.popfile) : (it.photoUrl ? toAbsoluteUrl(it.photoUrl) : ''),
+    specialMark: it.specialMark || '',
+    noticeSdt: it.noticeSdt || null,
+    noticeEdt: it.noticeEdt || null,
+    careNm: it.careNm || '',
+    careTel: it.careTel || '',
+    careAddr: it.careAddr || '',
+    orgNm: it.orgNm || '',
+    _raw: it,
+  };
+};
 
-/** 등록 */
-export const createAnimal = (payload) =>
-  api.post('/pets', payload).then((r) => r.data);
+/** 📦 오픈API 응답에서 rows 꺼내기 */
+const pickApiItems = (data) => data?.response?.body?.items?.item ?? [];
+const pickPageMeta = (data) => ({
+  total: data?.response?.body?.totalCount ?? 0,
+  page:  data?.response?.body?.pageNo ?? 1,
+  size:  data?.response?.body?.numOfRows ?? 0,
+});
 
-/** 수정 */
-export const updateAnimal = (petId, payload) =>
-  api.put(`/pets/${petId}`, payload).then((r) => r.data);
+/** 공통 GET 폴백: /animals → 실패 시 /pets */
+const getWithFallback = async (path, opts) => {
+  try {
+    const r = await api.get(path, opts);
+    return r.data;
+  } catch {
+    const alt = path.replace(/^\/animals/, '/pets');
+    const r2 = await api.get(alt, opts);
+    return r2.data;
+  }
+};
 
-/** 삭제 */
-export const deleteAnimal = (petId) =>
-  api.delete(`/pets/${petId}`).then((r) => r.data);
+/** 목록 (정규화 포함) */
+export const fetchAnimals = async (params = {}) => {
+  const data = await getWithFallback('/animals', { params });
+  const items = pickApiItems(data) || data?.content || data?.items || [];
+  const meta  = pickPageMeta(data);
+  return { ...meta, content: (items || []).map(normalizePet) };
+};
 
-/** 사진 업로드 */
-export const uploadPetPhoto = (petId, file) => {
+/** 보호소 기준 목록 (careNm/affiliation 또는 shelterId로 필터) */
+export const fetchAnimalsByShelter = async ({ shelterId, careNm, page = 1, size = 100 } = {}) => {
+  const { content } = await fetchAnimals({ page, size });
+  let list = content;
+  if (careNm) list = list.filter(a => (a.careNm || '').trim() === careNm.trim());
+  if (shelterId) list = list.filter(a => String(a._raw?.shelterId || '') === String(shelterId));
+  return list;
+};
+
+/** 추천 목록 */
+export const fetchRecommendedPets = async (params = {}) => {
+  const data = await getWithFallback('/animals/recommended', { params });
+  const items = pickApiItems(data) || data?.content || data?.items || [];
+  return (items || []).map(normalizePet);
+};
+
+/** ✅ 새 동물 등록 (내부 DB용). 백이 /animals 미구현이면 /pets로 폴백 */
+export const createAnimal = async (payload = {}) => {
+  try {
+    const { data } = await api.post('/animals', payload);
+    return data;
+  } catch {
+    const { data } = await api.post('/pets', payload);
+    return data;
+  }
+};
+
+/** ✅ 대표사진 업로드 (multipart). /animals → /pets 폴백 */
+export const uploadAnimalPhoto = async (animalId, file) => {
   const fd = new FormData();
   fd.append('file', file);
-  return api
-    .post(`/pets/${petId}/photo`, fd, {
+  try {
+    const { data } = await api.post(`/animals/${animalId}/photo`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    .then((r) => r.data);
+    });
+    return data;
+  } catch {
+    const { data } = await api.post(`/pets/${animalId}/photo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  }
 };

@@ -1,23 +1,20 @@
 package com.matchpet.domain.animal.service;
 
 import com.matchpet.domain.animal.entity.Animal;
-import com.matchpet.domain.animal.enums.AnimalStatus;
-import com.matchpet.domain.animal.enums.NeuterStatus;
-import com.matchpet.domain.animal.enums.Sex;
 import com.matchpet.domain.animal.repository.AnimalRepository;
-import com.matchpet.domain.shelter.entity.Shelter;
-import com.matchpet.domain.shelter.repository.ShelterRepository;
 import com.matchpet.external.AnimalApiClient;
 import com.matchpet.external.dto.ExternalResponse;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -25,217 +22,150 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ExternalAnimalIngestService {
 
-  private final AnimalApiClient api;
-  private final AnimalRepository animalRepo;
-  private final ShelterRepository shelterRepo;
+    private final AnimalApiClient api;
+    private final AnimalRepository animalRepo;
 
-  /** 한 페이지 업서트. 아이템이 없으면 0 반환 */
-  @Transactional
-  public int ingest(String region, LocalDate from, LocalDate to, int page, int size) {
-    final int pageNo = Math.max(page, 1);
-    ExternalResponse res = api.fetch(region, from, to, pageNo, size);
+    @Transactional
+    public IngestCounters ingest(LocalDate from, LocalDate to, String uprCd, int pageSize) {
+        int page = 1, inserted = 0, updated = 0, total = 0;
 
-    if (res == null || res.items() == null || res.items().isEmpty()) {
-      log.info("[ingest] no items: region={}, page={}, size={}", region, pageNo, size);
-      return 0;
-    }
+        while (true) {
+            ExternalResponse res = api.call(from, to, uprCd, page, pageSize);
+            if (res == null || res.getResponse() == null || res.getResponse().getBody() == null) break;
 
-    int upsert = 0;
-    Map<String, Shelter> shelterCache = new HashMap<>();
+            ExternalResponse.Body body = res.getResponse().getBody();
+            List<ExternalResponse.Item> items = (body.getItems() != null) ? body.getItems().getItem() : null;
+            if (items == null || items.isEmpty()) break;
 
-    for (ExternalResponse.ExternalAnimal ea : res.items()) {
-      if (ea == null) continue;
+            for (ExternalResponse.Item it : items) {
+                total++;
 
-      final String extAnimalId  = nvl(ea.id());
-      final String extShelterId = nvl(ea.shelterId());
-      if (extAnimalId.isBlank() || extShelterId.isBlank()) {
-        log.warn("[ingest] skip item: missing external ids (animalId={}, shelterId={})",
-            extAnimalId, extShelterId);
-        continue;
-      }
+                // 1) 외부키(externalId) 생성 (null 금지)
+                String externalId = toExternalId(it);
+                if (externalId == null) {
+                    log.warn("[SKIP] cannot build externalId: desertionNo={}, orgNm={}, noticeNo={}, filename={}",
+                            it.getDesertionNo(), it.getOrgNm(), it.getNoticeNo(), it.getFilename());
+                    continue;
+                }
 
-      try {
-        // 1) 보호소 업서트(+ 캐시)
-        Shelter sh = shelterCache.computeIfAbsent(extShelterId, id -> upsertShelter(ea));
+                // 2) externalId로 1차 업서트 조회
+                Optional<Animal> existingOpt = animalRepo.findByExternalId(externalId);
 
-        // 2) 동물 업서트
-        Animal a = animalRepo.findByExternalId(extAnimalId).orElseGet(Animal::new);
-        if (a.getId() == null) a.setExternalId(extAnimalId);
+                // 3) 과거 데이터 호환: desertionNo로 보조 매칭 후 externalId 백필
+                if (existingOpt.isEmpty()) {
+                    String dn = trimToNull(it.getDesertionNo());
+                    if (dn != null) {
+                        Optional<Animal> byDn = animalRepo.findByDesertionNo(dn);
+                        if (byDn.isPresent()) {
+                            Animal fix = byDn.get();
+                            if (fix.getExternalId() == null) {
+                                fix.setExternalId(externalId); // 과거 행 보정
+                            }
+                            existingOpt = Optional.of(fix);
+                        }
+                    }
+                }
 
-        // 성별/중성화/상태 매핑
-        Sex sex = mapSex(ea.sex());
-        a.setSex(sex);
-        a.setNeuterStatus(mapNeuter(ea.neuter(), sex));
-        a.setStatus(mapStatus(ea.status()));
+                if (existingOpt.isPresent()) {
+                    Animal a = existingOpt.get();
+                    apply(a, it);
+                    a.setDesertionNo(trimToNull(it.getDesertionNo())); // 보조 필드 갱신
+                    updated++;
+                } else {
+                    Animal a = new Animal();
+                    a.setExternalId(externalId);                       // ★ NOT NULL + UNIQUE
+                    a.setDesertionNo(trimToNull(it.getDesertionNo())); // 보조 필드
+                    apply(a, it);
+                    animalRepo.save(a);
+                    inserted++;
+                }
+            }
 
-        // 기본 속성
-        a.setShelter(sh);
-        a.setSpecies(trim(ea.species()));
-        a.setBreed(extractBreedFromKind(ea.species())); // kindCd에서 품종만 추출
-        a.setColor(trim(ea.color()));
-        a.setIntakeDate(ea.intakeDate());
-        a.setThumbnailUrl(trim(ea.thumb()));
-        a.setDescription(trim(ea.desc()));
-        // 원본 이미지까지 저장하려면 아래 주석 해제
-        // a.setImageUrl(trim(ea.image()));
-
-        // 나이/체중 파싱
-        // a.setAgeMonths(parseAgeMonths(ea.ageText()));             // "2023(년생)" → 개월 수
-        // BigDecimal weight = parseWeightKg(ea.weightText());       // "5(Kg)" → 5
-        // if (weight != null) a.setWeightKg(weight);
-
-        // // 지역 우선순위: 보호소.region → 응답.region
-        // a.setRegion(firstNonBlank(sh.getRegion(), ea.region()));
-
-        animalRepo.save(a);
-        upsert++;
-      } catch (Exception ex) {
-        log.warn("[ingest] skip item={} cause={}", extAnimalId, ex.toString());
-      }
-    }
-
-    log.info("[ingest] done: region={}, page={}, size={}, upsert={}", region, pageNo, size, upsert);
-    return upsert;
-  }
-
-  /** 전체 페이지 반복 수집 (자기호출 트랜잭션 꼬임 방지: 클래스 레벨 트랜잭션 사용 안 함) */
-  public int ingestAll(String region, LocalDate from, LocalDate to, int pageSize) {
-    int total = 0;
-    int page = 1; // 1부터 시작 권장
-    while (true) {
-      int cnt = ingest(region, from, to, page, pageSize);
-      if (cnt <= 0) break;
-      total += cnt;
-      page++;
-    }
-    log.info("[ingestAll] done: region={}, totalUpsert={}, pages={}", region, total, page - 1);
-    return total;
-  }
-
-  // ───────────── helpers ─────────────
-
-  private Shelter upsertShelter(ExternalResponse.ExternalAnimal ea) {
-    String extShelterId = nvl(ea.shelterId());
-    Optional<Shelter> found = shelterRepo.findByExternalId(extShelterId);
-
-    Shelter s = found.orElseGet(() -> {
-      Shelter ns = new Shelter();
-      ns.setExternalId(extShelterId);
-      return ns;
-    });
-
-    s.setName(trim(ea.shelterName()));
-    s.setTel(trim(ea.shelterTel()));
-    s.setAddress(trim(ea.shelterAddr()));
-    s.setRegion(trim(ea.region()));
-    if (ea.lat() != null) s.setLat(BigDecimal.valueOf(ea.lat()));
-    if (ea.lng() != null) s.setLng(BigDecimal.valueOf(ea.lng()));
-
-    return shelterRepo.save(s);
-  }
-
-  private Sex mapSex(String code) {
-    if (code == null) return Sex.UNKNOWN;
-    switch (code.trim().toUpperCase()) {
-      case "M", "MALE", "남", "수컷": return Sex.MALE;
-      case "F", "FEMALE", "여", "암컷": return Sex.FEMALE;
-      default: return Sex.UNKNOWN;
-    }
-  }
-
-  /**
-   * 외부코드가 'Y'/'N'만 내려오는 경우 성별 기반 파생:
-   *  - Y: FEMALE → SPAYED, 그 외 → NEUTERED
-   */
-  private NeuterStatus mapNeuter(String code, Sex sex) {
-    if (code == null) return NeuterStatus.UNKNOWN;
-    String c = code.trim().toUpperCase();
-    switch (c) {
-      case "S": case "SPAYED": return NeuterStatus.SPAYED;
-      case "C": case "NEUTERED": return NeuterStatus.NEUTERED; // C: Castrated
-      case "Y": case "YES": case "T": case "TRUE": case "1":
-        return (sex == Sex.FEMALE ? NeuterStatus.SPAYED : NeuterStatus.NEUTERED);
-      case "N": case "NO": case "F": case "FALSE": case "0": case "U": case "UNKNOWN":
-      default: return NeuterStatus.UNKNOWN;
-    }
-  }
-
-  /** 공공데이터 한글 상태 포함 매핑 */
-  private AnimalStatus mapStatus(String code) {
-    if (code == null || code.isBlank()) return AnimalStatus.AVAILABLE;
-    String c = code.trim();
-
-    // 한글 우선 처리
-    switch (c) {
-      case "공고중": return AnimalStatus.AVAILABLE;   // 공고 진행
-      case "보호중": return AnimalStatus.PENDING;     // 보호/대기
-      case "입양완료":
-      case "종료":
-      case "반환":
-      case "자연사":
-      case "안락사":
-        return AnimalStatus.ADOPTED;                  // 내부상 '종료'를 ADOPTED로 묶음
-    }
-
-    // 영문/코드 처리
-    switch (c.toUpperCase()) {
-      case "A": case "AVAILABLE": case "OPEN":    return AnimalStatus.AVAILABLE;
-      case "P": case "PENDING":                   return AnimalStatus.PENDING;
-      case "M": case "MATCHED": case "RESERVED":  return AnimalStatus.MATCHED;
-      case "D": case "ADOPTED": case "CLOSED":    return AnimalStatus.ADOPTED;
-      default: return AnimalStatus.AVAILABLE;
-    }
-  }
-
-  private static String nvl(String v) { return v == null ? "" : v; }
-  private static String trim(String v) { return v == null ? null : v.trim(); }
-  private static String firstNonBlank(String a, String b) {
-    if (a != null && !a.isBlank()) return a;
-    if (b != null && !b.isBlank()) return b;
-    return null;
-  }
-
-  /** kindCd 예: "[개] 믹스견" → "믹스견" */
-  private String extractBreedFromKind(String kindCd) {
-    if (kindCd == null) return null;
-    int idx = kindCd.indexOf(']');
-    String s = (idx >= 0 && idx + 1 < kindCd.length()) ? kindCd.substring(idx + 1) : kindCd;
-    return s == null ? null : s.trim();
-  }
-
-  /** "2023(년생)" / "2살" / "6(개월)" → 개월 수(대략치) */
-  private Integer parseAgeMonths(String ageText) {
-    if (ageText == null || ageText.isBlank()) return null;
-    String t = ageText.replaceAll("\\s", "");
-    try {
-      if (t.contains("년생")) {
-        String yearStr = t.replaceAll("[^0-9]", "");
-        if (!yearStr.isEmpty()) {
-          int birthYear = Integer.parseInt(yearStr);
-          int years = Math.max(0, LocalDate.now().getYear() - birthYear);
-          return years * 12;
+            // 페이징 종료 판정
+            Integer totalCount = body.getTotalCount();
+            Integer numOfRows  = body.getNumOfRows();
+            Integer pageNo     = body.getPageNo();
+            if (numOfRows == null || pageNo == null || totalCount == null) {
+                if (items.size() < pageSize) break; // 안전 종료
+            } else {
+                int totalPages = (int) Math.ceil(totalCount / (double) numOfRows);
+                if (pageNo >= totalPages) break;
+            }
+            page++;
         }
-      } else if (t.contains("개월")) {
-        String m = t.replaceAll("[^0-9]", "");
-        return m.isEmpty() ? null : Integer.parseInt(m);
-      } else if (t.contains("살")) {
-        String y = t.replaceAll("[^0-9]", "");
-        int years = y.isEmpty() ? 0 : Integer.parseInt(y);
-        return years * 12;
-      }
-    } catch (Exception ignore) {}
-    return null;
-  }
 
-  /** "5(Kg)" / "5.2Kg" → 5, 5.2 */
-  private BigDecimal parseWeightKg(String weightText) {
-    if (weightText == null || weightText.isBlank()) return null;
-    String num = weightText.replaceAll("[^0-9.]", "");
-    if (num.isEmpty()) return null;
-    try {
-      return new BigDecimal(num);
-    } catch (NumberFormatException e) {
-      return null;
+        log.info("Ingest finished. total={}, inserted={}, updated={}", total, inserted, updated);
+        return new IngestCounters(total, inserted, updated);
     }
-  }
+
+    /** 외부 → 엔티티 매핑 */
+    private static void apply(Animal a, ExternalResponse.Item it) {
+        a.setHappenDt(it.getHappenDt());
+        a.setHappenPlace(it.getHappenPlace());
+        a.setKindCd(it.getKindCd());
+        a.setColorCd(it.getColorCd());
+        a.setAge(it.getAge());
+        a.setWeight(it.getWeight());
+        a.setSexCd(it.getSexCd());
+        a.setNeuterYn(it.getNeuterYn());
+        a.setSpecialMark(it.getSpecialMark());
+        a.setCareNm(it.getCareNm());
+        a.setCareTel(it.getCareTel());
+        a.setCareAddr(it.getCareAddr());
+        a.setProcessState(it.getProcessState());
+        a.setFilename(it.getFilename());
+        a.setPopfile(it.getPopfile());
+        a.setNoticeNo(it.getNoticeNo());
+        a.setNoticeSdt(it.getNoticeSdt());
+        a.setNoticeEdt(it.getNoticeEdt());
+        a.setUprCd(it.getUprCd());
+        a.setOrgNm(it.getOrgNm());
+        a.setChargeNm(it.getChargeNm());
+        a.setOfficetel(it.getOfficetel());
+    }
+
+    /** 외부 레코드에서 내부 고유키(externalId) 생성: desertionNo 우선, 없으면 해시 */
+    private static String toExternalId(ExternalResponse.Item it) {
+        String dn = trimToNull(it.getDesertionNo());
+        if (dn != null) return "V2:" + dn; // 버전/소스 구분 prefix
+
+        // fallback: 안정 필드 조합 해시
+        String base = String.join("|",
+                nullToEmpty(asYmd(it.getHappenDt())),
+                nullToEmpty(it.getOrgNm()),
+                nullToEmpty(it.getNoticeNo()),
+                nullToEmpty(it.getKindCd()),
+                nullToEmpty(it.getFilename()),
+                nullToEmpty(it.getPopfile())
+        );
+        String h = sha1(base);
+        return (h == null || h.isBlank()) ? null : "V2H:" + h;
+    }
+
+    private static String asYmd(LocalDate d) { return (d == null) ? null : d.toString().replace("-", ""); }
+    private static String trimToNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+    private static String nullToEmpty(String s) { return (s == null) ? "" : s; }
+
+    private static String sha1(String s) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            byte[] digest = md.digest(s.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Getter @AllArgsConstructor
+    public static class IngestCounters {
+        private final int total;
+        private final int inserted;
+        private final int updated;
+    }
 }

@@ -77,6 +77,8 @@ public class Animal {
     @Column(name = "officetel")
     private String officetel;
 
+    
+
     @Column(name = "created_at", updatable = false, insertable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private java.time.LocalDateTime createdAt;
 

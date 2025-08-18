@@ -29,3 +29,4 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
            """)
     List<String> findDistinctCareNames();
 }
+// 

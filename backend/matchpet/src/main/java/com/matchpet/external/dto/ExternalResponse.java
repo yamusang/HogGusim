@@ -10,26 +10,30 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** 공공데이터포털 유기동물 API(JSON) 응답 매핑 */
-@Getter @Setter
+@Getter
+@Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ExternalResponse {
     private Response response;
 
-    @Getter @Setter
+    @Getter
+    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Response {
         private Header header;
         private Body body;
     }
 
-    @Getter @Setter
+    @Getter
+    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Header {
         private String resultCode;
         private String resultMsg;
     }
 
-    @Getter @Setter
+    @Getter
+    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Body {
         private Items items;
@@ -38,17 +42,21 @@ public class ExternalResponse {
         private Integer totalCount;
     }
 
-    @Getter @Setter
+    @Getter
+    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Items {
         private List<Item> item;
     }
 
     /** 실제 레코드 */
-    @Getter @Setter
+    @Getter
+    @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Item {
         private String desertionNo;
+        private String popfile1;
+        private String popfile2;
 
         @JsonDeserialize(using = YmdLocalDateDeserializer.class)
         private LocalDate happenDt;

@@ -11,39 +11,29 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
-/**
- * 공공데이터포털 유기동물 API → DB 적재 서비스
- * - 기간/지역 조건으로 페이지 단위 호출
- * - 유기번호(desertionNo) 기준 upsert
- * - 날짜 필드는 ExternalResponse.Item에서 이미 LocalDate로 역직렬화됨
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnimalIngestService {
 
     private final AnimalApiClient api;
-    private final AnimalRepository animalRepository;
+    private final AnimalRepository repo;
 
     @Transactional
     public IngestCounters ingest(LocalDate from, LocalDate to, String uprCd, int pageSize) {
-        if (from == null || to == null) throw new IllegalArgumentException("from/to must not be null");
-        if (from.isAfter(to)) throw new IllegalArgumentException("from(" + from + ") must be <= to(" + to + ")");
-
         IngestCounters c = new IngestCounters();
         int pageNo = 1;
 
         while (true) {
             ExternalResponse res = api.call(from, to, uprCd, pageNo, pageSize);
-
             List<ExternalResponse.Item> items = safeItems(res);
             if (items.isEmpty()) {
-                log.info("수신 항목 없음. 종료 pageNo={}", pageNo);
+                log.info("no items; stop at pageNo={}", pageNo);
                 break;
             }
 
@@ -52,113 +42,112 @@ public class AnimalIngestService {
                 upsertOne(it, c);
             }
 
-            int totalCount = safeTotalCount(res);
-            int rows = safeNumOfRows(res, pageSize);
-            int lastPage = (int) Math.ceil((double) totalCount / (double) rows);
-
-            log.debug("pageNo={} 처리 완료 (lastPage={}, totalCount={}, rows={})",
-                    pageNo, lastPage, totalCount, rows);
-
+            int totalCount = safeInt(() -> res.getResponse().getBody().getTotalCount(), 0);
+            int rows       = safeInt(() -> res.getResponse().getBody().getNumOfRows(), pageSize);
+            int lastPage   = (int) Math.ceil((double) totalCount / Math.max(1, rows));
             if (pageNo >= lastPage) break;
             pageNo++;
         }
 
-        log.info("적재 완료: {}", c);
+        log.info("ingest done: {}", c);
         return c;
     }
 
     private void upsertOne(ExternalResponse.Item it, IngestCounters c) {
-        String desertionNo = trimToNull(it.getDesertionNo());
-        if (desertionNo == null) {
-            log.warn("desertionNo 누락으로 skip: item={}", it);
-            c.skipped++;
-            return;
-        }
+    // 외부 키 구성
+    String desertionNo = trimToNull(it.getDesertionNo());
+    String externalId  = buildExternalId(it, desertionNo);
+    if (externalId == null) { c.skipped++; return; }
 
-        try {
-            Optional<Animal> existing = animalRepository.findByDesertionNo(desertionNo);
-            if (existing.isPresent()) {
-                Animal a = existing.get();
-                apply(a, it);
-                // 변경감지는 @Transactional로 flush
-                c.updated++;
-            } else {
-                Animal a = Animal.builder()
-                        .desertionNo(desertionNo)
-                        .build();
-                apply(a, it);
-                animalRepository.save(a);
-                c.inserted++;
-            }
-        } catch (Exception e) {
-            log.error("upsert 실패 desertionNo={}: {}", desertionNo, e.getMessage(), e);
-            c.skipped++;
+    // 1) desertion_no 우선 조회 (중복키 방지)
+    Animal a = null;
+    if (desertionNo != null) {
+        a = repo.findByDesertionNo(desertionNo).orElse(null);
+    }
+    // 2) external_id 로도 조회
+    if (a == null) {
+        a = repo.findByExternalId(externalId).orElse(null);
+    }
+
+    // 3) 없으면 신규, 있으면 갱신
+    boolean isNew = false;
+    if (a == null) {
+        a = new Animal();
+        isNew = true;
+        a.setExternalId(externalId);
+        a.setDesertionNo(desertionNo); // 있을 때만
+    } else {
+        // 키 동기화(기존 행이 예전에 다른 external_id로 들어간 경우 보정)
+        if (a.getExternalId() == null || !a.getExternalId().equals(externalId)) {
+            a.setExternalId(externalId);
+        }
+        if (desertionNo != null && (a.getDesertionNo() == null || !a.getDesertionNo().equals(desertionNo))) {
+            a.setDesertionNo(desertionNo);
         }
     }
 
-    /** DTO → 엔티티 매핑 (DTO의 날짜는 이미 LocalDate) */
-    private void apply(Animal a, ExternalResponse.Item it) {
-        a.setExternalId(trimToNull(it.getNoticeNo())); // 필요 시 다른 외부키로 교체 가능
+    // ===== 기본 =====
+    a.setHappenDt(it.getHappenDt());
+    a.setHappenPlace(trimToNull(it.getHappenPlace()));
 
-        a.setHappenDt(it.getHappenDt());
-        a.setHappenPlace(trimToNull(it.getHappenPlace()));
+    a.setKindCd(trimToNull(it.getKindCd()));
+    a.setColorCd(trimToNull(it.getColorCd()));
 
-        a.setKindCd(trimToNull(it.getKindCd()));
-        a.setColorCd(trimToNull(it.getColorCd()));
-        a.setAge(trimToNull(it.getAge()));
-        a.setWeight(trimToNull(it.getWeight()));
+    a.setAge(trimToNull(it.getAge()));
+    a.setWeight(trimToNull(it.getWeight()));
 
-        a.setSexCd(trimToNull(it.getSexCd()));
-        a.setNeuterYn(trimToNull(it.getNeuterYn()));
-        a.setSpecialMark(trimToNull(it.getSpecialMark()));
+    a.setSexCd(trimToNull(it.getSexCd()));
+    a.setNeuterYn(trimToNull(it.getNeuterYn()));
+    a.setProcessState(trimToNull(it.getProcessState()));
+    a.setSpecialMark(trimToNull(it.getSpecialMark()));
 
-        a.setCareNm(trimToNull(it.getCareNm()));
-        a.setCareTel(trimToNull(it.getCareTel()));
-        a.setCareAddr(trimToNull(it.getCareAddr()));
+    // ===== 보호소/기관 =====
+    a.setCareNm(trimToNull(it.getCareNm()));
+    a.setCareTel(trimToNull(it.getCareTel()));
+    a.setCareAddr(trimToNull(it.getCareAddr()));
+    a.setOrgNm(trimToNull(it.getOrgNm()));
+    a.setChargeNm(trimToNull(getStringViaReflection(it, "getCareOwnerNm"))); // 있으면 사용
 
-        a.setProcessState(trimToNull(it.getProcessState()));
+    // ===== 공고 =====
+    a.setNoticeNo(trimToNull(it.getNoticeNo()));
+    a.setNoticeSdt(it.getNoticeSdt());
+    a.setNoticeEdt(it.getNoticeEdt());
 
-        a.setFilename(trimToNull(it.getFilename()));
-        a.setPopfile(trimToNull(it.getPopfile()));
-
-        a.setNoticeNo(trimToNull(it.getNoticeNo()));
-        a.setNoticeSdt(it.getNoticeSdt());
-        a.setNoticeEdt(it.getNoticeEdt());
-
-        a.setUprCd(trimToNull(it.getUprCd()));
-        a.setOrgNm(trimToNull(it.getOrgNm()));
-        a.setChargeNm(trimToNull(it.getChargeNm()));
-        a.setOfficetel(trimToNull(it.getOfficetel()));
+    // ===== 이미지/파일명 =====
+    String p1 = trimToNull(getStringViaReflection(it, "getPopfile1"));
+    String p2 = trimToNull(getStringViaReflection(it, "getPopfile2"));
+    String chosen = firstNonBlank(p1, p2);
+    if (chosen != null) {
+        a.setPopfile(chosen);
+        a.setFilename(extractFileName(chosen));
+    } else if (a.getPopfile() == null) {
+        a.setFilename(null);
     }
 
-    // ===== 안전 접근/유틸 =====
+    repo.save(a);
+    if (isNew) c.inserted++; else c.updated++;
+}
 
+    // ===== 안전 접근 유틸 =====
     private static List<ExternalResponse.Item> safeItems(ExternalResponse res) {
-        if (res == null || res.getResponse() == null || res.getResponse().getBody() == null
-                || res.getResponse().getBody().getItems() == null
-                || res.getResponse().getBody().getItems().getItem() == null) {
+        try {
+            if (res == null) return Collections.emptyList();
+            var body = res.getResponse().getBody();
+            if (body == null || body.getItems() == null || body.getItems().getItem() == null) {
+                return Collections.emptyList();
+            }
+            return body.getItems().getItem();
+        } catch (Exception e) {
             return Collections.emptyList();
         }
-        return res.getResponse().getBody().getItems().getItem();
     }
 
-    private static int safeTotalCount(ExternalResponse res) {
-        try {
-            Integer tc = res.getResponse().getBody().getTotalCount();
-            return tc == null ? 0 : tc;
-        } catch (Exception ignore) {
-            return 0;
-        }
+    private static int safeInt(IntSupplier s, int def) {
+        try { Integer v = s.getAsInt(); return v == null ? def : v; } catch (Exception e) { return def; }
     }
 
-    private static int safeNumOfRows(ExternalResponse res, int fallback) {
-        try {
-            Integer n = res.getResponse().getBody().getNumOfRows();
-            return (n == null || n <= 0) ? fallback : n;
-        } catch (Exception ignore) {
-            return fallback;
-        }
-    }
+    @FunctionalInterface
+    private interface IntSupplier { Integer getAsInt(); }
 
     private static String trimToNull(String s) {
         if (s == null) return null;
@@ -166,7 +155,41 @@ public class AnimalIngestService {
         return t.isEmpty() ? null : t;
     }
 
-    // ===== 카운터 DTO =====
+    private static String firstNonBlank(String... arr) {
+        if (arr == null) return null;
+        for (String s : arr) {
+            if (s != null && !s.isBlank()) return s.trim();
+        }
+        return null;
+    }
+
+    private static String extractFileName(String urlOrName) {
+        if (urlOrName == null) return null;
+        String s = urlOrName.trim();
+        int q = s.indexOf('?'); if (q > -1) s = s.substring(0, q);
+        int slash = s.lastIndexOf('/');
+        return (slash > -1) ? s.substring(slash + 1) : s;
+    }
+
+    private static String buildExternalId(ExternalResponse.Item it, String desertionNo) {
+        // desertionNo 최우선. 없으면 orgNm / noticeNo 중 하나라도 사용
+        if (desertionNo != null) return desertionNo;
+        String org = trimToNull(it.getOrgNm());
+        String nn  = trimToNull(it.getNoticeNo());
+        return firstNonBlank(org, nn);
+    }
+
+    /** DTO에 해당 getter가 없을 수도 있으므로 리플렉션으로 안전 접근 */
+    private static String getStringViaReflection(Object obj, String getterName) {
+        try {
+            Method m = obj.getClass().getMethod(getterName);
+            Object v = m.invoke(obj);
+            return v != null ? v.toString() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     @Getter @ToString
     public static class IngestCounters {
         private int total;

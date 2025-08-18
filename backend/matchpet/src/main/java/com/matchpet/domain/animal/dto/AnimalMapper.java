@@ -8,16 +8,23 @@ public final class AnimalMapper {
 
     public static CardDto toCard(Animal a) {
         if (a == null) return null;
+
+        // 엔티티에 라벨 컬럼이 없으므로 코드/원문을 그대로 노출
+        String kindLabel  = a.getKindCd();
+        String colorLabel = a.getColorCd();
+        String thumb      = a.getPopfile(); // 썸네일 전용 필드는 없으므로 동일 사용
+        String image      = a.getPopfile();
+
         return CardDto.builder()
                 .desertionNo(a.getDesertionNo())
                 .happenDt(a.getHappenDt() != null ? a.getHappenDt().toString() : null)
-                .kind(a.getKindCd())              // 품종(전체 문자열)
-                .color(a.getColorCd())
-                .sex(a.getSexCd())                // M/F/Q
-                .neuter(a.getNeuterYn())          // Y/N/U
+                .kind(kindLabel)
+                .color(colorLabel)
+                .sex(a.getSexCd())          // M/F/Q
+                .neuter(a.getNeuterYn())    // Y/N/U
                 .processState(a.getProcessState())
-                .thumbnail(a.getFilename())       // 썸네일
-                .image(a.getPopfile())            // 원본
+                .thumbnail(thumb)
+                .image(image)
                 .careName(a.getCareNm())
                 .careTel(a.getCareTel())
                 .careAddr(a.getCareAddr())

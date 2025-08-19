@@ -2,15 +2,24 @@
 package com.matchpet.auth.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class LoginResponse {
     private String token;
     private String role; // ← String 권장
+    private String email;
     private Long userId;
     private String name;
+    private String affiliation;
+    private String displayName;
 }
 
 // 기본 성질: 불변(immutable), 모든 필드는 final, 세터 없음

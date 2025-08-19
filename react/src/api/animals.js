@@ -30,10 +30,14 @@ export const normalizePet = (it) => {
     '';
   const photoUrl = rawPhoto ? toAbsoluteUrl(rawPhoto) : '';
 
+  // kindCd가 "[개] 믹스" 형태면 대괄호 접두어 제거
+  const rawSpecies = it.kindCd || it.species || '';
+  const species = String(rawSpecies).replace(/^\[[^\]]+\]\s*/, '');
+
   return {
     id: it.desertionNo ?? it.id ?? null,
     name: it.name ?? null,
-    species: it.kindCd || it.species || '',
+    species,
     color: it.colorCd || it.color || '',
     gender,
     age: it.age || '',
@@ -60,7 +64,7 @@ export const normalizePet = (it) => {
 const pickApiItems = (data) => data?.response?.body?.items?.item ?? [];
 const pickPageMeta = (data) => ({
   total: data?.response?.body?.totalCount ?? data?.totalElements ?? 0,
-  page:  data?.response?.body?.pageNo ?? data?.number ?? 1,
+  page:  data?.response?.body?.pageNo ?? data?.number ?? 0, // 0-based 기본값
   size:  data?.response?.body?.numOfRows ?? data?.size ?? 0,
 });
 
@@ -75,10 +79,20 @@ export const fetchAnimals = async (params = {}) => {
 };
 
 /** ==============================
- * 보호소 기준 목록 (shelterId로 필터)
+ * 보호소 기준 목록
+ * - 기존 이름 유지하되 careNm를 직접 받을 수 있게 확장
+ * - 우선순위: explicit careNm > shelterId(백에서 이걸 careNm로 쓰는 경우만)
  * ============================== */
-export const fetchAnimalsByShelter = async ({ shelterId, page = 1, size = 100 } = {}) => {
-  const { content } = await fetchAnimals({ shelterId, page, size });
+export const fetchAnimalsByShelter = async ({
+  careNm,
+  shelterId,
+  page = 0,
+  size = 100,
+} = {}) => {
+  const query = {};
+  if (careNm) query.careNm = careNm;
+  else if (shelterId) query.careNm = shelterId; // 환경에 따라 shelterId가 곧 careNm이면 폴백
+  const { content } = await fetchAnimals({ ...query, page, size });
   return content;
 };
 
@@ -139,7 +153,7 @@ const uniqById = (arr=[]) => {
 /** 메인 슬라이드: 보호 중인 강아지들 */
 export const fetchFeaturedDogs = async ({
   take = 18,
-  page = 1,
+  page = 0,
   size = 120,
   status = 'AVAILABLE',
   sort = 'createdAt,DESC',
@@ -166,6 +180,6 @@ export const fetchFeaturedDogs = async ({
 
 /** 최신 강아지(사진 포함) */
 export const fetchLatestDogs = async ({ take = 18 } = {}) => {
-  const { content } = await fetchAnimals({ page: 1, size: 120, sort: 'createdAt,DESC' });
+  const { content } = await fetchAnimals({ page: 0, size: 120, sort: 'createdAt,DESC' });
   return content.filter(isDog).filter(hasPhoto).slice(0, take);
 };

@@ -1,10 +1,11 @@
+// src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
 // pages
-import MainPage from './pages/Mainpage/MainPage'; // ← 실제 폴더명 확인!
+import MainPage from './pages/Mainpage/MainPage';   // ✅ 폴더/파일명 일치
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import SeniorPage from './pages/senior/SeniorPage';
@@ -32,13 +33,11 @@ function Protected({ children, allow }) {
   const loc = useLocation();
   if (loading) return null;
   if (!user) return <Navigate to={`/login?from=${encodeURIComponent(loc.pathname)}`} replace />;
-
   if (allow && !allow.map(toUpper).includes(toUpper(user.role))) {
     return <Navigate to={routeForRole(user.role)} replace />;
   }
   return children;
 }
-
 function RedirectIfAuthed({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;

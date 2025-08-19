@@ -1,5 +1,5 @@
 // src/pages/pet/PetNewPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
@@ -17,6 +17,16 @@ const STATUS_OPTIONS = [
 export default function PetNewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // ✅ A안: affiliation → careNm로 사용
+  const careNm = useMemo(() =>
+    (user?.affiliation ||
+     sessionStorage.getItem('affiliation') ||
+     localStorage.getItem('selectedCareNm') ||
+     '').trim()
+  , [user]);
+
+  // (있으면 같이 보내되, 필터는 careNm로 할 거라 필수 아님)
   const shelterId = user?.shelterId || user?.id || null;
 
   const [form, setForm] = useState({
@@ -40,7 +50,7 @@ export default function PetNewPage() {
   const onFileChange = (e) => setFiles(Array.from(e.target.files || []));
 
   const validate = () => {
-    if (!shelterId) return '보호소 ID가 없습니다. 다시 로그인해 주세요.';
+    if (!careNm) return '보호소(소속)가 비어 있어요. 관리자 계정으로 다시 로그인해 주세요.';
     if (!form.name.trim()) return '이름을 입력해 주세요.';
     if (!form.breed.trim()) return '품종을 입력해 주세요.';
     const ageNum = Number(form.age);
@@ -58,7 +68,12 @@ export default function PetNewPage() {
 
     try {
       const payload = {
-        shelterId,
+        // ✅ 핵심: careNm로 소속 지정 (A안)
+        careNm,
+
+        // 호환성 위해 함께 전송(서버가 무시해도 됨)
+        ...(shelterId ? { shelterId } : {}),
+
         name: form.name.trim(),
         breed: form.breed.trim(),
         gender: form.sex,          // 백엔드가 sex/gender 중 무엇을 쓰든 서버에서 매핑
@@ -90,7 +105,11 @@ export default function PetNewPage() {
       navigate('/shelter', { replace: true });
     } catch (e2) {
       console.error(e2);
-      setErr('등록에 실패했습니다. 입력값을 확인하거나 잠시 후 다시 시도해 주세요.');
+      setErr(
+        e2?.response?.data?.message ||
+        e2?.message ||
+        '등록에 실패했습니다. 입력값을 확인하거나 잠시 후 다시 시도해 주세요.'
+      );
     } finally {
       setLoading(false);
     }

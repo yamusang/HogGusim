@@ -1,34 +1,31 @@
+// src/main/java/com/matchpet/domain/animal/repository/AnimalRepository.java
 package com.matchpet.domain.animal.repository;
-
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 
 import com.matchpet.domain.animal.entity.Animal;
 
+import java.util.Optional;
+
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
+
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
-  Page<Animal> findByCareNmContainingIgnoreCase(String careNm, Pageable pageable);
+
+  @Query("""
+        select a from Animal a
+        where (:careNm is null or trim(:careNm) = '' or a.careNm = :careNm)
+          and (coalesce(a.processState, '') = '' or a.processState = 'AVAILABLE')
+      """)
+  Page<Animal> findAvailableByCareNm(@Param("careNm") String careNm, Pageable pageable);
+
+  @Query("""
+        select a from Animal a
+        where (coalesce(a.processState, '') = '' or a.processState = 'AVAILABLE')
+          and a.popfile is not null and a.popfile <> ''
+      """)
+  Page<Animal> findAvailableWithPhoto(Pageable pageable);
+
   Optional<Animal> findByExternalId(String externalId);
 
   Optional<Animal> findByDesertionNo(String desertionNo);
-
-  // 가입 검증용 (이미 사용 중)
-  @Query("""
-         select case when count(a) > 0 then true else false end
-           from Animal a
-          where upper(trim(a.careNm)) = upper(trim(:careNm))
-         """)
-  boolean existsByCareNmStrict(String careNm);
-
-  @Query("""
-         select distinct trim(a.careNm)
-           from Animal a
-          where a.careNm is not null and trim(a.careNm) <> ''
-          order by trim(a.careNm) asc
-         """)
-  List<String> findDistinctCareNames();
 }

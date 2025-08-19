@@ -135,13 +135,13 @@ public class AuthService {
 
   // ★ 프론트가 쓰는 필드로 맞춰서 응답
   return LoginResponse.builder()
-        .token(token)
-        .role(u.getRole().name())
-        .email(u.getEmail())              // ★
-        .userId(u.getId())                // (옵션)
-        .displayName(u.getDisplayName())
-        .affiliation(u.getAffiliation())  // ★
-        .build();
+    .token(token)
+    .role(u.getRole().name())
+    .email(u.getEmail())
+    .userId(u.getId())
+    .displayName(u.getDisplayName())
+    .affiliation(u.getAffiliation())
+    .build();
 }
 
   public void logout(String authHeader) {

@@ -11,6 +11,20 @@ const fmtDate = (d) => {
   return String(d).slice(0, 10).replaceAll('-', '.'); // YYYY.MM.DD
 };
 
+// 전체 페이지 모아서 가져오기
+async function loadAllAnimals(params) {
+  const pageSize = 100; // 한 번에 100개씩
+  let page = 0;
+  let all = [];
+  while (true) {
+    const { content, totalPages } = await fetchAnimals({ ...params, page, size: pageSize, sort: 'id,DESC' });
+    all = all.concat(content || []);
+    page += 1;
+    if (page >= (totalPages || 1)) break;
+  }
+  return all;
+}
+
 export default function ShelterPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -58,29 +72,14 @@ export default function ShelterPage() {
       setAnimalsError('');
 
       try {
-        const tryLoad = async (params) => {
-          const { content, totalElements } = await fetchAnimals({
-            page: 0, size: 10, sort: 'id,DESC', ...params,
-          });
-          console.log('[Shelter] API totalElements=', totalElements, 'len=', content?.length);
-          return Array.isArray(content) ? content : [];
-        };
-
         console.log('[Shelter] careNm =', careNm);
-        let list = await tryLoad({ careNm });
 
-        if (list.length === 0) {
-          console.log('[Shelter] fallback (carenm) =', careNm);
-          try { list = await tryLoad({ carenm: careNm }); } catch {}
-        }
+        // 전체 페이지 모아 로드 (careNm 우선)
+        let list = await loadAllAnimals({ careNm });
 
+        // 백 파라미터 철자 예외(carenm) 대비
         if (list.length === 0) {
-          const probe = await tryLoad({});
-          if (probe.length > 0) {
-            console.warn('[Shelter] filter mismatch: careNm 값이 DB와 다를 수 있음');
-          } else {
-            console.warn('[Shelter] endpoint returns 0 without filter (데이터 없음/권한 가능)');
-          }
+          try { list = await loadAllAnimals({ carenm: careNm }); } catch {}
         }
 
         if (!ignore) {
@@ -90,7 +89,7 @@ export default function ShelterPage() {
       } catch (e) {
         if (ignore) return;
         const status = e?.response?.status || e?.status;
-        if (status === 401 || e?.response?.status === 403) {
+        if (status === 401 || status === 403) {
           setAnimalsError('권한이 없습니다. 다시 로그인해주세요.');
         } else {
           setAnimalsError(
@@ -161,24 +160,63 @@ export default function ShelterPage() {
                 if (metaParts.length === 0 && a.color) metaParts.push(a.color);
                 const date = fmtDate(a.happenDt || a.createdAt);
 
+                const neuterLabel = a.neuter === 'Y' ? '중성화 O'
+                                 : a.neuter === 'N' ? '중성화 X'
+                                 : '중성화 미상';
+                const statusLabel = a.status === '보호중' || a.status === 'AVAILABLE' ? '보호중'
+                                 : a.status === '입양완료' || a.status === 'ADOPTED' ? '입양완료'
+                                 : a.status || '상태 미상';
+
                 return (
                   <li
                     key={a.id ?? a._raw?.id ?? a._raw?.desertionNo ?? a._raw?.noticeNo ?? `${a.careNm}-${i}`}
                     className="list__item"
                     style={{
+                      display:'flex', gap:12, alignItems:'center',
                       padding:'12px 14px', border:'1px solid #e5e7eb',
                       borderRadius:12, marginBottom:10, background:'#fff'
                     }}
                   >
-                    <div className="list__main" style={{fontWeight:600}}>
-                      {title}
+                    {/* 썸네일 */}
+                    <div style={{
+                      width:64, height:64, borderRadius:10, overflow:'hidden',
+                      background:'#f3f4f6', flex:'0 0 auto', display:'flex', alignItems:'center', justifyContent:'center'
+                    }}>
+                      {a.photoUrl ? (
+                        <img
+                          src={a.photoUrl}
+                          alt={title}
+                          loading="lazy"
+                          style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                          onError={(e) => { e.currentTarget.style.display='none'; }}
+                        />
+                      ) : (
+                        <span style={{fontSize:12, color:'#9ca3af'}}>no image</span>
+                      )}
                     </div>
-                    <div className="list__meta" style={{fontSize:13, color:'#6b7280'}}>
-                      {metaParts.join(' · ')}
+
+                    {/* 본문 */}
+                    <div style={{flex:'1 1 auto', minWidth:0}}>
+                      <div style={{fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>
+                        {title}
+                      </div>
+                      <div style={{fontSize:13, color:'#6b7280', marginTop:2}}>
+                        {metaParts.join(' · ')}
+                      </div>
+                      <div style={{fontSize:12, color:'#9ca3af', marginTop:4, display:'flex', gap:8, flexWrap:'wrap'}}>
+                        <span>{a.careNm || shelterName}</span>
+                        {date && <span>입소: {date}</span>}
+                      </div>
                     </div>
-                    <div className="list__sub" style={{fontSize:12, color:'#9ca3af', marginTop:4}}>
-                      <span>{a.careNm || shelterName}</span>
-                      {date && <span style={{marginLeft:8}}>입소: {date}</span>}
+
+                    {/* 라벨 */}
+                    <div style={{display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end'}}>
+                      <span style={{fontSize:12, padding:'2px 8px', borderRadius:999, background:'#eef2ff', color:'#4338ca'}}>
+                        {statusLabel}
+                      </span>
+                      <span style={{fontSize:12, padding:'2px 8px', borderRadius:999, background:'#f1f5f9', color:'#334155'}}>
+                        {neuterLabel}
+                      </span>
                     </div>
                   </li>
                 );

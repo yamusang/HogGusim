@@ -37,7 +37,7 @@ export const normalizePet = (it = {}) => {
   if (/^\d+$/.test(species)) species = ''; // 순수 숫자코드면 표시 X
 
   return {
-    // ✅ id 후보 보강 (스프링/JPA/공공데이터 혼용 대비)
+    // ✅ id 후보 보강
     id:
       it.id ??
       it.desertionNo ??

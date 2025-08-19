@@ -10,7 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import com.matchpet.domain.animal.entity.Animal;
 
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
-  Page<Animal> findByCareNm(String careNm, Pageable pageable);
+  Page<Animal> findByCareNmContainingIgnoreCase(String careNm, Pageable pageable);
+
 
   // 가입 검증용 (이미 사용 중)
   @Query("""

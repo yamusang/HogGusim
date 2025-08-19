@@ -22,11 +22,30 @@ export const normalizePet = (it = {}) => {
     it.popfile ?? it.filename ?? it.photoUrl ?? it.thumb ?? it.image ?? '';
   const photoUrl = rawPhoto ? toAbsoluteUrl(rawPhoto) : '';
 
-  const rawSpecies = it.kindCd || it.species || '';
-  const species = String(rawSpecies).replace(/^\[[^\]]+\]\s*/, '');
+  // ✅ 종 추출 보강: 여러 키 후보 + 숫자코드 제거 + 대괄호 접두 제거
+  const rawKind =
+    it.kind ??
+    it.kindNm ??
+    it.kindName ??
+    it.kind_name ??
+    it.kind_cd_name ??
+    it.kindCd ??
+    it.species ??
+    '';
+  let species = String(rawKind || '');
+  if (/^\[[^\]]+\]\s*/.test(species)) species = species.replace(/^\[[^\]]+\]\s*/, '');
+  if (/^\d+$/.test(species)) species = ''; // 순수 숫자코드면 표시 X
 
   return {
-    id: it.desertionNo ?? it.id ?? null,
+    // ✅ id 후보 보강 (스프링/JPA/공공데이터 혼용 대비)
+    id:
+      it.id ??
+      it.desertionNo ??
+      it.noticeNo ??
+      it.externalId ??
+      it.desertion_no ??
+      null,
+
     name: it.name ?? null,
 
     species,
@@ -75,10 +94,12 @@ export const fetchAnimals = async (params = {}) => {
   const safe = { sort: 'id,DESC', page: 0, size: 20, ...params };
   const { data } = await api.get('/animals', { params: safe });
 
+  // ✅ 스프링 Page 우선 → 오픈API → 배열
   const contentRaw =
-    pickApiItems(data) ??
     data?.content ??
-    (Array.isArray(data) ? data : []) ?? [];
+    pickApiItems(data) ??
+    (Array.isArray(data) ? data : []) ??
+    [];
 
   const meta = pickPageMeta(data);
 

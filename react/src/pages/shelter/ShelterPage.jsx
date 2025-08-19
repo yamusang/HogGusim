@@ -5,6 +5,12 @@ import Button from '../../components/ui/Button';
 import { fetchAnimals } from '../../api/animals';
 import './shelter.css';
 
+// 날짜 포맷 보조
+const fmtDate = (d) => {
+  if (!d) return '';
+  return String(d).slice(0, 10).replaceAll('-', '.'); // YYYY.MM.DD
+};
+
 export default function ShelterPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -37,7 +43,7 @@ export default function ShelterPage() {
     setMetaLoading(false);
   }, [careNm]);
 
-  // 보호소 소유 동물 로드: GET /api/animals?careNm=...
+  // 보호소 소유 동물 로드: GET /animals?careNm=...
   useEffect(() => {
     let ignore = false;
 
@@ -53,23 +59,21 @@ export default function ShelterPage() {
 
       try {
         const tryLoad = async (params) => {
-          const { content } = await fetchAnimals({
+          const { content, totalElements } = await fetchAnimals({
             page: 0, size: 10, sort: 'id,DESC', ...params,
           });
+          console.log('[Shelter] API totalElements=', totalElements, 'len=', content?.length);
           return Array.isArray(content) ? content : [];
         };
 
-        // 1) careNm 시도
-        console.log('[Shelter] careNm=', careNm);
+        console.log('[Shelter] careNm =', careNm);
         let list = await tryLoad({ careNm });
 
-        // 2) 0건이면 carenm 시도(백 파라미터 철자 불일치 대비)
         if (list.length === 0) {
-          console.log('[Shelter] fallback carenm=', careNm);
+          console.log('[Shelter] fallback (carenm) =', careNm);
           try { list = await tryLoad({ carenm: careNm }); } catch {}
         }
 
-        // 3) 여전히 0이면 필터 없이 확인
         if (list.length === 0) {
           const probe = await tryLoad({});
           if (probe.length > 0) {
@@ -79,13 +83,15 @@ export default function ShelterPage() {
           }
         }
 
-        if (!ignore) setAnimals(list);
+        if (!ignore) {
+          console.log('[Shelter] setAnimals len=', list.length, 'sample=', list?.[0]);
+          setAnimals(list);
+        }
       } catch (e) {
         if (ignore) return;
         const status = e?.response?.status || e?.status;
-        if (status === 401 || status === 403) {
+        if (status === 401 || e?.response?.status === 403) {
           setAnimalsError('권한이 없습니다. 다시 로그인해주세요.');
-          // navigate('/login', { replace: true });
         } else {
           setAnimalsError(
             e?.response?.data?.message ||
@@ -105,6 +111,8 @@ export default function ShelterPage() {
   const goNewPet  = () => navigate('/shelter/pets/new');
   const goAllPets = () => navigate('/pet/connect');
   const goLogout  = () => navigate('/logout');
+
+  const count = animals?.length || 0;
 
   return (
     <div className="shelter">
@@ -132,6 +140,7 @@ export default function ShelterPage() {
         <section className="card">
           <div className="card__head">
             <h2 className="card__title">보호 중인 동물</h2>
+            <span className="card__meta" style={{fontSize:12, color:'#6b7280'}}>총 {count}마리</span>
             <Link to="/pet/connect" className="card__link">더 보기</Link>
           </div>
 
@@ -140,30 +149,40 @@ export default function ShelterPage() {
             <div className="card__error">{animalsError}</div>
           )}
 
-          {!animalsLoading && !animalsError && (
+          {!animalsLoading && !animalsError && count === 0 && (
+            <div className="card__body">등록된 보호 동물이 없습니다. 먼저 등록해 보세요.</div>
+          )}
+
+          {!animalsLoading && !animalsError && count > 0 && (
             <ul className="list">
-              {animals.length === 0 && (
-                <li className="list__empty">등록된 보호 동물이 없습니다. 먼저 등록해 보세요.</li>
-              )}
-              {animals.map((a, i) => (
-                <li
-                  key={a.id ?? a._raw?.desertionNo ?? a._raw?.noticeNo ?? `${a.careNm}-${i}`}
-                  className="list__item"
-                >
-                  <div className="list__main">
-                    <strong className="list__name">{a.species || a.breed || '품종 미상'}</strong>
-                    <span className="list__meta">
-                      {[a.gender || a.sex, a.age, a.weight].filter(Boolean).join(' · ')}
-                    </span>
-                  </div>
-                  <div className="list__sub">
-                    <span className="list__shelter">{a.careNm || shelterName}</span>
-                    {(a.happenDt || a.createdAt) && (
-                      <span className="list__date">입소: {a.happenDt || a.createdAt}</span>
-                    )}
-                  </div>
-                </li>
-              ))}
+              {animals.map((a, i) => {
+                const title = a.name || a.species || a.breed || a.color || '이름/품종 미상';
+                const metaParts = [a.gender || a.sex, a.age, a.weight].filter(Boolean);
+                if (metaParts.length === 0 && a.color) metaParts.push(a.color);
+                const date = fmtDate(a.happenDt || a.createdAt);
+
+                return (
+                  <li
+                    key={a.id ?? a._raw?.id ?? a._raw?.desertionNo ?? a._raw?.noticeNo ?? `${a.careNm}-${i}`}
+                    className="list__item"
+                    style={{
+                      padding:'12px 14px', border:'1px solid #e5e7eb',
+                      borderRadius:12, marginBottom:10, background:'#fff'
+                    }}
+                  >
+                    <div className="list__main" style={{fontWeight:600}}>
+                      {title}
+                    </div>
+                    <div className="list__meta" style={{fontSize:13, color:'#6b7280'}}>
+                      {metaParts.join(' · ')}
+                    </div>
+                    <div className="list__sub" style={{fontSize:12, color:'#9ca3af', marginTop:4}}>
+                      <span>{a.careNm || shelterName}</span>
+                      {date && <span style={{marginLeft:8}}>입소: {date}</span>}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

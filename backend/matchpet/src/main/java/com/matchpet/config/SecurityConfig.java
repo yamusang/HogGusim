@@ -35,7 +35,7 @@ public class SecurityConfig {
       .formLogin(f -> f.disable())
       .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
-          .requestMatchers(HttpMethod.GET, "/api/animals", "/api/animals/**").permitAll()
+          .requestMatchers(HttpMethod.GET, "/api/animals", "/api/animals/*").permitAll()
           .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
           .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()   // 로그인/회원가입/리프레시 허용
           .anyRequest().authenticated()

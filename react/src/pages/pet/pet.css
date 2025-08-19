@@ -40,3 +40,11 @@
 .connect__approve{
   display:flex; gap:10px; justify-content:flex-end; margin-top:18px; border-top:1px dashed #eee; padding-top:14px;
 }
+.pet__header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.pet__sub { font-size:14px; color:#666; }
+.pet__list { display:flex; flex-direction:column; gap:12px; }
+.pet__row { display:flex; align-items:center; gap:12px; border:1px solid #eee; border-radius:12px; padding:12px; }
+.pet__row-main { flex:1; }
+.pet__mgr-name { font-size:16px; }
+.pet__mgr-sub { font-size:13px; color:#666; margin-top:2px; }
+.pet__score { font-weight:700; width:72px; text-align:right; }

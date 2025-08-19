@@ -92,8 +92,12 @@ export default function MainPage() {
 
       {/* ✅ 보호 중인 동물 슬라이더만 남김 */}
       <section className="slider-only">
-        <FeaturedDogsSlider title="보호 중인 동물" take={20} />
-      </section>
+  <div className="slider-head">
+    <h2>보호 중인 동물</h2>
+    <p className="slider-sub">가까운 보호소에서 기다리고 있어요</p>
+  </div>
+  <FeaturedDogsSlider title="" take={20} />
+</section>
     </main>
   );
 }

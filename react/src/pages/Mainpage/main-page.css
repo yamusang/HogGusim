@@ -110,33 +110,135 @@ img{ display:block; max-width:100% }
 .dot:focus{ outline:none; box-shadow: var(--focus) }
 
 /* ==============================
-   Slider: 중앙 정렬 & 사이즈 축소 (오버라이드)
+   Slider: 중앙 정렬 & 따뜻한 톤
 ============================== */
 .slider-only{
   width:100%;
-  margin:36px 0 12px;
-  padding:0 16px;
+  margin:40px 0 16px;
+  padding:0 16px 24px;
   display:flex;
-  justify-content:center;   /* ✅ 중앙 정렬 */
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  /* 상단 히어로와 자연스럽게 이어지도록 은은한 그라데이션 */
+  background: radial-gradient(1000px 500px at 50% -20%, rgba(255,246,230,.55) 0%, transparent 60%);
 }
 
+.slider-only .slider-head{
+  width:100%;
+  max-width:1000px;
+  margin:0 auto 14px;
+  padding:0 4px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.slider-only .slider-head h2{
+  margin:0;
+  font-size:1.35rem;
+  font-weight:800;
+  color:#1b1a16;
+  letter-spacing:.2px;
+}
+.slider-only .slider-sub{
+  margin:0;
+  font-size:.85rem;
+  color:#6b5e54;
+  opacity:.9;
+}
+
+/* 트랙 폭 제한 + 가운데 정렬 */
 .slider-only .dogs-slider{
   width:100%;
-  max-width:1000px;          /* ✅ 슬라이더 폭 제한 */
+  max-width:1000px;
   padding:0;
-  margin:0 auto;            /* ✅ 중앙 정렬 보강 */
+  margin:0 auto;
 }
 
-/* 카드/트랙 크기 축소 */
+/* 카드 사이즈/간격 */
 .slider-only .dogs-track{
-  grid-auto-columns: 220px; /* ✅ 카드 너비 축소 */
-}
-.slider-only .dog-card{
-  max-width:220px;          /* ✅ 카드 최대 폭 */
-}
-.slider-only .dog-photo{
-  height:160px;             /* ✅ 이미지 높이 살짝 줄임 */
+  grid-auto-columns: 230px;
+  gap: 16px;
+  padding: 2px;
 }
 
-/* 접근성 */
-a:focus-visible, button:focus-visible{ outline:none; box-shadow: var(--focus); border-radius:12px }
+/* 카드 스타일: 유리느낌 + 따뜻한 표면 */
+.slider-only .dog-card{
+  max-width:230px;
+  border-radius:16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,246,230,.66) 100%);
+  backdrop-filter: blur(6px);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow: 0 8px 22px rgba(77,47,0,.08);
+  overflow: hidden;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.slider-only .dog-card:hover{
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(77,47,0,.12);
+  filter: brightness(.98);
+}
+
+/* 썸네일 */
+.slider-only .dog-photo{
+  height:160px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  overflow:hidden;
+}
+.slider-only .dog-photo img{
+  width:100%; height:100%; object-fit:cover;
+}
+
+/* 텍스트 */
+.slider-only .dog-title{
+  font-weight:700;
+  font-size:.98rem;
+  color:#1b1a16;
+}
+.slider-only .dog-meta{
+  font-size:.82rem;
+  color:#6b7280;
+}
+
+/* 배지(‘수컷’/상태 등) 톤 다운 */
+.slider-only .dog-badge{
+  font-size:.72rem;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#f1f5f9;
+  color:#334155;
+}
+
+/* 화살표 버튼(있다면) – 원형/그림자/호버 컬러 */
+.slider-only .slider-nav-btn{
+  width:36px; height:36px;
+  border-radius:50%;
+  background:#fff;
+  border:0;
+  box-shadow:0 4px 12px rgba(0,0,0,.16);
+  display:grid; place-items:center;
+  cursor:pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.slider-only .slider-nav-btn:hover{
+  background:#fde68a;          /* 버터 계열 */
+  transform: translateY(-1px);
+}
+.slider-only .slider-nav-btn:focus-visible{
+  outline:none; box-shadow: var(--focus);
+}
+
+/* 페이지 도트(컴포넌트에서 제공되면 클래스 맞춰 덮어쓰기) */
+.slider-only .slider-dots .dot{
+  width:8px; height:8px; border-radius:999px;
+  background:rgba(0,0,0,.14);
+}
+.slider-only .slider-dots .dot.active{
+  background:#f59e0b; /* --amber */
+}
+
+/* 접근성 포커스 공통 */
+a:focus-visible, button:focus-visible{
+  outline:none; box-shadow: var(--focus); border-radius:12px;
+}

@@ -3,61 +3,73 @@ package com.matchpet.domain.animal.dto;
 
 import com.matchpet.domain.animal.entity.Animal;
 import com.matchpet.web.dto.CardDto;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Objects;
 
-/** Entity → DTO 매핑 유틸 */
 public final class AnimalMapper {
+  private static final DateTimeFormatter DF = DateTimeFormatter.ISO_DATE;
 
-    private AnimalMapper() {}
+  private AnimalMapper() {}
 
-    private static final DateTimeFormatter D = DateTimeFormatter.ISO_LOCAL_DATE;
+  public static CardDto toCard(Animal a) {
+    if (a == null) return CardDto.builder().build();
 
-    /** LocalDate → String(yyyy-MM-dd) */
-    private static String d(LocalDate v) {
-        return v == null ? null : D.format(v);
-    }
+    // LocalDate -> String
+    String happenDtStr = null;
+    LocalDate dt = a.getHappenDt();
+    if (dt != null) happenDtStr = dt.format(DF);
 
-    /** 개별 매핑 (CardDto 기준) */
-    public static CardDto toCard(Animal a) {
-        if (a == null) return null;
+    // 코드값 -> 표시값
+    String sex = toSexLabel(a.getSexCd());        // M/F/Q -> 수컷/암컷/미상
+    String neuter = toNeuterLabel(a.getNeuterYn()); // Y/N/U -> 예/아니오/미상
 
-        return CardDto.builder()
-            .desertionNo(a.getDesertionNo())
-            .happenDt(d(a.getHappenDt()))          // ← 문자열로 변환
-            // 필요 시 공고 시작/종료일도 문자열로 변환해서 사용
-            // .noticeSdt(d(a.getNoticeSdt()))
-            // .noticeEdt(d(a.getNoticeEdt()))
-            .kind(a.getKindCd())
-            .color(a.getColorCd())
-            .sex(a.getSexCd())
-            .neuter(a.getNeuterYn())
-            .processState(a.getProcessState())
-            .thumbnail(a.getFilename())
-            .image(a.getPopfile())
-            .careName(a.getCareNm())
-            .careTel(a.getCareTel())
-            .careAddr(a.getCareAddr())
-            .specialMark(a.getSpecialMark())
-            .build();
-    }
+    // 이미지/썸네일: popfile 우선, 없으면 filename
+    String image = coalesce(a.getPopfile(), a.getFilename());
+    String thumb = coalesce(a.getFilename(), a.getPopfile());
 
-    /** 리스트 매핑 */
-    public static List<CardDto> toCardList(List<Animal> list) {
-        return list == null
-            ? List.of()
-            : list.stream().filter(Objects::nonNull).map(AnimalMapper::toCard).toList();
-    }
+    return CardDto.builder()
+        .desertionNo(nz(a.getDesertionNo()))
+        .happenDt(nz(happenDtStr))
+        .kind(nz(a.getKindCd()))          // 필요하면 코드→품종명 변환 로직 추가
+        .color(nz(a.getColorCd()))
+        .sex(nz(sex))
+        .neuter(nz(neuter))
+        .processState(nz(a.getProcessState()))
+        .thumbnail(nz(thumb))
+        .image(nz(image))
+        .careName(nz(a.getCareNm()))
+        .careTel(nz(a.getCareTel()))
+        .careAddr(nz(a.getCareAddr()))
+        .specialMark(nz(a.getSpecialMark()))
+        .build();
+  }
 
-    /** 페이지 매핑 */
-    public static Page<CardDto> toCardPage(Page<Animal> page, Pageable pageable) {
-        List<CardDto> content = toCardList(page.getContent());
-        return new PageImpl<>(content, pageable, page.getTotalElements());
-    }
+  private static String nz(String v) {
+    return (v == null || v.isBlank()) ? "-" : v;
+  }
+
+  private static String coalesce(String a, String b) {
+    return (a != null && !a.isBlank()) ? a : b;
+  }
+
+  private static String toSexLabel(String code) {
+    if (code == null) return "-";
+    return switch (code.trim().toUpperCase()) {
+      case "M" -> "수컷";
+      case "F" -> "암컷";
+      case "Q" -> "미상";
+      default -> code;
+    };
+  }
+
+  private static String toNeuterLabel(String code) {
+    if (code == null) return "-";
+    return switch (code.trim().toUpperCase()) {
+      case "Y" -> "예";
+      case "N" -> "아니오";
+      case "U" -> "미상";
+      default -> code;
+    };
+  }
 }

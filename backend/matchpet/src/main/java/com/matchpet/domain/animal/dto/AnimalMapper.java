@@ -1,3 +1,4 @@
+// src/main/java/com/matchpet/domain/animal/dto/AnimalMapper.java
 package com.matchpet.domain.animal.dto;
 
 import com.matchpet.domain.animal.entity.Animal;
@@ -18,6 +19,7 @@ public final class AnimalMapper {
 
     private static final DateTimeFormatter D = DateTimeFormatter.ISO_LOCAL_DATE;
 
+    /** LocalDate → String(yyyy-MM-dd) */
     private static String d(LocalDate v) {
         return v == null ? null : D.format(v);
     }
@@ -28,8 +30,8 @@ public final class AnimalMapper {
 
         return CardDto.builder()
             .desertionNo(a.getDesertionNo())
-            .happenDt(d(a.getHappenDt()))        // LocalDate → String
-            // 필요 시 공고 시작/종료일 등도 String으로 변환
+            .happenDt(d(a.getHappenDt()))          // ← 문자열로 변환
+            // 필요 시 공고 시작/종료일도 문자열로 변환해서 사용
             // .noticeSdt(d(a.getNoticeSdt()))
             // .noticeEdt(d(a.getNoticeEdt()))
             .kind(a.getKindCd())
@@ -48,7 +50,9 @@ public final class AnimalMapper {
 
     /** 리스트 매핑 */
     public static List<CardDto> toCardList(List<Animal> list) {
-        return list == null ? List.of() : list.stream().filter(Objects::nonNull).map(AnimalMapper::toCard).toList();
+        return list == null
+            ? List.of()
+            : list.stream().filter(Objects::nonNull).map(AnimalMapper::toCard).toList();
     }
 
     /** 페이지 매핑 */

@@ -29,7 +29,8 @@ public class AnimalController {
     Pageable p = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id")); // ★ 안전 기본
     if (careNm != null && !careNm.isBlank()) {
       String normalized = careNm.trim().replaceAll("\\s+", " ");
-      return repo.findByCareNm(normalized, p).map(AnimalMapper::toCard);
+      return repo.findByCareNmContainingIgnoreCase(normalized, p)
+           .map(AnimalMapper::toCard);
     }
     return repo.findAll(p).map(AnimalMapper::toCard);
   }

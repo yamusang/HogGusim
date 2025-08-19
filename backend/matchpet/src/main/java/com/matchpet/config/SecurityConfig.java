@@ -22,27 +22,42 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-  // ★ @Component 로 등록된 필터를 생성자 주입
   private final JwtAuthFilter jwtAuthFilter;
   private final JwtBlacklistFilter jwtBlacklistFilter;
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-      .csrf(csrf -> csrf.disable())
-      .cors(Customizer.withDefaults())
-      .httpBasic(b -> b.disable())
-      .formLogin(f -> f.disable())
-      .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-      .authorizeHttpRequests(auth -> auth
-          .requestMatchers(HttpMethod.GET, "/api/animals", "/api/animals/*").permitAll()
-          .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
-          .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()   // 로그인/회원가입/리프레시 허용
-          .anyRequest().authenticated()
-      )
-      // ★ 순서 중요: 블랙리스트 → 인증
-      .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
-      .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        .csrf(csrf -> csrf.disable())
+        .cors(Customizer.withDefaults())
+        .httpBasic(b -> b.disable())
+        .formLogin(f -> f.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            // Actuator (디버깅 끝나면 /actuator/health만 남겨도 됨)
+            .requestMatchers("/actuator/**").permitAll()
+
+            // CORS preflight 전부 허용
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+            // ✅ 추천 API: GET만 오픈
+            .requestMatchers(HttpMethod.GET, "/api/reco/**").permitAll()
+
+            // ✅ 동물 목록: GET 전체 오픈 (/api/animals, /api/animals/{id}, /api/animals/recommended ...)
+            .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
+
+            // Swagger & OpenAPI 문서
+            .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+            // 인증/회원가입 등 (POST 허용)
+            .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+
+            // 나머지는 인증 필요
+            .anyRequest().authenticated()
+        )
+        // 필터 순서: 블랙리스트 → JWT 인증
+        .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
@@ -50,10 +65,14 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
-    cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+    cfg.setAllowedOrigins(List.of(
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ));
+    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("*"));
     cfg.setAllowCredentials(true);
+
     UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
     src.registerCorsConfiguration("/**", cfg);
     return src;

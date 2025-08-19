@@ -6,7 +6,7 @@ import api from './apiClient';
  * ============================== */
 export const toAbsoluteUrl = (url) => {
   if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url;
+  if (/^https?:\/\//i.test(url)) return url; // 이미 절대경로면 그대로
   const base = (api.defaults.baseURL || '').replace(/\/+$/, '');
   const rel  = (`/${String(url)}`).replace(/\/+/, '/');
   return `${base}${rel}`;
@@ -20,6 +20,16 @@ export const normalizePet = (it) => {
   const sc = (it.sexCd || it.sex || '').toString().toUpperCase();
   const gender = sc === 'M' ? '수컷' : sc === 'F' ? '암컷' : '미상';
 
+  // ★ 사진 URL 우선순위: popfile → filename → photoUrl → thumb → image → ''
+  const rawPhoto =
+    it.popfile ??
+    it.filename ??
+    it.photoUrl ??
+    it.thumb ??
+    it.image ??
+    '';
+  const photoUrl = rawPhoto ? toAbsoluteUrl(rawPhoto) : '';
+
   return {
     id: it.desertionNo ?? it.id ?? null,
     name: it.name ?? null,
@@ -32,9 +42,7 @@ export const normalizePet = (it) => {
     status: it.processState || it.status || 'AVAILABLE',
     happenDt: it.happenDt || null,
     createdAt: it.createdAt || it.happenDt || null,
-    photoUrl: it.popfile
-      ? toAbsoluteUrl(it.popfile)
-      : (it.photoUrl ? toAbsoluteUrl(it.photoUrl) : ''),
+    photoUrl, // ★ 통일
     specialMark: it.specialMark || '',
     noticeSdt: it.noticeSdt || null,
     noticeEdt: it.noticeEdt || null,
@@ -141,7 +149,19 @@ export const fetchFeaturedDogs = async ({
   });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   const items = (raw || []).map(normalizePet);
-  return shuffle(uniqById(items.filter(isDog).filter(hasPhoto))).slice(0, take);
+
+  // ★ 사진 없는 항목 '삭제'하지 말고, 사진 있는 걸 앞으로만 정렬
+  const onlyDogs = items.filter(isDog);
+  const ranked = [...onlyDogs].sort((a, b) => {
+    const aa = a.photoUrl ? 1 : 0;
+    const bb = b.photoUrl ? 1 : 0;
+    return bb - aa; // 사진 있는 게 앞으로
+  });
+
+  const uniq = uniqById(ranked);
+  // 필요하면 무작위 노출 → 아래 주석 해제
+  // return shuffle(uniq).slice(0, take);
+  return uniq.slice(0, take);
 };
 
 /** 최신 강아지(사진 포함) */

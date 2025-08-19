@@ -37,6 +37,7 @@ export default function AuthProvider({ children }) {
       data?.shelter?.careRegNo ??
       null;
 
+    // (A안) shelterId 미사용. 그래도 혹시 내려오면 보존만.
     const shelterId =
       data?.shelterId ??
       data?.shelter?.id ??
@@ -56,9 +57,9 @@ export default function AuthProvider({ children }) {
       token: data?.token ?? data?.accessToken ?? null,
       displayName: data?.displayName ?? data?.name ?? null,
       email: data?.email ?? null,
-      shelterId,
+      shelterId,            // 보존만, 실제 필터는 affiliation(careNm)로
       careRegNo,
-      affiliation: affiliationText,
+      affiliation: affiliationText, // ★ 핵심
       orgNm: data?.orgNm ?? null,
     };
 

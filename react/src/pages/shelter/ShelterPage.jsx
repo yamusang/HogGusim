@@ -1,4 +1,3 @@
-// src/pages/shelter/ShelterPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -38,7 +37,7 @@ export default function ShelterPage() {
     setMetaLoading(false);
   }, [careNm]);
 
-  // 보호소 소유 동물 로드: GET /animals?careNm=...
+  // 보호소 소유 동물 로드: GET /api/animals?careNm=...
   useEffect(() => {
     let ignore = false;
 
@@ -55,7 +54,7 @@ export default function ShelterPage() {
       try {
         const tryLoad = async (params) => {
           const { content } = await fetchAnimals({
-            page: 0, size: 10, sort: 'id,DESC', ...params, // ★ 안전 정렬로 변경
+            page: 0, size: 10, sort: 'id,DESC', ...params,
           });
           return Array.isArray(content) ? content : [];
         };
@@ -67,11 +66,7 @@ export default function ShelterPage() {
         // 2) 0건이면 carenm 시도(백 파라미터 철자 불일치 대비)
         if (list.length === 0) {
           console.log('[Shelter] fallback carenm=', careNm);
-          try {
-            list = await tryLoad({ carenm: careNm });
-          } catch {
-            // 무시
-          }
+          try { list = await tryLoad({ carenm: careNm }); } catch {}
         }
 
         // 3) 여전히 0이면 필터 없이 확인

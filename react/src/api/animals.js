@@ -1,4 +1,3 @@
-// src/api/animals.js
 import api from './apiClient';
 
 /** ==============================
@@ -16,20 +15,13 @@ export const toAbsoluteUrl = (url) => {
  * 🔁 백엔드 DTO(Item) → 앱 표준 모델
  * ============================== */
 export const normalizePet = (it = {}) => {
-  const sc = (it.sexCd || it.sex || '').toString().toUpperCase();
+  const sc = (it.sexCd ?? it.sex_cd ?? it.sex ?? '').toString().toUpperCase();
   const gender = sc === 'M' ? '수컷' : sc === 'F' ? '암컷' : '미상';
 
-  // ★ 사진 URL 우선순위: popfile → filename → photoUrl → thumb → image → ''
   const rawPhoto =
-    it.popfile ??
-    it.filename ??
-    it.photoUrl ??
-    it.thumb ??
-    it.image ??
-    '';
+    it.popfile ?? it.filename ?? it.photoUrl ?? it.thumb ?? it.image ?? '';
   const photoUrl = rawPhoto ? toAbsoluteUrl(rawPhoto) : '';
 
-  // kindCd가 "[개] 믹스" 형태면 대괄호 접두어 제거
   const rawSpecies = it.kindCd || it.species || '';
   const species = String(rawSpecies).replace(/^\[[^\]]+\]\s*/, '');
 
@@ -40,8 +32,8 @@ export const normalizePet = (it = {}) => {
     species,
     breed: it.breed ?? null,
     color: it.colorCd || it.color || '',
-    gender,                          // 표준 성별
-    sex: it.sex || it.sexCd || '',   // 원본 보존
+    gender,
+    sex: it.sex || it.sexCd || '',
     age: it.age || '',
     weight: it.weight || '',
     neuter: it.neuterYn || it.neuter || '',
@@ -50,7 +42,7 @@ export const normalizePet = (it = {}) => {
     happenDt: it.happenDt || null,
     createdAt: it.createdAt || it.happenDt || null,
 
-    photoUrl,                        // ★ 통일된 키
+    photoUrl,
     specialMark: it.specialMark || '',
 
     noticeSdt: it.noticeSdt || null,
@@ -77,20 +69,16 @@ const pickPageMeta = (data) => ({
 });
 
 /** ==============================
- * 목록 (정규화 포함)  — /animals 고정
+ * 목록 (정규화 포함) — /animals
  * ============================== */
 export const fetchAnimals = async (params = {}) => {
-  // 안전한 기본 정렬
   const safe = { sort: 'id,DESC', page: 0, size: 20, ...params };
-
   const { data } = await api.get('/animals', { params: safe });
 
-  // Spring Page | OpenAPI | Array 세 경우 다 흡수
   const contentRaw =
     pickApiItems(data) ??
     data?.content ??
-    (Array.isArray(data) ? data : []) ??
-    [];
+    (Array.isArray(data) ? data : []) ?? [];
 
   const meta = pickPageMeta(data);
 
@@ -101,33 +89,27 @@ export const fetchAnimals = async (params = {}) => {
 };
 
 /** ==============================
- * 보호소 기준 목록
- * - careNm를 직접 받는다 (A안)
+ * 보호소 기준 목록(A안: careNm)
  * ============================== */
-export const fetchAnimalsByShelter = async ({
-  careNm,
-  page = 0,
-  size = 100,
-} = {}) => {
+export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {}) => {
   const query = {};
-  if (careNm) query.careNm = careNm;       // ★ A안: careNm만 사용
+  if (careNm) query.careNm = careNm;
   const { content } = await fetchAnimals({ ...query, page, size });
   return content;
 };
 
 /** ==============================
- * 추천 목록 (있으면 사용)
+ * 추천 목록
  * ============================== */
 export const fetchRecommendedAnimals = async (params = {}) => {
   const { data } = await api.get('/animals/recommended', { params });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   return (raw || []).map(normalizePet);
 };
-// (하위호환)
 export const fetchRecommendedPets = fetchRecommendedAnimals;
 
 /** ==============================
- * 생성 / 업로드 (백엔드 지원 시)
+ * 생성 / 업로드
  * ============================== */
 export const createAnimal = async (payload = {}) => {
   const { data } = await api.post('/animals', payload);
@@ -169,13 +151,13 @@ const uniqById = (arr=[]) => {
   });
 };
 
-/** 메인 슬라이드: 보호 중인 강아지들 */
+/** 메인 슬라이드 */
 export const fetchFeaturedDogs = async ({
   take = 18,
   page = 0,
   size = 120,
   status = 'AVAILABLE',
-  sort = 'id,DESC',          // ★ 안전 정렬
+  sort = 'id,DESC',
 } = {}) => {
   const { data } = await api.get('/animals', {
     params: { page, size, status, kind: 'DOG', sort }
@@ -187,15 +169,14 @@ export const fetchFeaturedDogs = async ({
   const ranked = [...onlyDogs].sort((a, b) => {
     const aa = a.photoUrl ? 1 : 0;
     const bb = b.photoUrl ? 1 : 0;
-    return bb - aa; // 사진 있는 게 앞으로
+    return bb - aa;
   });
 
   const uniq = uniqById(ranked);
-  // return shuffle(uniq).slice(0, take); // 랜덤 원하면 이 줄 사용
   return uniq.slice(0, take);
 };
 
-/** 최신 강아지(사진 포함) */
+/** 최신 강아지 */
 export const fetchLatestDogs = async ({ take = 18 } = {}) => {
   const { content } = await fetchAnimals({ page: 0, size: 120, sort: 'id,DESC' });
   return content.filter(isDog).filter(hasPhoto).slice(0, take);

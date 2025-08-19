@@ -5,32 +5,45 @@ import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
 // pages
-import MainPage from './pages/Mainpage/MainPage';   // 폴더/파일명 확인!
+import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 주의
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import SeniorPage from './pages/senior/SeniorPage';
 import ConnectPage from './pages/senior/ConnectPage';
+import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';        // ✅ 추가
 import ManagerPage from './pages/manager/ManagerPage';
 import ShelterPage from './pages/shelter/ShelterPage';
+import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';     // ✅ 추가
 import PetConnectPage from './pages/pet/PetConnectPage';
-import LogoutPage from './pages/auth/LogoutPage';
+import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
 import PetNewPage from './pages/shelter/PetNewPage';
+import LogoutPage from './pages/auth/LogoutPage';
 
-// ---------- Routes Consts (경로 상수)
+// ---------- Routes Consts
 const PATHS = {
   ROOT: '/',
   LOGIN: '/login',
   SIGNUP: '/signup',
   LOGOUT: '/logout',
+
+  // SENIOR
   SENIOR_HOME: '/senior',
   SENIOR_CONNECT: '/senior/connect',
+  SENIOR_APPS: '/senior/applications',                 // ✅ 시니어 신청내역
+
+  // MANAGER
   MANAGER_HOME: '/manager',
+
+  // SHELTER
   SHELTER_HOME: '/shelter',
-  SHELTER_ANIMAL_NEW: '/shelter/animals/new', // ← 등록 경로 통일
-  PET_CONNECT: '/pet/connect',
+  SHELTER_ANIMAL_NEW: '/shelter/animals/new',
+  SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications', // ✅ 동물별 신청자 관리
+
+  // COMMON
+  PET_CONNECT: '/pet/connect',               // (행정) 신청서 확인/승인 등
+  PET_MANAGERS: '/pet/:petId/managers',     // 특정 동물 매니저 추천
 };
 
-// helpers
 const toUpper = (v) => (v || '').toUpperCase();
 const routeForRole = (role) => {
   switch (toUpper(role)) {
@@ -84,8 +97,6 @@ export default function App() {
               </RedirectIfAuthed>
             }
           />
-
-          {/* 로그아웃은 공개 */}
           <Route path={PATHS.LOGOUT} element={<LogoutPage />} />
 
           {/* 고령자 */}
@@ -102,6 +113,14 @@ export default function App() {
             element={
               <Protected allow={['SENIOR']}>
                 <ConnectPage />
+              </Protected>
+            }
+          />
+          <Route
+            path={PATHS.SENIOR_APPS}
+            element={
+              <Protected allow={['SENIOR']}>
+                <SeniorApplicationsPage />
               </Protected>
             }
           />
@@ -133,6 +152,14 @@ export default function App() {
               </Protected>
             }
           />
+          <Route
+            path={PATHS.SHELTER_ANIMAL_APPS}
+            element={
+              <Protected allow={['SHELTER']}>
+                <ShelterApplicationsPage />
+              </Protected>
+            }
+          />
 
           {/* 공용(로그인 필요) */}
           <Route
@@ -140,6 +167,14 @@ export default function App() {
             element={
               <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
                 <PetConnectPage />
+              </Protected>
+            }
+          />
+          <Route
+            path={PATHS.PET_MANAGERS}
+            element={
+              <Protected allow={['SENIOR']}>
+                <PetManagerRecoPage />
               </Protected>
             }
           />

@@ -1,0 +1,6 @@
+.connect__list { display: flex; flex-direction: column; gap: 12px; }
+.connect__row { border:1px solid #eee; border-radius:12px; padding:12px; background:#fff; }
+.connect__title { font-weight: 600; margin-bottom: 6px; }
+.connect__sub { color:#666; font-size: 14px; }
+.senior__pagination { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.muted { color:#999; }

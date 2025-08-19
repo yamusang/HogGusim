@@ -1,21 +1,31 @@
 // src/api/apiClient.js
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+/** ==============================
+ * BASE_URL 정규화
+ *  - ENV가 비었으면 '/api'
+ *  - 절대주소면 끝의 슬래시는 제거
+ *  - 상대경로면 앞에 슬래시 강제
+ ============================== */
+const RAW_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').trim();
+const BASE_URL = RAW_BASE.startsWith('http')
+  ? RAW_BASE.replace(/\/+$/, '')
+  : '/' + RAW_BASE.replace(/^\/+/, '').replace(/\/+$/, '');
 
+/** 메인 클라이언트 */
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// 리프레시 전용
+/** (옵션) 리프레시 전용 클라이언트 */
 const authClient = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
 });
 
-// ===== 토큰 유틸 =====
+/** ===== 토큰 유틸 ===== */
 const ACCESS_KEY = 'token';
 const REFRESH_KEY = 'refreshToken';
 const USER_KEY = 'user';
@@ -41,10 +51,31 @@ const addAuthHeader = (config) => {
   return config;
 };
 
-// 요청 인터셉터: 토큰 주입
-api.interceptors.request.use((config) => addAuthHeader(config));
+/** authClient가 리프레시 호출임을 표시 (루프 방지) */
+authClient.interceptors.request.use((config) => {
+  config.__isRefreshCall = true;
+  return config;
+});
 
-// ===== 401 재발급 공통 처리 =====
+/** ===== 요청 인터셉터 =====
+ * - 토큰 주입
+ * - 엔드포인트 앞에 슬래시 없으면 자동 보정 ('reco/pets' -> '/reco/pets')
+ * - DEV에서 실제 나가는 URL 로그
+ */
+api.interceptors.request.use((config) => {
+  addAuthHeader(config);
+  if (config.url && !String(config.url).startsWith('/')) {
+    config.url = '/' + String(config.url);
+  }
+  if (import.meta.env.DEV) {
+    const full = (config.baseURL || '') + (config.url || '');
+    // eslint-disable-next-line no-console
+    console.log('[API]', (config.method || 'get').toUpperCase(), full, config.params || config.data || {});
+  }
+  return config;
+});
+
+/** ===== 401 재발급 공통 처리 ===== */
 let isRefreshing = false;
 let refreshSubscribers = [];
 
@@ -61,7 +92,6 @@ const callRefreshToken = async () => {
   const { data } = await authClient.post('/auth/refresh', { refreshToken });
   const newAccessToken = data?.token || data?.accessToken;
   const newRefreshToken = data?.refreshToken || refreshToken;
-
   if (!newAccessToken) throw new Error('INVALID_REFRESH_RESPONSE');
 
   setAuth({ accessToken: newAccessToken, refreshToken: newRefreshToken });
@@ -76,7 +106,6 @@ const normalizeError = (error) => {
     error?.response?.data?.message ||
     error?.message ||
     '요청 중 오류가 발생했어요.';
-
   return {
     status,
     code: std?.code || 'UNKNOWN',
@@ -110,7 +139,6 @@ api.interceptors.response.use(
 
       originalRequest._retry = true;
       isRefreshing = true;
-
       try {
         const newToken = await callRefreshToken();
         isRefreshing = false;
@@ -121,7 +149,6 @@ api.interceptors.response.use(
       } catch (refreshErr) {
         isRefreshing = false;
         clearAuth();
-        if (import.meta.env.DEV) console.error('Refresh failed:', refreshErr);
         return Promise.reject(normalizeError(refreshErr));
       }
     }
@@ -130,7 +157,7 @@ api.interceptors.response.use(
   }
 );
 
-// 업로드 헬퍼
+/** 업로드 헬퍼 (Content-Type 자동 처리) */
 export const apiUpload = (url, formData, config = {}) => {
   const cfg = { ...config, headers: { ...(config.headers || {}) } };
   delete cfg.headers['Content-Type'];
@@ -139,11 +166,9 @@ export const apiUpload = (url, formData, config = {}) => {
 
 export const logApiError = (err) => {
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.error('API Error:', {
-      status: err?.status,
-      code: err?.code,
-      message: err?.message,
-      details: err?.details,
+      status: err?.status, code: err?.code, message: err?.message, details: err?.details,
     });
   }
 };

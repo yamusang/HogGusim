@@ -43,8 +43,11 @@ public class SecurityConfig {
             // ✅ 추천 API: GET만 오픈
             .requestMatchers(HttpMethod.GET, "/api/reco/**").permitAll()
 
-            // ✅ 동물 목록: GET 전체 오픈 (/api/animals, /api/animals/{id}, /api/animals/recommended ...)
+            // ✅ 동물 목록: GET 전체 오픈 (/api/animals, /api/animals/{id}, /api/animals/recommended
+            // ...)
             .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
+
+            .requestMatchers(HttpMethod.GET, "/api/shelters/**").permitAll()
 
             // Swagger & OpenAPI 문서
             .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
@@ -52,9 +55,11 @@ public class SecurityConfig {
             // 인증/회원가입 등 (POST 허용)
             .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
 
+            .requestMatchers("/error").permitAll() // 에러 페이지
+            .requestMatchers("/favicon.ico", "/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg").permitAll()
+
             // 나머지는 인증 필요
-            .anyRequest().authenticated()
-        )
+            .anyRequest().authenticated())
         // 필터 순서: 블랙리스트 → JWT 인증
         .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -67,8 +72,7 @@ public class SecurityConfig {
     CorsConfiguration cfg = new CorsConfiguration();
     cfg.setAllowedOrigins(List.of(
         "http://localhost:5173",
-        "http://localhost:3000"
-    ));
+        "http://localhost:3000"));
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("*"));
     cfg.setAllowCredentials(true);

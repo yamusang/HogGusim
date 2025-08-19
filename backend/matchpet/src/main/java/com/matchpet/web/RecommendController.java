@@ -23,8 +23,7 @@ public class RecommendController {
             @RequestParam Long seniorId,
             @RequestParam(required = false) String careNm, // 현재 서비스에서 미사용 (필터 필요 시 서비스 오버로드 추가)
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         // 현재 시그니처: recommendPets(Long seniorId, Pageable pageable)
         return service.recommendPets(seniorId, pageable);
@@ -36,8 +35,7 @@ public class RecommendController {
             @RequestParam Long seniorId,
             @RequestParam Long petId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return service.recommendManagers(seniorId, petId, pageable);
     }

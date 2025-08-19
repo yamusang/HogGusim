@@ -1,3 +1,4 @@
+// src/api/animals.js
 import api from './apiClient';
 
 /** ==============================
@@ -22,7 +23,7 @@ export const normalizePet = (it = {}) => {
     it.popfile ?? it.filename ?? it.photoUrl ?? it.thumb ?? it.image ?? '';
   const photoUrl = rawPhoto ? toAbsoluteUrl(rawPhoto) : '';
 
-  // ✅ 종 추출 보강: 여러 키 후보 + 숫자코드 제거 + 대괄호 접두 제거
+  // ✅ 종 추출 보강
   const rawKind =
     it.kind ??
     it.kindNm ??
@@ -37,7 +38,6 @@ export const normalizePet = (it = {}) => {
   if (/^\d+$/.test(species)) species = ''; // 순수 숫자코드면 표시 X
 
   return {
-    // ✅ id 후보 보강
     id:
       it.id ??
       it.desertionNo ??
@@ -88,11 +88,11 @@ const pickPageMeta = (data) => ({
 });
 
 /** ==============================
- * 목록 (정규화 포함) — /animals
+ * 목록 (정규화 포함) — animals
  * ============================== */
 export const fetchAnimals = async (params = {}) => {
   const safe = { sort: 'id,DESC', page: 0, size: 20, ...params };
-  const { data } = await api.get('/animals', { params: safe });
+  const { data } = await api.get('animals', { params: safe }); // ← 슬래시 제거
 
   // ✅ 스프링 Page 우선 → 오픈API → 배열
   const contentRaw =
@@ -120,10 +120,14 @@ export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {
 };
 
 /** ==============================
- * 추천 목록
+ * 추천 목록 (임시: /animals 폴백)
  * ============================== */
-export const fetchRecommendedAnimals = async (params = {}) => {
-  const { data } = await api.get('/animals/recommended', { params });
+export const fetchRecommendedAnimals = async ({
+  page = 0, size = 20, careNm, sort = 'id,DESC', ...rest
+} = {}) => {
+  const { data } = await api.get('animals', {
+    params: { page, size, sort, careNm, ...rest }
+  }); // ← /animals/recommended 대신 animals로 폴백
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   return (raw || []).map(normalizePet);
 };
@@ -133,16 +137,16 @@ export const fetchRecommendedPets = fetchRecommendedAnimals;
  * 생성 / 업로드
  * ============================== */
 export const createAnimal = async (payload = {}) => {
-  const { data } = await api.post('/animals', payload);
+  const { data } = await api.post('animals', payload); // ← 슬래시 제거
   return data;
 };
 
 export const uploadAnimalPhoto = async (animalId, file) => {
   const fd = new FormData();
   fd.append('file', file);
-  const { data } = await api.post(`/animals/${animalId}/photo`, fd, {
+  const { data } = await api.post(`animals/${animalId}/photo`, fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  }); // ← 슬래시 제거
   return data;
 };
 
@@ -180,9 +184,9 @@ export const fetchFeaturedDogs = async ({
   status = 'AVAILABLE',
   sort = 'id,DESC',
 } = {}) => {
-  const { data } = await api.get('/animals', {
+  const { data } = await api.get('animals', {
     params: { page, size, status, kind: 'DOG', sort }
-  });
+  }); // ← 슬래시 제거
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   const items = (raw || []).map(normalizePet);
 

@@ -6,10 +6,13 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
     Optional<Animal> findByExternalId(String externalId);
     Optional<Animal> findByDesertionNo(String desertionNo);
+    Page<Animal> findByCareNm(String careNm, Pageable pageable);
 
     // 보호소명 존재 검증 (대소문자/공백 무시한 정확 일치)
     @Query("""

@@ -9,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/animals")
@@ -16,9 +18,16 @@ public class AnimalController {
 
     private final AnimalRepository repo;
 
-    /** 페이지네이션 리스트 (spec 없이 단순 페이지 조회) */
+    /** 페이지네이션 리스트 (careNm 있으면 보호소별 필터) */
     @GetMapping
-    public Page<CardDto> list(Pageable pageable) {
+    public Page<CardDto> list(
+            @RequestParam(required = false) String careNm,
+            Pageable pageable) {
+
+        if (careNm != null && !careNm.isBlank()) {
+            String normalized = careNm.trim().replaceAll("\\s+", " ");
+            return repo.findByCareNm(normalized, pageable).map(AnimalMapper::toCard);
+        }
         return repo.findAll(pageable).map(AnimalMapper::toCard);
     }
 
@@ -28,5 +37,11 @@ public class AnimalController {
         Animal a = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Animal not found: " + id));
         return AnimalMapper.toCard(a);
+    }
+
+    /** 보호소명 드롭다운용: DISTINCT care_nm 리스트 */
+    @GetMapping("/care-names")
+    public List<String> careNames() {
+        return repo.findDistinctCareNames();
     }
 }

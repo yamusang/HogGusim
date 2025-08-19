@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, length = 100, unique = true)
@@ -28,14 +29,19 @@ public class User {
     @Column(nullable = false, length = 80)
     private String displayName;
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false, insertable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
     @Column
     private LocalDateTime lastLoginAt;
 
-    @Column(length = 120)
-    private String affiliation;
+    @Column(name = "affiliation", length = 120)
+    private String affiliation; // 보호소명(care_nm)
+
+    @Column(name = "updated_at",
+            insertable = false,
+            columnDefinition="DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+    private LocalDateTime updatedAt;
 
     // INSERT 직전에 자동 세팅
     @PrePersist
@@ -45,4 +51,3 @@ public class User {
         }
     }
 }
-

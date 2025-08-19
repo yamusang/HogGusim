@@ -6,6 +6,8 @@ import com.matchpet.auth.dto.SignupCommon;
 import com.matchpet.domain.user.Role;
 import com.matchpet.domain.user.User;
 import com.matchpet.domain.user.UserRepository;
+
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -115,27 +117,32 @@ public class AuthService {
   }
 
   // 로그인
+  
   public LoginResponse login(LoginRequest req) {
-    User u = userRepository.findByEmail(req.getEmail())
-        .orElseThrow(() -> new ResponseStatusException(
-            HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
+  User u = userRepository.findByEmail(req.getEmail())
+      .orElseThrow(() -> new ResponseStatusException(
+          HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
 
-    if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
-      throw new ResponseStatusException(
-          HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
-    }
-
-    u.setLastLoginAt(java.time.LocalDateTime.now());
-    userRepository.save(u);
-
-    String token = jwtTokenProvider.createToken(u.getId());
-
-    return new LoginResponse(
-        token,
-        u.getRole().name(),
-        u.getId(),
-        u.getDisplayName());
+  if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
+    throw new ResponseStatusException(
+        HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
   }
+
+  u.setLastLoginAt(java.time.LocalDateTime.now());
+  userRepository.save(u);
+
+ String token = jwtTokenProvider.createToken(u.getId());
+
+  // ★ 프론트가 쓰는 필드로 맞춰서 응답
+  return LoginResponse.builder()
+        .token(token)
+        .role(u.getRole().name())
+        .email(u.getEmail())              // ★
+        .userId(u.getId())                // (옵션)
+        .displayName(u.getDisplayName())
+        .affiliation(u.getAffiliation())  // ★
+        .build();
+}
 
   public void logout(String authHeader) {
     String token = JwtTokenProvider.resolveBearer(authHeader);

@@ -1,28 +1,24 @@
 package com.matchpet.web.dto;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Builder
-
-public record CardDto(
-  String desertionNo,
-  LocalDate happenDt,
-  String kindCd,
-  String colorCd,
-  String sexCd,
-  String neuterYn,
-  String processState,
-  String filename,
-  String popfile,
-  String careNm,
-  String careTel,
-  String careAddr,
-  String specialMark,
-  String noticeSdt,
-  String noticeEdt,
-  String orgNm,
-  LocalDateTime createdAt
-) {}
+@Data @Builder
+@NoArgsConstructor @AllArgsConstructor
+public class CardDto {
+    private String desertionNo;
+    private String happenDt;
+    private String kind;
+    private String color;
+    private String sex;         // M/F/Q
+    private String neuter;      // Y/N/U
+    private String processState; 
+    private String thumbnail;   // filename
+    private String image;       // popfile
+    private String careName;
+    private String careTel;
+    private String careAddr;
+    private String specialMark;
+}

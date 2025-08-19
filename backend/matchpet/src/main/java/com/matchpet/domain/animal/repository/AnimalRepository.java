@@ -2,30 +2,30 @@
 package com.matchpet.domain.animal.repository;
 
 import com.matchpet.domain.animal.entity.Animal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.*;
+import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.domain.*;
-import org.springframework.data.jpa.repository.*;
-import org.springframework.data.repository.query.Param;
-
+@Repository
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
-  @Query("""
-        select a from Animal a
-        where (:careNm is null or trim(:careNm) = '' or a.careNm = :careNm)
-          and (coalesce(a.processState, '') = '' or a.processState = 'AVAILABLE')
-      """)
-  Page<Animal> findAvailableByCareNm(@Param("careNm") String careNm, Pageable pageable);
+    // "보호소명 정확 일치 존재 여부"
+    boolean existsByCareNm(String careNm);
 
-  @Query("""
-        select a from Animal a
-        where (coalesce(a.processState, '') = '' or a.processState = 'AVAILABLE')
-          and a.popfile is not null and a.popfile <> ''
-      """)
-  Page<Animal> findAvailableWithPhoto(Pageable pageable);
+    // "보호소명 부분 일치 (대소문자 무시) + 페이징"
+    Page<Animal> findByCareNmContainingIgnoreCase(String careNm, Pageable pageable);
 
-  Optional<Animal> findByExternalId(String externalId);
+    // "보호소명 distinct 목록"
+    @Query("select distinct a.careNm from Animal a " +
+           "where a.careNm is not null and a.careNm <> '' " +
+           "order by a.careNm asc")
+    List<String> findDistinctCareNames();
 
-  Optional<Animal> findByDesertionNo(String desertionNo);
+    Optional<Animal> findByExternalId(String externalId);
+
+    Optional<Animal> findByDesertionNo(String desertionNo);
 }

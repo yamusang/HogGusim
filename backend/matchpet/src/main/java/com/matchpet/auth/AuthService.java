@@ -162,7 +162,7 @@ public class AuthService {
     if (!StringUtils.hasText(aff)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "affiliation(보호소명)은 필수입니다.");
     }
-    boolean ok = animalRepository.existsByCareNmStrict(aff);
+    boolean ok = animalRepository.existsByCareNm(aff);
     if (!ok) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록되지 않은 보호소명입니다: " + aff);
     }

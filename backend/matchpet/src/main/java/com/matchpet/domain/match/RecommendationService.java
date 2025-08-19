@@ -3,90 +3,92 @@ package com.matchpet.domain.match;
 
 import com.matchpet.domain.animal.entity.Animal;
 import com.matchpet.domain.animal.repository.AnimalRepository;
-import com.matchpet.web.dto.RecoPetDto;
+import com.matchpet.domain.senior.entity.SeniorProfile;
+import com.matchpet.domain.senior.repository.SeniorProfileRepository;
 import com.matchpet.web.dto.RecoManagerDto;
+import com.matchpet.web.dto.RecoPetDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class RecommendationService {
 
-    private final AnimalRepository animalRepository;
+    private final SeniorProfileRepository seniorRepo;   // ✅ 누락 필드 추가
+    private final AnimalRepository animalRepo;          // ✅ 이름 통일 (animalRepo)
 
     /**
      * 시니어별 추천 동물 (임시 로직):
-     *  - 사진 있는 개체 우선
-     *  - 최신 등록 우선
-     *  - 추후 seniorId 기반 가중치 추가 가능
+     *  - 사진 있는 개체 우선(점수 가산)
+     *  - 최신 등록 우선(정렬로 간접 반영)
      */
-    public Page<RecoPetDto> recommendPets(Long seniorId, String careNm, Pageable pageable) {
-        // 최신순 정렬 (createdAt, id)
-        Pageable sorted = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "createdAt", "id")
+    public Page<RecoPetDto> recommendPets(Long seniorId, Pageable pageable) {
+        SeniorProfile s = seniorRepo.findById(seniorId).orElseThrow();
+
+        Page<Animal> page = animalRepo.findAll(
+                PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                        Sort.by(Sort.Direction.DESC, "id"))
         );
 
-        // AVAILABLE + (옵션) careNm 필터
-        Page<Animal> page = (careNm != null && !careNm.isBlank())
-                ? animalRepository.findAvailableByCareNm(careNm, sorted)
-                : animalRepository.findAvailableWithPhoto(sorted);
+        List<RecoPetDto> list = page.getContent().stream()  // ✅ getContent().stream()
+                .filter(a -> "AVAILABLE".equalsIgnoreCase(Objects.toString(a.getProcessState(), "")))
+                .map(this::toRecoPet)                        // ✅ 생성자 대신 매퍼 사용
+                .toList();
 
-        return page.map(this::toRecoPet);
+        return new PageImpl<>(list, pageable, page.getTotalElements());
     }
 
+    /** Animal → RecoPetDto 매핑 */
     private RecoPetDto toRecoPet(Animal a) {
         double base = 0.6;
-        double photoBoost = (a.getPopfile() != null && !a.getPopfile().isBlank()) ? 0.3 : 0.0;
+        double photoBoost = hasText(a.getPopfile()) ? 0.3 : 0.0;
         double recentBoost = 0.1; // createdAt 정렬로 간접 반영
         double score = Math.min(1.0, base + photoBoost + recentBoost);
 
-        // breed(=종/품종): 엔티티에 breed 필드가 없으므로 kindCd에서 안전 추출
         String breed = sanitizeBreedFromKindCd(a.getKindCd());
-
-        // 만약 Animal에 kindNm(사람이 읽기 쉬운 종명)이 있다면 아래 주석 해제해서 먼저 사용하세요.
-        // if (breed == null || breed.isBlank()) {
-        //     String kindNm = a.getKindNm(); // 엔티티에 있을 때만 사용
-        //     if (kindNm != null && !kindNm.isBlank()) breed = kindNm.trim();
-        // }
+        String photoUrl = hasText(a.getPopfile()) ? a.getPopfile()
+                : hasText(a.getFilename()) ? a.getFilename()
+                : null;
 
         return RecoPetDto.builder()
                 .id(a.getId())
                 .desertionNo(a.getDesertionNo())
-                // Animal에 name 필드가 없으므로 null로 내려주고, 프론트에서 #id 폴백
-                .name(null)
+                .name(null)             // Animal에 name 없음
                 .breed(breed)
                 .age(a.getAge())
-                .photoUrl(a.getPopfile())   // 프론트에서 toAbsoluteUrl 처리
+                .photoUrl(photoUrl)
                 .matchScore(score)
                 .build();
     }
 
-    /**
-     * kindCd가 사람이 읽을 수 없는 순수 숫자코드면 null 처리,
-     * "[개] 시바견" 같은 접두 대괄호 표기가 있으면 제거.
-     */
-    private String sanitizeBreedFromKindCd(String kindCd) {
-        if (kindCd == null || kindCd.isBlank()) return null;
-        String v = kindCd.trim();
-        // 숫자만 있으면 표시하지 않음
-        if (v.matches("^\\d+$")) return null;
-        // [개] 시바견 형태의 접두 브라켓 제거
-        v = v.replaceFirst("^\\[[^\\]]+\\]\\s*", "");
-        return v.isBlank() ? null : v;
+    /** 펫별 매니저 추천 (임시 Mock) */
+    public Page<RecoManagerDto> recommendManagers(Long seniorId, Long petId, Pageable pageable) {
+        // TODO: 실제 매니저 엔티티/리포지토리 연동
+        RecoManagerDto m1 = RecoManagerDto.builder()
+                .id(101L).name("케어매니저 A").intro("강아지 산책 전문")
+                .matchScore(0.92).photoUrl(null).build();
+        RecoManagerDto m2 = RecoManagerDto.builder()
+                .id(102L).name("케어매니저 B").intro("고양이 케어 특화")
+                .matchScore(0.88).photoUrl(null).build();
+
+        List<RecoManagerDto> list = List.of(m1, m2);
+        return new PageImpl<>(list, pageable, list.size());
     }
 
-    /** 펫별 매니저 추천 (엔티티 없으면 임시 Mock) */
-    public Page<RecoManagerDto> recommendManagers(Long seniorId, Long petId, Pageable pageable) {
-        // TODO: 실제 매니저 엔티티/리포지토리 있으면 교체
-        RecoManagerDto m1 = RecoManagerDto.builder()
-                .id(101L).name("케어매니저 A").intro("강아지 산책 전문").matchScore(0.92).photoUrl(null).build();
-        RecoManagerDto m2 = RecoManagerDto.builder()
-                .id(102L).name("케어매니저 B").intro("고양이 케어 특화").matchScore(0.88).photoUrl(null).build();
+    /** kindCd 정리: 숫자코드면 null, "[개] 시바견" 접두 대괄호 제거 */
+    private String sanitizeBreedFromKindCd(String kindCd) {
+        if (!hasText(kindCd)) return null;
+        String v = kindCd.trim();
+        if (v.matches("^\\d+$")) return null;           // 숫자코드 제거
+        v = v.replaceFirst("^\\[[^\\]]+\\]\\s*", "");    // [개] 같은 접두 제거
+        return hasText(v) ? v : null;
+    }
 
-        java.util.List<RecoManagerDto> list = java.util.List.of(m1, m2);
-        return new PageImpl<>(list, pageable, list.size());
+    private boolean hasText(String s) {
+        return s != null && !s.trim().isEmpty();
     }
 }

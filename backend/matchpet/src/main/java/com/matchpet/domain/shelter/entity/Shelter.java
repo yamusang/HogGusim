@@ -4,24 +4,27 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "shelters",
-    uniqueConstraints = @UniqueConstraint(name = "uq_shelter_external_id", columnNames = {"external_id"}))
+  uniqueConstraints = @UniqueConstraint(name="uq_shelter_name_addr", columnNames={"care_nm","care_addr"}))
 @Getter @Setter
 public class Shelter {
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "shelter_id")
   private Long id;
 
-  /** 외부 보호소 식별자(있으면) */
-  @Column(name = "external_id", length = 64)
-  private String externalId;
+  @Column(name = "care_nm",  nullable = false, length = 120) private String name;
+  @Column(name = "care_tel", length = 40)                     private String tel;
+  @Column(name = "care_addr",nullable = false, length = 255)  private String address;
+  @Column(name = "lat", precision = 10, scale = 7)            private BigDecimal lat;
+  @Column(name = "lng", precision = 10, scale = 7)            private BigDecimal lng;
+  @Column(name = "created_at", insertable = false, updatable = false)
+  private LocalDateTime createdAt;
 
-  // ExternalAnimalIngestService에서 사용하는 필드
-  private String name;     // s.setName(...)
-  private String tel;      // s.setTel(...)
-  private String address;  // s.setAddress(...)
-  private String region;   // s.setRegion(...)
-  private BigDecimal lat;  // s.setLat(...)
-  private BigDecimal lng;  // s.setLng(...)
+  @Column(name = "external_id", unique = true, length = 64)
+  private String externalId; // DB 없음 → 비영속
+  @Transient private String region;     // DB 없음 → 비영속
 }
+

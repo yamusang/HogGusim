@@ -1,6 +1,7 @@
 package com.matchpet.domain.animal.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +12,9 @@ import com.matchpet.domain.animal.entity.Animal;
 
 public interface AnimalRepository extends JpaRepository<Animal, Long> {
   Page<Animal> findByCareNmContainingIgnoreCase(String careNm, Pageable pageable);
+  Optional<Animal> findByExternalId(String externalId);
 
+  Optional<Animal> findByDesertionNo(String desertionNo);
 
   // 가입 검증용 (이미 사용 중)
   @Query("""

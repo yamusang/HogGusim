@@ -23,12 +23,12 @@ export default function ShelterPage() {
 
   // 로그인 시 저장해둔 보호소명(affiliation = careNm)
   const careNm = useMemo(() => {
-    return (
+    const v =
       user?.affiliation ||
       sessionStorage.getItem('affiliation') ||
       localStorage.getItem('selectedCareNm') ||
-      ''
-    );
+      '';
+    return (v || '').trim();
   }, [user]);
 
   // 헤더 표시용 보호소 이름
@@ -41,7 +41,8 @@ export default function ShelterPage() {
   // 보호소 소유 동물 로드: GET /animals?careNm=...
   useEffect(() => {
     let ignore = false;
-    (async () => {
+
+    const load = async () => {
       if (!careNm) {
         setAnimals([]);
         setAnimalsLoading(false);
@@ -50,18 +51,43 @@ export default function ShelterPage() {
       }
       setAnimalsLoading(true);
       setAnimalsError('');
+
       try {
-        // animals.js에서 이미 normalize + pageable 대응함
-        const { content } = await fetchAnimals({
-          careNm,                 // ★ 백엔드 파라미터명 (대문자 N)
-          page: 0,                // Spring Pageable 0-based
-          size: 10,
-          sort: 'createdAt,DESC', // 백 정렬 필드에 맞춰 필요시 변경
-        });
-        if (!ignore) setAnimals(Array.isArray(content) ? content : []);
+        const tryLoad = async (params) => {
+          const { content } = await fetchAnimals({
+            page: 0, size: 10, sort: 'id,DESC', ...params, // ★ 안전 정렬로 변경
+          });
+          return Array.isArray(content) ? content : [];
+        };
+
+        // 1) careNm 시도
+        console.log('[Shelter] careNm=', careNm);
+        let list = await tryLoad({ careNm });
+
+        // 2) 0건이면 carenm 시도(백 파라미터 철자 불일치 대비)
+        if (list.length === 0) {
+          console.log('[Shelter] fallback carenm=', careNm);
+          try {
+            list = await tryLoad({ carenm: careNm });
+          } catch {
+            // 무시
+          }
+        }
+
+        // 3) 여전히 0이면 필터 없이 확인
+        if (list.length === 0) {
+          const probe = await tryLoad({});
+          if (probe.length > 0) {
+            console.warn('[Shelter] filter mismatch: careNm 값이 DB와 다를 수 있음');
+          } else {
+            console.warn('[Shelter] endpoint returns 0 without filter (데이터 없음/권한 가능)');
+          }
+        }
+
+        if (!ignore) setAnimals(list);
       } catch (e) {
         if (ignore) return;
-        const status = e?.response?.status;
+        const status = e?.response?.status || e?.status;
         if (status === 401 || status === 403) {
           setAnimalsError('권한이 없습니다. 다시 로그인해주세요.');
           // navigate('/login', { replace: true });
@@ -75,7 +101,9 @@ export default function ShelterPage() {
       } finally {
         if (!ignore) setAnimalsLoading(false);
       }
-    })();
+    };
+
+    load();
     return () => { ignore = true; };
   }, [careNm, navigate]);
 
@@ -124,7 +152,7 @@ export default function ShelterPage() {
               )}
               {animals.map((a, i) => (
                 <li
-                  key={a.id ?? a.desertionNo ?? a.noticeNo ?? `${a.careNm}-${i}`}
+                  key={a.id ?? a._raw?.desertionNo ?? a._raw?.noticeNo ?? `${a.careNm}-${i}`}
                   className="list__item"
                 >
                   <div className="list__main">

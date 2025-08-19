@@ -51,20 +51,19 @@ export default function ShelterPage() {
       setAnimalsLoading(true);
       setAnimalsError('');
       try {
-        const res = await fetchAnimals({
-          careNm,            // ★ 백엔드가 받는 파라미터명
-          page: 0,           // Spring Pageable은 0부터
+        // animals.js에서 이미 normalize + pageable 대응함
+        const { content } = await fetchAnimals({
+          careNm,                 // ★ 백엔드 파라미터명 (대문자 N)
+          page: 0,                // Spring Pageable 0-based
           size: 10,
-          sort: 'createdAt,DESC', // 백 정렬필드명에 맞춰 필요시 변경
+          sort: 'createdAt,DESC', // 백 정렬 필드에 맞춰 필요시 변경
         });
-        const content = res?.content ?? res?.data?.content ?? [];
-        if (!ignore) setAnimals(content);
+        if (!ignore) setAnimals(Array.isArray(content) ? content : []);
       } catch (e) {
         if (ignore) return;
         const status = e?.response?.status;
         if (status === 401 || status === 403) {
           setAnimalsError('권한이 없습니다. 다시 로그인해주세요.');
-          // 필요시 자동 이동
           // navigate('/login', { replace: true });
         } else {
           setAnimalsError(

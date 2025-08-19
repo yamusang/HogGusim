@@ -5,14 +5,6 @@ import Button from '../../components/ui/Button';
 import { fetchAnimals } from '../../api/animals';
 import './shelter.css';
 
-// 경로 상수 (App의 PATHS와 맞춤)
-const PATHS = {
-  SHELTER_ANIMAL_NEW: '/shelter/animals/new',
-  PET_CONNECT: '/pet/connect',
-  LOGOUT: '/logout',
-  SHELTER_HOME: '/shelter',
-};
-
 // 날짜 포맷 보조
 const fmtDate = (d) => {
   if (!d) return '';
@@ -115,10 +107,9 @@ export default function ShelterPage() {
     return () => { ignore = true; };
   }, [careNm, navigate]);
 
-  // ---- routes
-  const goNewPet  = () => navigate(PATHS.SHELTER_ANIMAL_NEW); // ← 통일
-  const goAllPets = () => navigate(PATHS.PET_CONNECT);
-  const goLogout  = () => navigate(PATHS.LOGOUT);
+  const goNewPet  = () => navigate('/shelter/pets/new');
+  const goAllPets = () => navigate('/pet/connect');
+  const goLogout  = () => navigate('/logout');
 
   const count = animals?.length || 0;
 
@@ -149,7 +140,7 @@ export default function ShelterPage() {
           <div className="card__head">
             <h2 className="card__title">보호 중인 동물</h2>
             <span className="card__meta" style={{fontSize:12, color:'#6b7280'}}>총 {count}마리</span>
-            <Link to={PATHS.PET_CONNECT} className="card__link">더 보기</Link>
+            <Link to="/pet/connect" className="card__link">더 보기</Link>
           </div>
 
           {animalsLoading && <div className="card__body">목록을 불러오는 중…</div>}
@@ -241,8 +232,8 @@ export default function ShelterPage() {
           </div>
           <div className="quickgrid">
             <button className="quick" onClick={goNewPet}>신규 보호 동물 등록</button>
-            <Link className="quick" to={PATHS.PET_CONNECT}>봉사/임보 연결 관리</Link>
-            <Link className="quick" to={PATHS.SHELTER_HOME}>대시보드 새로고침</Link>
+            <Link className="quick" to="/pet/connect">봉사/임보 연결 관리</Link>
+            <Link className="quick" to="/shelter">대시보드 새로고침</Link>
           </div>
         </section>
       </main>

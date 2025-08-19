@@ -21,8 +21,7 @@ public class RecommendController {
             @RequestParam Long seniorId,
             @RequestParam(required = false) String careNm,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return recommendationService.recommendPets(seniorId, careNm, pageable);
     }
@@ -33,8 +32,7 @@ public class RecommendController {
             @RequestParam Long seniorId,
             @RequestParam Long petId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return recommendationService.recommendManagers(seniorId, petId, pageable);
     }

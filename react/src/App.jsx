@@ -112,7 +112,7 @@ export default function App() {
             }
           />
           <Route
-            path="/shelter/pets/new"
+            path="/shelter/animals/new"
             element={
               <Protected allow={['SHELTER']}>
                 <PetNewPage />

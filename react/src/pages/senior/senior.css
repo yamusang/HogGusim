@@ -4,3 +4,11 @@
 .connect__sub { color:#666; font-size: 14px; }
 .senior__pagination { display:flex; align-items:center; gap:8px; margin-top:12px; }
 .muted { color:#999; }
+.modal { position: fixed; inset:0; display:grid; place-items:center; z-index: 50; }
+.modal__scrim { position:absolute; inset:0; background:rgba(0,0,0,.4); }
+.modal__content { position:relative; z-index:1; }
+.form-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
+.row { display:flex; align-items:center; gap:8px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; font-size:12px; }
+.chip--on { background:#f3f4f6; border-color:#d1d5db; }

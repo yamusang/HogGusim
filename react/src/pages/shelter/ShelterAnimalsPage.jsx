@@ -46,10 +46,11 @@ export default function ShelterAnimalsPage() {
     if (!careNm) { setErr('보호소 정보가 없습니다.'); setLoading(false); return; }
     setLoading(true); setErr('');
     try {
-      // 백엔드가 status 파라미터를 지원하면 넘겨서 서버에서 필터:
-      const serverStatus = statusFilter === 'ALL' ? undefined
-                         : statusFilter === 'ENDED' ? 'ENDED'
-                         : 'AVAILABLE';
+      // ✅ FIX: "종료"는 서버에 status를 보내지 않고 전체를 받아 프론트에서 필터링
+      const serverStatus =
+        statusFilter === 'AVAILABLE'
+          ? 'AVAILABLE'
+          : undefined; // ALL/ENDED → undefined (서버 필터 미사용)
 
       const res = await fetchAnimals({
         page, size, sort: 'id,DESC',
@@ -58,7 +59,7 @@ export default function ShelterAnimalsPage() {
       });
 
       let list = res.content || [];
-      // 서버 필터 미지원 대비 프론트 필터
+      // 프론트 필터
       if (statusFilter !== 'ALL') {
         list = list.filter(row => toEndedKey(row.status) === statusFilter);
       }
@@ -112,7 +113,7 @@ export default function ShelterAnimalsPage() {
             <select value={statusFilter} onChange={onChangeStatus}>
               <option value="ALL">전체</option>
               <option value="AVAILABLE">보호중</option>
-              <option value="ENDED">종료</option>
+              {/* <option value="ENDED">종료</option> */}
             </select>
             <select value={size} onChange={e => { setPage(0); setSize(Number(e.target.value)); }}>
               <option value={10}>10개</option>
@@ -129,7 +130,7 @@ export default function ShelterAnimalsPage() {
           <div className="list__empty">데이터가 없습니다.</div>
         )}
 
-        {/* ✅ 카드 그리드 */}
+        {/* 카드 그리드 */}
         {!loading && !err && rows.length > 0 && (
           <div className="petgrid">
             {rows.map((a) => {
@@ -169,7 +170,7 @@ export default function ShelterAnimalsPage() {
         )}
       </section>
 
-      {/* ✅ 상세 모달 */}
+      {/* 상세 모달 */}
       {detail && (
         <DetailModal data={detail} onClose={() => setDetail(null)} />
       )}
@@ -178,7 +179,7 @@ export default function ShelterAnimalsPage() {
 }
 
 /* ─────────────────────────
- * 상세 모달 컴포넌트 (파일 분리 원하면 분리해도 됨)
+ * 상세 모달 컴포넌트
  * ───────────────────────── */
 function Row({ label, value }) {
   if (!value) return null;
@@ -238,8 +239,6 @@ function DetailModal({ data, onClose }) {
 
             <div className="detail__actions">
               <Button onClick={onClose}>닫기</Button>
-              {/* 필요하면 상세 관리 페이지로 이동 */}
-              {/* <Button presetName="ghost" onClick={()=> navigate(`/shelter/animals/${data.id}/applications`) }>신청자 보기</Button> */}
             </div>
           </div>
         </div>

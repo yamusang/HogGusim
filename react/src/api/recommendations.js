@@ -1,6 +1,7 @@
 // src/api/recommendations.js
 import api, { logApiError } from './apiClient';
 
+/** ---------- 모드/유틸 ---------- */
 export const RecoMode = Object.freeze({
   CONSERVATIVE: 'conservative',
   BALANCED: 'balanced',
@@ -12,46 +13,75 @@ export const isValidMode = (m) =>
 export const toAbsoluteUrl = (url) => {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
-  const base = (api.defaults.baseURL || '').replace(/\/+$/, '');
-  const rel  = (`/${String(url)}`).replace(/\/+/, '/');
+  const base = (api.defaults?.baseURL || '').replace(/\/+$/, '');
+  const rel = (`/${String(url)}`).replace(/\/+/, '/');
   return `${base}${rel}`;
 };
 
+/** "안전도 GREEN +30 · 선호(종) +3" → [{label, delta}, ...] */
 export function parseReason(reason = '') {
   if (!reason || typeof reason !== 'string') return [];
+  // 구분 기호가 · 또는 , 또는 • 로 섞여 들어오는 경우도 대비
   return reason
-    .split('·')
+    .split(/(?:·|•|,)/g)
     .map((s) => s.trim())
     .filter(Boolean)
     .map((chunk) => {
-      const m = chunk.match(/(.+)\s+([+-]?\d+(?:\.\d+)?)(?!.*\d)/);
+      const m = chunk.match(/(.+?)\s+([+-]?\d+(?:\.\d+)?)(?!.*\d)/);
       if (m) return { label: m[1].trim(), delta: Number(m[2]) };
       return { label: chunk, delta: null };
     });
 }
 
+/** 코드/텍스트 혼용 대응해서 성별/중성화 한국어 레이블 보정 */
+function normalizeSex(v) {
+  const s = String(v ?? '').trim().toUpperCase();
+  if (s === 'M') return '수컷';
+  if (s === 'F') return '암컷';
+  if (s === 'Q' || s === 'U' || s === '' || s === '-') return '미상';
+  // 이미 "수컷/암컷/-" 등 텍스트일 수도 있음
+  return v || '-';
+}
+function normalizeNeuter(v) {
+  const s = String(v ?? '').trim().toUpperCase();
+  if (s === 'Y') return '예';
+  if (s === 'N') return '아니오';
+  if (s === 'U' || s === '' || s === '-') return '-';
+  // 이미 "예/아니오/-" 등 텍스트일 수도 있음
+  return v || '-';
+}
+
+/** 백 DTO → 카드용 표준 모델 */
 export function mapRecoPet(it = {}) {
   const photo = it.photoUrl ?? it.image ?? it.thumbnail ?? it.thumb ?? '';
-  const sex = it.sex ?? it.gender ?? '-';
-  const neuter = it.neuter ?? it.neutered ?? '-';
-
   return {
     id: it.id ?? it.desertionNo ?? null,
     desertionNo: it.desertionNo ?? null,
     name: it.name ?? null,
     breed: it.breed ?? it.kind ?? null,
     age: it.age ?? null,
+
     photoUrl: photo ? toAbsoluteUrl(photo) : null,
     thumbnail: it.thumbnail ? toAbsoluteUrl(it.thumbnail) : null,
-    sex: typeof sex === 'string' ? sex : '-',
-    neuter: typeof neuter === 'string' ? neuter : '-',
-    matchScore: typeof it.matchScore === 'number'
-      ? it.matchScore
-      : (typeof it.score === 'number' ? it.score : 0),
+
+    sex: normalizeSex(it.sex ?? it.gender),
+    neuter: normalizeNeuter(it.neuter ?? it.neutered),
+
+    matchScore:
+      typeof it.matchScore === 'number'
+        ? it.matchScore
+        : typeof it.score === 'number'
+        ? it.score
+        : 0,
+
     reason: it.reason ?? '',
+    reasonChips: parseReason(it.reason ?? ''),
+
     careName: it.careNm ?? it.careName ?? it.shelterName ?? null,
     temperament: it.temperament ?? null,
-    reasonChips: parseReason(it.reason ?? ''),
+
+    // 원본은 필요 시 여기 추가
+    _raw: it,
   };
 }
 
@@ -64,11 +94,8 @@ export const mergePage = (prev, next) => {
   return { ...next, content: [...(prev.content || []), ...(next.content || [])] };
 };
 
-/**
- * ✅ 추천 동물 목록 (Page<RecoPetDto>)
- * getPetsRecommended(seniorId, {mode,page,size}, axiosConfig?)
- * axiosConfig에 signal 전달 가능 (AbortController)
- */
+/** ---------- API ---------- */
+/** GET /reco/pets  → Page<RecoPetDto> */
 export const getPetsRecommended = async (
   seniorId,
   { mode = RecoMode.BALANCED, page = 0, size = 12 } = {},
@@ -80,17 +107,18 @@ export const getPetsRecommended = async (
   try {
     const { data } = await api.get('/reco/pets', {
       params: { seniorId, mode, page, size },
-      ...axiosConfig, // ← 중요: signal 등 전달
+      ...axiosConfig, // signal 등 전달
     });
 
-    const content = Array.isArray(data?.content) ? data.content.map(mapRecoPet) : [];
-    // 페이지 메타 안전 보강
-    const number = typeof data?.number === 'number' ? data.number : page;
-    const sz = typeof data?.size === 'number' ? data.size : size;
-    const totalElements = typeof data?.totalElements === 'number'
+    const rawContent = Array.isArray(data?.content) ? data.content : [];
+    const content = rawContent.map(mapRecoPet);
+
+    const number = Number.isFinite(data?.number) ? data.number : page;
+    const sz = Number.isFinite(data?.size) ? data.size : size;
+    const totalElements = Number.isFinite(data?.totalElements)
       ? data.totalElements
       : content.length;
-    const totalPages = typeof data?.totalPages === 'number'
+    const totalPages = Number.isFinite(data?.totalPages)
       ? data.totalPages
       : Math.max(1, Math.ceil(totalElements / (sz || 1)));
 
@@ -111,7 +139,7 @@ export const getPetsRecommended = async (
   }
 };
 
-/** (옵션) 추천 매니저 목록 */
+/** (옵션) GET /reco/managers */
 export const getManagersRecommended = async (
   seniorId,
   petId,

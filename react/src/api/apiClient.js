@@ -28,11 +28,7 @@ export const setAuth = ({ accessToken, refreshToken, user } = {}) => {
   if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
   if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
 };
-export const updateApplication = async (applicationId, patch, { signal } = {}) => {
-  // patch = { reservedAt?: string(ISO or 'yyyy-MM-ddTHH:mm'), memo?: string }
-  const { data } = await api.patch(`/applications/${applicationId}`, patch, { signal });
-  return data;
-};
+
 export const clearAuth = () => {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
@@ -96,7 +92,7 @@ api.interceptors.response.use(
     const status = error?.response?.status;
 
     // 1차: 리프레시 시도
-    if (status === 401 && !originalRequest?._retry && !originalRequest?.__isRefreshCall) {
+    if (status === 401 && !originalRequest?._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           addRefreshSubscriber((newToken) => {
@@ -122,7 +118,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshErr) {
-        // ⬇️ 리프레시 실패 시: 즉시 로그아웃 + 로그인으로 이동
+        // 리프레시 실패 시: 즉시 로그아웃 + 로그인으로 이동
         isRefreshing = false;
         const norm = normalizeError(refreshErr);
         try { clearAuth(); } catch {}
@@ -167,5 +163,4 @@ export const logApiError = (err) => {
   }
 };
 
-// ✅ 반드시 default export
 export default api;

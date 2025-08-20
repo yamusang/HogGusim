@@ -28,7 +28,11 @@ export const setAuth = ({ accessToken, refreshToken, user } = {}) => {
   if (refreshToken) localStorage.setItem(REFRESH_KEY, refreshToken);
   if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
 };
-
+export const updateApplication = async (applicationId, patch, { signal } = {}) => {
+  // patch = { reservedAt?: string(ISO or 'yyyy-MM-ddTHH:mm'), memo?: string }
+  const { data } = await api.patch(`/applications/${applicationId}`, patch, { signal });
+  return data;
+};
 export const clearAuth = () => {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);

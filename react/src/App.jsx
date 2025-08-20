@@ -8,17 +8,22 @@ import useAuth from './hooks/useAuth';
 import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 주의
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import LogoutPage from './pages/auth/LogoutPage';
+
 import SeniorPage from './pages/senior/SeniorPage';
 import ConnectPage from './pages/senior/ConnectPage';
-import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';        // ✅ 추가
+import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';
+import ApplyPage from './pages/senior/ApplyPage'; // ⭐ 추가
+
 import ManagerPage from './pages/manager/ManagerPage';
+
 import ShelterPage from './pages/shelter/ShelterPage';
-import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';     // ✅ 추가
-import ShelterAnimalsPage from './pages/shelter/ShelterAnimalsPage';              // ✅ 전체 보기 페이지
+import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';
+import ShelterAnimalsPage from './pages/shelter/ShelterAnimalsPage';
+import PetNewPage from './pages/shelter/PetNewPage';
+
 import PetConnectPage from './pages/pet/PetConnectPage';
 import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
-import PetNewPage from './pages/shelter/PetNewPage';
-import LogoutPage from './pages/auth/LogoutPage';
 
 // ---------- Routes Consts
 const PATHS = {
@@ -37,13 +42,15 @@ const PATHS = {
 
   // SHELTER
   SHELTER_HOME: '/shelter',
-  SHELTER_ANIMALS: '/shelter/animals',                // ✅ 전체보기
-  SHELTER_ANIMAL_NEW: '/shelter/animals/new',         // ✅ 등록
+  SHELTER_ANIMALS: '/shelter/animals',
+  SHELTER_ANIMAL_NEW: '/shelter/animals/new',
   SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications',
 
-  // COMMON
-  PET_CONNECT: '/pet/connect',               // (행정) 신청서 확인/승인 등
-  PET_MANAGERS: '/pet/:petId/managers',     // 특정 동물 매니저 추천
+  // COMMON (Pet)
+  PET_APPLY: '/pet/:petId/apply',        // ⭐ 신청 페이지 (필수)
+  PET_CONNECT: '/pet/:petId/connect',    // ⭐ 특정 동물 연결/확인 (파라미터 버전)
+  PET_CONNECT_LEGACY: '/pet/connect',    // (선택) 레거시 경로 유지 시
+  PET_MANAGERS: '/pet/:petId/managers',
 };
 
 const toUpper = (v) => (v || '').toUpperCase();
@@ -61,7 +68,9 @@ function Protected({ children, allow }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return null;
-  if (!user) return <Navigate to={`${PATHS.LOGIN}?from=${encodeURIComponent(loc.pathname)}`} replace />;
+  if (!user) {
+    return <Navigate to={`${PATHS.LOGIN}?from=${encodeURIComponent(loc.pathname)}`} replace />;
+  }
   if (allow && !allow.map(toUpper).includes(toUpper(user.role))) {
     return <Navigate to={routeForRole(user.role)} replace />;
   }
@@ -173,7 +182,24 @@ export default function App() {
 
           {/* 공용(로그인 필요) */}
           <Route
+            path={PATHS.PET_APPLY}
+            element={
+              <Protected allow={['SENIOR']}>
+                <ApplyPage />
+              </Protected>
+            }
+          />
+          <Route
             path={PATHS.PET_CONNECT}
+            element={
+              <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
+                <PetConnectPage />
+              </Protected>
+            }
+          />
+          {/* (선택) 과거 링크 호환 */}
+          <Route
+            path={PATHS.PET_CONNECT_LEGACY}
             element={
               <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
                 <PetConnectPage />

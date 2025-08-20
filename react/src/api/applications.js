@@ -1,65 +1,84 @@
 // src/api/applications.js
 import api, { logApiError } from './apiClient';
 
-/** 공통 페이지 변환 */
+/** 공통 페이지 변환 (Spring Data Page 호환) */
 const toPage = (data, { page = 0, size = 20 } = {}) => {
-  const content = data?.content ?? [];
-  const total   = data?.totalElements ?? content.length ?? 0;
-  const number  = data?.number ?? page;
-  const _size   = data?.size ?? size;
-  const totalPages = Math.max(1, Math.ceil(total / _size));
-  return { content, total, size: _size, number, totalPages };
+  const content = Array.isArray(data?.content) ? data.content : [];
+  const total = Number.isFinite(data?.totalElements) ? data.totalElements : content.length;
+  const number = Number.isFinite(data?.number) ? data.number : page;
+  const _size = Number.isFinite(data?.size) ? data.size : size;
+
+  const totalPages =
+    Number.isFinite(data?.totalPages) ? data.totalPages : (total > 0 ? Math.ceil(total / _size) : 0);
+
+  return {
+    content,
+    number,         // 0-based
+    size: _size,
+    totalElements: total,
+    totalPages,
+    first: !!data?.first ?? number === 0,
+    last: !!data?.last ?? (number >= totalPages - 1 && totalPages > 0),
+    empty: !!data?.empty ?? content.length === 0,
+  };
 };
 
 /* ───────────────────────
  * Senior(고령자)
  * ─────────────────────── */
-export const fetchMyApplications = async ({ seniorId, page = 0, size = 10 }) => {
+/**
+ * 내 신청 목록
+ * - 백엔드가 `/applications/by-senior/{seniorId}`를 제공한다고 가정
+ * - axios 취소를 위해 signal 지원
+ */
+export const fetchMyApplications = async ({ seniorId, page = 0, size = 10, signal } = {}) => {
   const { data } = await api.get(`/applications/by-senior/${seniorId}`, {
     params: { page, size },
+    signal,
   });
   return toPage(data, { page, size });
 };
 
-export const cancelApplication = async (applicationId) => {
-  const { data } = await api.post(`/applications/${applicationId}/cancel`);
+export const cancelApplication = async (applicationId, { signal } = {}) => {
+  const { data } = await api.post(`/applications/${applicationId}/cancel`, null, { signal });
   return data;
 };
 
 /* ───────────────────────
  * Shelter(보호소)
  * ─────────────────────── */
-export const listApplicationsByShelter = async ({ careNm, status, page = 0, size = 20 } = {}) => {
-  const params = { careNm, page, size }; // ✅ 서버 필드명 통일
-  if (status) params.status = status;    // PENDING | APPROVED | REJECTED
-  const { data } = await api.get('/applications', { params });
+export const listApplicationsByShelter = async ({ careNm, status, page = 0, size = 20, signal } = {}) => {
+  const params = { page, size };
+  if (careNm) params.careNm = careNm;
+  if (status) params.status = status; // PENDING | APPROVED | REJECTED
+  const { data } = await api.get('/applications', { params, signal });
   return toPage(data, { page, size });
 };
 
-export const approveApplication = async (applicationId) => {
-  const { data } = await api.post(`/applications/${applicationId}/approve`);
+export const approveApplication = async (applicationId, { signal } = {}) => {
+  const { data } = await api.post(`/applications/${applicationId}/approve`, null, { signal });
   return data;
 };
 
-export const rejectApplication = async (applicationId) => {
-  const { data } = await api.post(`/applications/${applicationId}/reject`);
+export const rejectApplication = async (applicationId, { signal } = {}) => {
+  const { data } = await api.post(`/applications/${applicationId}/reject`, null, { signal });
   return data;
 };
 
 /* ───────────────────────
  * Pet(동물) 단위
  * ─────────────────────── */
-export const listByPet = async (animalId, { page = 0, size = 20 } = {}) => {
-  const { data } = await api.get(`/applications/by-pet/${animalId}`, { params: { page, size } });
+export const listByPet = async (animalId, { page = 0, size = 20, signal } = {}) => {
+  const { data } = await api.get(`/applications/by-pet/${animalId}`, { params: { page, size }, signal });
   return toPage(data, { page, size });
 };
 
 /* ───────────────────────
- * 공통: 신청 생성 (ApplyPage, Reco 페이지에서 사용)
+ * 공통: 신청 생성
  * ─────────────────────── */
-export const createApplication = async (payload) => {
+export const createApplication = async (payload, { signal } = {}) => {
   try {
-    const { data } = await api.post('/applications', payload);
+    const { data } = await api.post('/applications', payload, { signal });
     return data;
   } catch (err) {
     logApiError?.(err);

@@ -5,7 +5,7 @@ import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
 // pages
-import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 주의
+import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 확인!
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import LogoutPage from './pages/auth/LogoutPage';
@@ -13,7 +13,7 @@ import LogoutPage from './pages/auth/LogoutPage';
 import SeniorPage from './pages/senior/SeniorPage';
 import ConnectPage from './pages/senior/ConnectPage';
 import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';
-import ApplyPage from './pages/senior/ApplyPage'; // ⭐ 추가
+import ApplyPage from './pages/senior/ApplyPage';
 
 import ManagerPage from './pages/manager/ManagerPage';
 
@@ -25,6 +25,9 @@ import PetNewPage from './pages/shelter/PetNewPage';
 import PetConnectPage from './pages/pet/PetConnectPage';
 import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
 
+// ⭐ 추가: 보호소 동물 탐색 페이지
+import AnimalsPage from './pages/pet/AnimalsPage';
+
 // ---------- Routes Consts
 const PATHS = {
   ROOT: '/',
@@ -34,7 +37,7 @@ const PATHS = {
 
   // SENIOR
   SENIOR_HOME: '/senior',
-  SENIOR_APPLY: '/senior/apply',        // ⭐ 추가
+  SENIOR_APPLY: '/senior/apply',
   SENIOR_CONNECT: '/senior/connect',
   SENIOR_APPS: '/senior/applications',
 
@@ -48,10 +51,13 @@ const PATHS = {
   SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications',
 
   // COMMON (Pet)
-  PET_APPLY: '/pet/:petId/apply',        // ⭐ 신청 페이지 (펫 선택 시)
+  PET_APPLY: '/pet/:petId/apply',
   PET_CONNECT: '/pet/:petId/connect',
   PET_CONNECT_LEGACY: '/pet/connect',
   PET_MANAGERS: '/pet/:petId/managers',
+
+  // ⭐ 추가: Animals 탐색
+  ANIMALS: '/animals',
 };
 
 const toUpper = (v) => (v || '').toUpperCase();
@@ -92,6 +98,8 @@ export default function App() {
         <Routes>
           {/* 공개 */}
           <Route path={PATHS.ROOT} element={<MainPage />} />
+          {/* ⭐ 탐색 페이지는 공개로 두었음(원하면 Protected로 감싸도 됨) */}
+          <Route path={PATHS.ANIMALS} element={<AnimalsPage />} />
 
           <Route
             path={PATHS.LOGIN}
@@ -121,7 +129,7 @@ export default function App() {
             }
           />
           <Route
-            path={PATHS.SENIOR_APPLY}   // ⭐ 새 라우트
+            path={PATHS.SENIOR_APPLY}
             element={
               <Protected allow={['SENIOR']}>
                 <ApplyPage />

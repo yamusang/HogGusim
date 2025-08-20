@@ -80,3 +80,24 @@ button[presetname="applibtn"], .btn.applibtn{ composes: btn btn--applibtn; }
 button[presetname="connectbtn"], .btn.connectbtn{ composes: btn btn--connectbtn; }
 button[presetname="ghost"], .btn.ghost{ composes: btn btn--ghost; }
 button[presetname="apply"], .btn.apply{ composes: btn btn--apply; }
+
+/* ===================================================== */
+/* 🔧 chip 전역 스타일 충돌 방지: 절대배치 강제 해제 */
+/* ===================================================== */
+.senior .chips .chip {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.04);
+  border: 1px solid rgba(0,0,0,.06);
+  cursor: pointer;
+  user-select: none;
+  font-size: .92rem;
+}
+.senior .chips .chip.chip--on {
+  background: rgba(99,102,241,.12);
+  border-color: rgba(99,102,241,.32);
+}

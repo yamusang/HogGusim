@@ -9,21 +9,42 @@ const DAY_OPTS = [
   { value: 'THU', label: '목' }, { value: 'FRI', label: '금' }, { value: 'SAT', label: '토' },
   { value: 'SUN', label: '일' },
 ];
-const ZONES = ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'];
+
+const ZONES = [
+  '중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구',
+  '금정구','강서구','연제구','수영구','사상구','기장군'
+];
+
+function Chip({ label, on, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={`mgr-chip ${on ? 'is-on' : ''}`}
+      aria-pressed={on}
+      onClick={onToggle}
+    >
+      {label}
+    </button>
+  );
+}
 
 export default function ManagerProfilePage() {
   const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState('');
+  const [saving, setSaving]   = useState(false);
+  const [err, setErr]         = useState('');
 
-  const [days, setDays] = useState([]);
+  const [days, setDays]   = useState([]);
   const [start, setStart] = useState('09:00');
-  const [end, setEnd] = useState('18:00');
+  const [end, setEnd]     = useState('18:00');
   const [zones, setZones] = useState([]);
-  const [memo, setMemo] = useState('');
+  const [memo, setMemo]   = useState('');
 
-  const isManager = useMemo(() => String(user?.role || '').toUpperCase() === 'MANAGER', [user]);
+  const isManager = useMemo(
+    () => String(user?.role || '').toUpperCase() === 'MANAGER',
+    [user]
+  );
 
   useEffect(() => {
     (async () => {
@@ -43,8 +64,10 @@ export default function ManagerProfilePage() {
     })();
   }, []);
 
-  const toggle = (list, setter, v) =>
-    setter(list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
+  const toggle = (list, setter, v) => {
+    const next = list.includes(v) ? list.filter(x => x !== v) : [...list, v];
+    setter(next);
+  };
 
   const onSave = async () => {
     setSaving(true); setErr('');
@@ -58,7 +81,9 @@ export default function ManagerProfilePage() {
     }
   };
 
-  if (!isManager) return <div className="manager" style={{padding:24}}>매니저만 접근 가능합니다.</div>;
+  if (!isManager) {
+    return <div className="manager" style={{ padding: 24 }}>매니저만 접근 가능합니다.</div>;
+  }
 
   return (
     <section className="card">
@@ -67,69 +92,67 @@ export default function ManagerProfilePage() {
       </div>
 
       {loading && <div className="card__body">불러오는 중…</div>}
-      {err && !loading && <div className="card__error" style={{color:'crimson'}}>{err}</div>}
+      {err && !loading && <div className="card__error" style={{ color: 'crimson' }}>{err}</div>}
 
       {!loading && !err && (
-        <div className="mgr__profile">
-          <div className="mgr__section">
-            <div className="mgr__label">가능 요일</div>
-            <div className="chips">
-              {DAY_OPTS.map(d => {
-                const on = days.includes(d.value);
-                return (
-                  <span key={d.value}
-                        className={`chip ${on ? 'chip--on' : ''}`}
-                        role="checkbox"
-                        aria-checked={on}
-                        onClick={() => toggle(days, setDays, d.value)}>
-                    {d.label}
-                  </span>
-                );
-              })}
+        <form className="mgr-prof">
+          {/* 가능 요일 */}
+          <fieldset className="mgr-prof__section">
+            <legend className="mgr-prof__label">가능 요일</legend>
+            <div className="mgr-chipset">
+              {DAY_OPTS.map(d => (
+                <Chip
+                  key={d.value}
+                  label={d.label}
+                  on={days.includes(d.value)}
+                  onToggle={() => toggle(days, setDays, d.value)}
+                />
+              ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="mgr__section">
-            <div className="mgr__label">가능 시간</div>
-            <div className="mgr__time">
-              <input type="time" value={start} onChange={(e)=>setStart(e.target.value)} />
+          {/* 가능 시간 */}
+          <fieldset className="mgr-prof__section">
+            <legend className="mgr-prof__label">가능 시간</legend>
+            <div className="mgr-time">
+              <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
               <span>~</span>
-              <input type="time" value={end} onChange={(e)=>setEnd(e.target.value)} />
+              <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
-          </div>
+          </fieldset>
 
-          <div className="mgr__section">
-            <div className="mgr__label">활동 구역</div>
-            <div className="chips">
-              {ZONES.map(z => {
-                const on = zones.includes(z);
-                return (
-                  <span key={z}
-                        className={`chip ${on ? 'chip--on' : ''}`}
-                        role="checkbox"
-                        aria-checked={on}
-                        onClick={() => toggle(zones, setZones, z)}>
-                    {z}
-                  </span>
-                );
-              })}
+          {/* 활동 구역 */}
+          <fieldset className="mgr-prof__section">
+            <legend className="mgr-prof__label">활동 구역</legend>
+            <div className="mgr-chipset">
+              {ZONES.map(z => (
+                <Chip
+                  key={z}
+                  label={z}
+                  on={zones.includes(z)}
+                  onToggle={() => toggle(zones, setZones, z)}
+                />
+              ))}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="mgr__section">
-            <div className="mgr__label">메모</div>
+          {/* 메모 */}
+          <fieldset className="mgr-prof__section">
+            <legend className="mgr-prof__label">메모</legend>
             <input
-              className="mgr__memo"
+              className="mgr-memo"
               placeholder="선호 활동/알레르기/교통수단 등"
               value={memo}
-              onChange={(e)=>setMemo(e.target.value)}
+              onChange={(e) => setMemo(e.target.value)}
             />
-          </div>
+          </fieldset>
 
-          <div className="mgr__actions" style={{justifyContent:'flex-end'}}>
-            <Button disabled={saving} onClick={onSave}>{saving ? '저장 중…' : '저장'}</Button>
+          <div className="mgr-prof__actions">
+            <Button disabled={saving} onClick={onSave}>
+              {saving ? '저장 중…' : '저장'}
+            </Button>
           </div>
-        </div>
+        </form>
       )}
     </section>
   );

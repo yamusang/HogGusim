@@ -14,12 +14,29 @@ import './senior.css';
 const ymd  = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const hhmm = (s) => /^\d{2}:\d{2}$/.test(s);
 
+const isArr = (v) => Array.isArray(v) && v.length > 0;
+
+const DAY_OPTS_LOCAL = isArr(DAY_OPTS) ? DAY_OPTS : [
+  { value: 'MON', label: '월' }, { value: 'TUE', label: '화' }, { value: 'WED', label: '수' },
+  { value: 'THU', label: '목' }, { value: 'FRI', label: '금' }, { value: 'SAT', label: '토' },
+  { value: 'SUN', label: '일' },
+];
+const SPECIES_OPTS_LOCAL      = isArr(SPECIES_OPTS)      ? SPECIES_OPTS      : [{ value:'dog', label:'강아지' }, { value:'cat', label:'고양이' }, { value:'any', label:'상관없음' }];
+const SIZE_OPTS_LOCAL         = isArr(SIZE_OPTS)         ? SIZE_OPTS         : [{ value:'small', label:'소형' }, { value:'medium', label:'중형' }, { value:'large', label:'대형' }, { value:'any', label:'상관없음' }];
+const GENDER_PREF_OPTS_LOCAL  = isArr(GENDER_PREF_OPTS)  ? GENDER_PREF_OPTS  : [{ value:'M', label:'수컷' }, { value:'F', label:'암컷' }, { value:'any', label:'상관없음' }];
+const TEMPERAMENT_OPTS_LOCAL  = isArr(TEMPERAMENT_OPTS)  ? TEMPERAMENT_OPTS  : [{ value:'calm', label:'차분한' }, { value:'gentle', label:'온순한' }, { value:'any', label:'상관없음' }];
+const HEALTH_TOL_OPTS_LOCAL   = isArr(HEALTH_TOL_OPTS)   ? HEALTH_TOL_OPTS   : [{ value:'healthyOnly', label:'건강 개체만' }, { value:'manageableOnly', label:'관리 가능' }, { value:'any', label:'상관없음' }];
+const VISIT_STYLE_OPTS_LOCAL  = isArr(VISIT_STYLE_OPTS)  ? VISIT_STYLE_OPTS  : [
+  { value: 'HOME_VISIT', label: '집 방문 돌봄' },
+  { value: 'OUTDOOR_WALK', label: '외부 산책 중심' },
+  { value: 'EITHER', label: '상황에 따라' },
+];
+
 export default function ApplyPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { petId: petIdParam } = useParams();
 
-  /** URL > localStorage('selectedPet') > null */
   const petId = useMemo(() => {
     if (petIdParam) return Number(petIdParam);
     try {
@@ -126,22 +143,26 @@ export default function ApplyPage() {
         bodycamAgree: !!form.bodycamAgree,
       };
 
-      // ✅ petId는 선택일 때만 포함
       if (petId) payload.petId = Number(petId);
 
       await createApplication(payload);
 
-      // 플로우 전환 준비
       localStorage.removeItem('selectedPet');
       localStorage.setItem('afterApply', '1');
 
       alert('신청 완료! 보호소 검토 후 안내 드릴게요.');
-      // ✅ 추천 모드로 전환
       navigate('/senior?mode=recommend', { replace: true });
     } catch (e2) {
       setErr(e2?.message || '신청에 실패했어요.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onChipKeyDown = (e, value) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      toggleDay(value);
     }
   };
 
@@ -232,7 +253,7 @@ export default function ApplyPage() {
               value={form.preferredPetInfo.species}
               onChange={(e) => setNested('preferredPetInfo', 'species', e.target.value)}
             >
-              {SPECIES_OPTS.map((opt) => (
+              {SPECIES_OPTS_LOCAL.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -245,7 +266,7 @@ export default function ApplyPage() {
               value={form.preferredPetInfo.size}
               onChange={(e) => setNested('preferredPetInfo', 'size', e.target.value)}
             >
-              {SIZE_OPTS.map((opt) => (
+              {SIZE_OPTS_LOCAL.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -258,7 +279,7 @@ export default function ApplyPage() {
               value={form.preferredPetInfo.genderPref}
               onChange={(e) => setNested('preferredPetInfo', 'genderPref', e.target.value)}
             >
-              {GENDER_PREF_OPTS.map((opt) => (
+              {GENDER_PREF_OPTS_LOCAL.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -271,7 +292,7 @@ export default function ApplyPage() {
               value={form.preferredPetInfo.temperamentPref}
               onChange={(e) => setNested('preferredPetInfo', 'temperamentPref', e.target.value)}
             >
-              {TEMPERAMENT_OPTS.map((opt) => (
+              {TEMPERAMENT_OPTS_LOCAL.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -284,7 +305,7 @@ export default function ApplyPage() {
               value={form.preferredPetInfo.healthTolerance}
               onChange={(e) => setNested('preferredPetInfo', 'healthTolerance', e.target.value)}
             >
-              {HEALTH_TOL_OPTS.map((opt) => (
+              {HEALTH_TOL_OPTS_LOCAL.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -294,26 +315,28 @@ export default function ApplyPage() {
         </div>
 
         <div className="form-grid">
-          <label>
-            가능 요일
+          {/* 가능 요일 수정된 부분 */}
+          <div className="form-field">
+            <label className="form-label">가능 요일</label>
             <div className="chips">
-              {DAY_OPTS.map((d) => (
-                <label
-                  key={d.value}
-                  className={`chip ${
-                    form.careAvailability.days.includes(d.value) ? 'chip--on' : ''
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.careAvailability.days.includes(d.value)}
-                    onChange={() => toggleDay(d.value)}
-                  />
-                  {d.label}
-                </label>
-              ))}
+              {DAY_OPTS_LOCAL.map((d) => {
+                const on = form.careAvailability.days.includes(d.value);
+                return (
+                  <span
+                    key={d.value}
+                    className={`chip ${on ? 'chip--on' : ''}`}
+                    role="checkbox"
+                    aria-checked={on}
+                    tabIndex={0}
+                    onKeyDown={(e) => onChipKeyDown(e, d.value)}
+                    onClick={() => toggleDay(d.value)}
+                  >
+                    {d.label}
+                  </span>
+                );
+              })}
             </div>
-          </label>
+          </div>
 
           <label>
             시간대(시작)
@@ -348,7 +371,7 @@ export default function ApplyPage() {
               value={form.careAvailability.visitStyle}
               onChange={(e) => setNested('careAvailability', 'visitStyle', e.target.value)}
             >
-              {VISIT_STYLE_OPTS.map((opt) => (
+              {VISIT_STYLE_OPTS_LOCAL.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>

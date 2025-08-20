@@ -1,9 +1,9 @@
 package com.matchpet.domain.senior.entity;
 
-import com.matchpet.domain.match.Enums.Level3;
-import com.matchpet.domain.match.Enums.VisitStyle;
 import jakarta.persistence.*;
 import lombok.Getter; import lombok.Setter;
+
+import java.time.LocalDate;
 
 @Entity @Getter @Setter
 @Table(name = "seniors")
@@ -12,17 +12,29 @@ public class SeniorProfile {
   @Column(name = "user_id")
   private Long userId;
 
-  private String name;
-  private String phoneNumber;
-  private String address;
+  @Column(nullable = false)           private String name;
+  @Column(name = "gender")            private String gender;          // "M"/"F" 등
+  @Column(name = "phone_number")      private String phoneNumber;
+  @Column(nullable = false)           private String address;
+  @Column(name = "birth_date")        private LocalDate birthDate;
+  @Column(name = "emergency_contact") private String emergencyContact;
 
-  // 매칭에 쓰는 최소 3개
-  @Enumerated(EnumType.STRING)
-  private Level3 mobilityLevel;            // LOW/MID/HIGH
+  @Column(name = "has_pet_experience", nullable = false)
+  private boolean hasPetExperience;
 
-  @Enumerated(EnumType.STRING)
-  private VisitStyle preferredVisitStyle;  // QUIET/ACTIVE/COMPANION
+  /** JSON String으로 매핑(문자열 보관 → 서비스에서 ObjectMapper로 파싱) */
+  @Column(name = "preferred_pet_info", columnDefinition = "JSON")
+  private String preferredPetInfo;
 
-  @Enumerated(EnumType.STRING)
-  private Level3 techComfort;              // LOW/MID/HIGH
+  @Column(name = "care_availability", columnDefinition = "JSON")
+  private String careAvailability;
+
+  @Column(name = "terms_agree", nullable = false)   private boolean termsAgree;
+  @Column(name = "bodycam_agree", nullable = false) private boolean bodycamAgree;
+
+  @Column(name = "created_at", insertable = false, updatable = false)
+  private java.time.LocalDateTime createdAt;
+
+  @Column(name = "updated_at", insertable = false, updatable = false)
+  private java.time.LocalDateTime updatedAt;
 }

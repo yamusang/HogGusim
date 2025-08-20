@@ -28,4 +28,12 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
     Optional<Animal> findByExternalId(String externalId);
 
     Optional<Animal> findByDesertionNo(String desertionNo);
+
+     @Query("""
+           select a
+             from Animal a
+            where a.processState = '보호중'
+              and a.careAddr like '부산광역시%'
+           """)
+    Page<Animal> findAvailableInBusan(Pageable pageable);
 }

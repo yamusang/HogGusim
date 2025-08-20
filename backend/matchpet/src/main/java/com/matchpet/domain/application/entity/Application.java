@@ -1,32 +1,39 @@
 package com.matchpet.domain.application.entity;
 
-import com.matchpet.domain.application.enums.ApplicationStatus;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
-@Entity @Table(name="applications")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter
+@Entity @Table(name = "applications")
 public class Application {
-  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
 
-  @Column(name="senior_user_id", nullable=false) private Long seniorUserId;
-  @Column(name="animal_id", nullable=false)      private Long animalId;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Enumerated(EnumType.STRING) @Column(nullable=false)
-  private ApplicationStatus status = ApplicationStatus.PENDING;
+    @Column(name = "senior_id")
+    private Long seniorId;     // seniors.user_id
 
-  private String name; private String gender;
-  @Column(name="applicant_age") private Integer applicantAge;
-  private String experience; private String address;
-  @Column(name="time_range") private String timeRange;
-  private String days; @Column(name="date_text") private String dateText;
-  private String phone; private String emergency;
-  @Column(name="agree_terms",   nullable=false) private boolean agreeTerms;
-  @Column(name="agree_bodycam", nullable=false) private boolean agreeBodycam;
-  @Column(name="visits_per_week") private Integer visitsPerWeek;
+    @Column(name = "animal_id")
+    private Long animalId;     // animals.id
 
-  @Column(name="created_at", insertable=false, updatable=false) private LocalDateTime createdAt;
-  @Column(name="updated_at", insertable=false, updatable=false) private LocalDateTime updatedAt;
+    @Enumerated(EnumType.STRING)
+    private Status status = Status.PENDING;
+    public enum Status { PENDING, APPROVED, REJECTED }
+
+    @Column(name = "reserved_at")
+    private LocalDateTime reservedAt;
+
+    private String note;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PreUpdate
+    void onUpdate() { this.updatedAt = LocalDateTime.now(); }
 }

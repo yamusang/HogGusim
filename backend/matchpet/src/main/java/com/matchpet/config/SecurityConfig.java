@@ -1,100 +1,61 @@
-// src/main/java/com/matchpet/config/SecurityConfig.java
 package com.matchpet.config;
 
-import java.util.List;
-
-import com.matchpet.auth.JwtAuthFilter;
-import com.matchpet.auth.JwtBlacklistFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
-  private final JwtAuthFilter jwtAuthFilter;
-  private final JwtBlacklistFilter jwtBlacklistFilter;
+    @Bean
+    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .cors(Customizer.withDefaults())
+            .csrf(csrf -> csrf.disable()) // API(JWT)면 반드시 비활성
+            .authorizeHttpRequests(auth -> auth
+                // 프리플라이트
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-  @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http
-        .csrf(csrf -> csrf.disable())
-        .cors(Customizer.withDefaults())
-        .httpBasic(b -> b.disable())
-        .formLogin(f -> f.disable())
-        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(auth -> auth
-            // Actuator (필요시 /actuator/health만 남겨도 됨)
-            .requestMatchers("/actuator/**").permitAll()
+                // 공개해도 되는 엔드포인트
+                .requestMatchers(
+                    "/error", "/favicon.ico",
+                    "/api/animals/**",
+                    "/api/reco/**",
+                    "/auth/**",
+                    "/actuator/**"
+                ).permitAll()
 
-            // CORS preflight
-            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // 그 외는 인증 필요(임시로 모두 허용하려면 .anyRequest().permitAll() 로 바꿔도 됨)
+                .anyRequest().authenticated()
+            );
 
-            // 정적 업로드 이미지(/uploads/**) 공개
-            .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+        // 세션 안 쓰면 주석 해제
+        // http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-            // 인증/로그인 계열
-            .requestMatchers("/api/auth/**").permitAll() // login/refresh 등 전체 오픈
+        return http.build();
+    }
 
-            // 추천/동물/보호소: 조회는 공개
-            .requestMatchers(HttpMethod.GET, "/api/reco/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/shelters/**").permitAll()
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOrigins(List.of("http://localhost:5173"));
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        cfg.setAllowedHeaders(List.of("Authorization","Content-Type","Accept","X-Requested-With"));
+        cfg.setExposedHeaders(List.of("Authorization","Location"));
+        cfg.setAllowCredentials(true);
 
-            // Swagger & OpenAPI
-            .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-
-            // 내부 적재(필요 시 보호) - 현재는 허용
-            .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
-
-            // ---- 여기서부터는 인증 필요 ----
-            // applications(신청 생성/목록/승인/거절)
-            .requestMatchers("/api/applications/**").authenticated()
-
-            // animals 등록/사진 업로드 등 변경 작업
-            .requestMatchers(HttpMethod.POST, "/api/animals/**").authenticated()
-            .requestMatchers(HttpMethod.PUT,  "/api/animals/**").authenticated()
-            .requestMatchers(HttpMethod.DELETE,"/api/animals/**").authenticated()
-
-            // 그 외 전부 인증
-            .anyRequest().authenticated()
-        )
-        // 필터 순서: 블랙리스트 → JWT 인증
-        .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
-    return http.build();
-  }
-
-  @Bean
-  public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration cfg = new CorsConfiguration();
-
-    // credentials=true를 쓰는 경우 wildcard 대신 origin "패턴" 사용 권장
-    cfg.setAllowedOriginPatterns(List.of(
-        "http://localhost:*",
-        "http://127.0.0.1:*"
-    ));
-    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-    cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
-    cfg.setExposedHeaders(List.of("Authorization", "Location"));
-    cfg.setAllowCredentials(true);
-    cfg.setMaxAge(3600L);
-
-    UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
-    src.registerCorsConfiguration("/**", cfg);
-    return src;
-  }
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
+    }
 }

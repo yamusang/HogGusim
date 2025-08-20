@@ -21,8 +21,101 @@
 .quickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .quick { padding: 12px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fafafa; cursor: pointer; }
 .quick:hover { background: #f5f5f5; }
+
 .shelter__apps { display:flex; flex-direction:column; gap:12px; }
 .shelter__app-row { border:1px solid #eee; border-radius:12px; padding:12px; background:#fff; display:flex; justify-content:space-between; gap:12px; }
 .shelter__app-actions { display:flex; gap:8px; align-items:center; }
 .title { font-weight:600; margin-bottom:4px; }
-.sub { color:#666; font-size:14px; }
+.sub { color:#666; font-size:14px; } /* ← 오타 수정: 세미콜론만 */
+
+ /* ===== 카드 그리드 ===== */
+.petgrid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap:12px;
+}
+.petcard{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  transition: transform .06s ease, box-shadow .15s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,.04);
+}
+.petcard:hover{ transform: translateY(-1px); box-shadow: 0 12px 28px rgba(0,0,0,.08); }
+
+.petcard__media{
+  position:relative;
+  width:100%; height:160px; background:#f3f4f6;
+  display:flex; align-items:center; justify-content:center;
+}
+.petcard__media img{ width:100%; height:100%; object-fit:cover; display:block; }
+.petcard__placeholder{ font-size:12px; color:#9ca3af; }
+.petcard__body{ padding:12px; }
+.petcard__title{
+  margin:0; font-size:16px; font-weight:700;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.petcard__meta{ margin:4px 0 0; color:#667085; font-size:13px; }
+.petcard__sub{ margin:6px 0 0; color:#9aa1ab; font-size:12px; }
+
+/* chip */
+.chip{
+  position:absolute; left:10px; top:10px;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px; font-size:12px; border-radius:999px; border:1px solid transparent;
+  background:#f1f5f9; color:#334155;
+}
+.chip--blue{ background:#eef2ff; color:#4338ca; border-color:#e0e7ff; }
+
+/* 페이지네이션 */
+.shelter__pagination{
+  display:flex; align-items:center; justify-content:center; gap:10px; margin-top:14px;
+}
+
+/* ===== 상세 모달 ===== */
+.modal{
+  position:fixed; inset:0; background:rgba(0,0,0,.35);
+  display:flex; align-items:center; justify-content:center; padding:20px; z-index:1000;
+}
+.modal__panel{
+  width:min(920px, 100%); background:#fff; border-radius:16px; overflow:hidden; position:relative;
+  box-shadow: 0 30px 80px rgba(0,0,0,.25);
+}
+.modal__close{
+  position:absolute; right:10px; top:8px; border:0; background:transparent; font-size:28px; line-height:1; cursor:pointer;
+}
+.detail{ display:grid; grid-template-columns: 360px 1fr; gap:0; }
+.detail__media{ background:#f3f4f6; min-height:320px; }
+.detail__media img{ width:100%; height:100%; object-fit:cover; display:block; }
+@media (max-width: 860px){
+  .detail{ grid-template-columns: 1fr; }
+  .detail__media{ min-height:220px; }
+}
+.detail__content{ padding:18px; }
+.detail__title{ margin:0 0 8px; font-size:20px; }
+.detail__chips{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.detail__rows{ display:grid; gap:8px; grid-template-columns: 140px 1fr; align-items:baseline; }
+.detail__row{ display:contents; }
+.detail__label{ color:#667085; font-size:13px; }
+.detail__value{ font-size:14px; }
+.detail__actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+
+
+.badge{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid transparent; }
+.badge--wait{ background:#fff7ed; color:#9a3412; border-color:#fed7aa; }     /* PENDING */
+.badge--ok{ background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }       /* APPROVED */
+.badge--no{ background:#fef2f2; color:#991b1b; border-color:#fecaca; }  
+
+.editbox{
+  margin-top:10px; padding:12px; background:#fafafa; border:1px dashed #e5e7eb; border-radius:12px;
+}
+.editbox__grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+.editbox__field{ display:flex; flex-direction:column; gap:6px; }
+.editbox__field--wide{ grid-column: 1 / -1; }
+.editbox__label{ font-size:12px; color:#667085; }
+.editbox input[type="text"], .editbox input[type="datetime-local"]{
+  border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; background:#fff;
+}
+.editbox__actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }

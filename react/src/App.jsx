@@ -5,19 +5,28 @@ import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
 // pages
-import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 주의
+import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 확인!
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import LogoutPage from './pages/auth/LogoutPage';
+
 import SeniorPage from './pages/senior/SeniorPage';
 import ConnectPage from './pages/senior/ConnectPage';
-import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';        // ✅ 추가
+import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';
+import ApplyPage from './pages/senior/ApplyPage';
+
 import ManagerPage from './pages/manager/ManagerPage';
+
 import ShelterPage from './pages/shelter/ShelterPage';
-import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';     // ✅ 추가
+import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';
+import ShelterAnimalsPage from './pages/shelter/ShelterAnimalsPage';
+import PetNewPage from './pages/shelter/PetNewPage';
+
 import PetConnectPage from './pages/pet/PetConnectPage';
 import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
-import PetNewPage from './pages/shelter/PetNewPage';
-import LogoutPage from './pages/auth/LogoutPage';
+
+// ⭐ 추가: 보호소 동물 탐색 페이지
+import AnimalsPage from './pages/pet/AnimalsPage';
 
 // ---------- Routes Consts
 const PATHS = {
@@ -28,20 +37,27 @@ const PATHS = {
 
   // SENIOR
   SENIOR_HOME: '/senior',
+  SENIOR_APPLY: '/senior/apply',
   SENIOR_CONNECT: '/senior/connect',
-  SENIOR_APPS: '/senior/applications',                 // ✅ 시니어 신청내역
+  SENIOR_APPS: '/senior/applications',
 
   // MANAGER
   MANAGER_HOME: '/manager',
 
   // SHELTER
   SHELTER_HOME: '/shelter',
+  SHELTER_ANIMALS: '/shelter/animals',
   SHELTER_ANIMAL_NEW: '/shelter/animals/new',
-  SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications', // ✅ 동물별 신청자 관리
+  SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications',
 
-  // COMMON
-  PET_CONNECT: '/pet/connect',               // (행정) 신청서 확인/승인 등
-  PET_MANAGERS: '/pet/:petId/managers',     // 특정 동물 매니저 추천
+  // COMMON (Pet)
+  PET_APPLY: '/pet/:petId/apply',
+  PET_CONNECT: '/pet/:petId/connect',
+  PET_CONNECT_LEGACY: '/pet/connect',
+  PET_MANAGERS: '/pet/:petId/managers',
+
+  // ⭐ 추가: Animals 탐색
+  ANIMALS: '/animals',
 };
 
 const toUpper = (v) => (v || '').toUpperCase();
@@ -59,7 +75,9 @@ function Protected({ children, allow }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
   if (loading) return null;
-  if (!user) return <Navigate to={`${PATHS.LOGIN}?from=${encodeURIComponent(loc.pathname)}`} replace />;
+  if (!user) {
+    return <Navigate to={`${PATHS.LOGIN}?from=${encodeURIComponent(loc.pathname)}`} replace />;
+  }
   if (allow && !allow.map(toUpper).includes(toUpper(user.role))) {
     return <Navigate to={routeForRole(user.role)} replace />;
   }
@@ -80,6 +98,8 @@ export default function App() {
         <Routes>
           {/* 공개 */}
           <Route path={PATHS.ROOT} element={<MainPage />} />
+          {/* ⭐ 탐색 페이지는 공개로 두었음(원하면 Protected로 감싸도 됨) */}
+          <Route path={PATHS.ANIMALS} element={<AnimalsPage />} />
 
           <Route
             path={PATHS.LOGIN}
@@ -105,6 +125,14 @@ export default function App() {
             element={
               <Protected allow={['SENIOR']}>
                 <SeniorPage />
+              </Protected>
+            }
+          />
+          <Route
+            path={PATHS.SENIOR_APPLY}
+            element={
+              <Protected allow={['SENIOR']}>
+                <ApplyPage />
               </Protected>
             }
           />
@@ -145,6 +173,14 @@ export default function App() {
             }
           />
           <Route
+            path={PATHS.SHELTER_ANIMALS}
+            element={
+              <Protected allow={['SHELTER']}>
+                <ShelterAnimalsPage />
+              </Protected>
+            }
+          />
+          <Route
             path={PATHS.SHELTER_ANIMAL_NEW}
             element={
               <Protected allow={['SHELTER']}>
@@ -163,7 +199,23 @@ export default function App() {
 
           {/* 공용(로그인 필요) */}
           <Route
+            path={PATHS.PET_APPLY}
+            element={
+              <Protected allow={['SENIOR']}>
+                <ApplyPage />
+              </Protected>
+            }
+          />
+          <Route
             path={PATHS.PET_CONNECT}
+            element={
+              <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
+                <PetConnectPage />
+              </Protected>
+            }
+          />
+          <Route
+            path={PATHS.PET_CONNECT_LEGACY}
             element={
               <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
                 <PetConnectPage />

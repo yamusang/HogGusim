@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { getManagersRecommended } from '../../api/recommendations';
-import { createApplication } from '../../api/applications'; // ✅ 신청 생성 API
+import { createApplication } from '../../api/applications';
 import Button from '../../components/ui/Button';
 import './pet.css';
 

@@ -1,21 +1,15 @@
 // src/api/recommendations.js
-// ✅ 백엔드 추천 엔드포인트 사용 버전
+import api, { logApiError } from './apiClient';
 
-import api from './apiClient';
+export const RecoMode = Object.freeze({
+  CONSERVATIVE: 'conservative',
+  BALANCED: 'balanced',
+  MANAGER: 'manager',
+});
+export const isValidMode = (m) =>
+  m === RecoMode.CONSERVATIVE || m === RecoMode.BALANCED || m === RecoMode.MANAGER;
 
-/* -------------------------
- * 공통 유틸
- * ------------------------- */
-const toPage = (res, { page = 0, size = 10 } = {}) => {
-  if (Array.isArray(res)) return { content: res, total: res.length, size, number: page };
-  const content = res?.content ?? res?.items ?? [];
-  const total   = res?.totalElements ?? res?.total ?? content.length ?? 0;
-  const number  = res?.number ?? page;
-  const _size   = res?.size ?? size;
-  return { content, total, size: _size, number };
-};
-
-const toAbsoluteUrl = (url) => {
+export const toAbsoluteUrl = (url) => {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
   const base = (api.defaults.baseURL || '').replace(/\/+$/, '');
@@ -23,86 +17,119 @@ const toAbsoluteUrl = (url) => {
   return `${base}${rel}`;
 };
 
-// 추천 응답 정규화(있으면 그대로, 없으면 안전 폴백)
-const normalizePetReco = (it = {}) => {
-  const photo =
-    it.photoUrl ?? it.popfile ?? it.filename ?? it.thumb ?? it.image ?? '';
+export function parseReason(reason = '') {
+  if (!reason || typeof reason !== 'string') return [];
+  return reason
+    .split('·')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((chunk) => {
+      const m = chunk.match(/(.+)\s+([+-]?\d+(?:\.\d+)?)(?!.*\d)/);
+      if (m) return { label: m[1].trim(), delta: Number(m[2]) };
+      return { label: chunk, delta: null };
+    });
+}
+
+export function mapRecoPet(it = {}) {
+  const photo = it.photoUrl ?? it.image ?? it.thumbnail ?? it.thumb ?? '';
+  const sex = it.sex ?? it.gender ?? '-';
+  const neuter = it.neuter ?? it.neutered ?? '-';
+
   return {
-    id: it.id ?? it.desertionNo ?? it.desertion_no ?? it.noticeNo ?? null,
-    desertionNo: it.desertionNo ?? it.desertion_no ?? it.id ?? null,
-    name: it.name ?? it.petName ?? it.animalName ?? null,
-    breed: it.breed ?? it.species ?? it.kind ?? it.kindNm ?? null,
+    id: it.id ?? it.desertionNo ?? null,
+    desertionNo: it.desertionNo ?? null,
+    name: it.name ?? null,
+    breed: it.breed ?? it.kind ?? null,
     age: it.age ?? null,
     photoUrl: photo ? toAbsoluteUrl(photo) : null,
-    matchScore: it.matchScore ?? it.score ?? it.match_score ?? null,
+    thumbnail: it.thumbnail ? toAbsoluteUrl(it.thumbnail) : null,
+    sex: typeof sex === 'string' ? sex : '-',
+    neuter: typeof neuter === 'string' ? neuter : '-',
+    matchScore: typeof it.matchScore === 'number'
+      ? it.matchScore
+      : (typeof it.score === 'number' ? it.score : 0),
+    reason: it.reason ?? '',
+    careName: it.careNm ?? it.careName ?? it.shelterName ?? null,
+    temperament: it.temperament ?? null,
+    reasonChips: parseReason(it.reason ?? ''),
   };
+}
+
+export const isEmptyPage = (page) =>
+  !page || !Array.isArray(page.content) || page.content.length === 0;
+
+export const mergePage = (prev, next) => {
+  if (!prev) return next;
+  if (!next) return prev;
+  return { ...next, content: [...(prev.content || []), ...(next.content || [])] };
 };
 
-/* -------------------------
- * 추천: 동물 (SeniorPage)
- * ------------------------- */
 /**
- * getPetsRecommended(seniorId, page, size)
- * 반환 형태: { content: [...], total, size, number }
+ * ✅ 추천 동물 목록 (Page<RecoPetDto>)
+ * getPetsRecommended(seniorId, {mode,page,size}, axiosConfig?)
+ * axiosConfig에 signal 전달 가능 (AbortController)
  */
-export const getPetsRecommended = async (seniorId, page = 0, size = 10) => {
-  const { data } = await api.get('/reco/pets', { params: { seniorId, page, size } });
+export const getPetsRecommended = async (
+  seniorId,
+  { mode = RecoMode.BALANCED, page = 0, size = 12 } = {},
+  axiosConfig = {}
+) => {
+  if (!seniorId) throw new Error('INVALID_SENIOR_ID');
+  if (!isValidMode(mode)) mode = RecoMode.BALANCED;
 
-  // 백엔드가 바로 Page<RecoPetDto>를 주면 그대로, 아닐 때 방어
-  const rawContent =
-    data?.content ?? data?.items ?? (Array.isArray(data) ? data : []) ?? [];
+  try {
+    const { data } = await api.get('/reco/pets', {
+      params: { seniorId, mode, page, size },
+      ...axiosConfig, // ← 중요: signal 등 전달
+    });
 
-  const pageObj = {
-    content: rawContent.map(normalizePetReco),
-    totalElements: data?.totalElements ?? rawContent.length ?? 0,
-    size: data?.size ?? size,
-    number: data?.number ?? page,
-  };
+    const content = Array.isArray(data?.content) ? data.content.map(mapRecoPet) : [];
+    // 페이지 메타 안전 보강
+    const number = typeof data?.number === 'number' ? data.number : page;
+    const sz = typeof data?.size === 'number' ? data.size : size;
+    const totalElements = typeof data?.totalElements === 'number'
+      ? data.totalElements
+      : content.length;
+    const totalPages = typeof data?.totalPages === 'number'
+      ? data.totalPages
+      : Math.max(1, Math.ceil(totalElements / (sz || 1)));
 
-  return toPage(pageObj, { page, size });
+    return {
+      ...data,
+      content,
+      number,
+      size: sz,
+      totalElements,
+      totalPages,
+      first: data?.first ?? number === 0,
+      last: data?.last ?? number >= totalPages - 1,
+      empty: content.length === 0,
+    };
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
 };
 
-/* -------------------------
- * 추천: 매니저 (PetManagerRecoPage)
- * ------------------------- */
-/**
- * getManagersRecommended(seniorId, petId, page, size)
- * 반환 형태: { content: [...], total, size, number }
- */
+/** (옵션) 추천 매니저 목록 */
 export const getManagersRecommended = async (
   seniorId,
   petId,
-  page = 0,
-  size = 10
+  { page = 0, size = 12 } = {},
+  axiosConfig = {}
 ) => {
-  const { data } = await api.get('/reco/managers', {
-    params: { seniorId, petId, page, size },
-  });
-
-  const rawContent =
-    data?.content ?? data?.items ?? (Array.isArray(data) ? data : []) ?? [];
-
-  // 매니저 카드에서 필요한 최소 필드만 유지
-  const mapped = rawContent.map((it) => ({
-    id: it.id ?? it.managerId ?? null,
-    name: it.name ?? it.displayName ?? null,
-    intro: it.intro ?? it.bio ?? null,
-    photoUrl: toAbsoluteUrl(it.photoUrl ?? it.avatarUrl ?? ''),
-    matchScore: it.matchScore ?? it.score ?? null,
-  }));
-
-  const pageObj = {
-    content: mapped,
-    totalElements: data?.totalElements ?? mapped.length ?? 0,
-    size: data?.size ?? size,
-    number: data?.number ?? page,
-  };
-
-  return toPage(pageObj, { page, size });
+  if (!seniorId || !petId) throw new Error('INVALID_PARAMS');
+  try {
+    const { data } = await api.get('/reco/managers', {
+      params: { seniorId, petId, page, size },
+      ...axiosConfig,
+    });
+    return data;
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
 };
 
-/* -------------------------
- * (선택) 호환 별칭
- * ------------------------- */
 export const fetchPetsRecommended = getPetsRecommended;
 export const fetchManagersRecommended = getManagersRecommended;

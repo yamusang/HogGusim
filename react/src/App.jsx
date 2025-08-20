@@ -14,6 +14,7 @@ import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';     
 import ManagerPage from './pages/manager/ManagerPage';
 import ShelterPage from './pages/shelter/ShelterPage';
 import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';     // ✅ 추가
+import ShelterAnimalsPage from './pages/shelter/ShelterAnimalsPage';              // ✅ 전체 보기 페이지
 import PetConnectPage from './pages/pet/PetConnectPage';
 import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
 import PetNewPage from './pages/shelter/PetNewPage';
@@ -29,15 +30,16 @@ const PATHS = {
   // SENIOR
   SENIOR_HOME: '/senior',
   SENIOR_CONNECT: '/senior/connect',
-  SENIOR_APPS: '/senior/applications',                 // ✅ 시니어 신청내역
+  SENIOR_APPS: '/senior/applications',
 
   // MANAGER
   MANAGER_HOME: '/manager',
 
   // SHELTER
   SHELTER_HOME: '/shelter',
-  SHELTER_ANIMAL_NEW: '/shelter/animals/new',
-  SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications', // ✅ 동물별 신청자 관리
+  SHELTER_ANIMALS: '/shelter/animals',                // ✅ 전체보기
+  SHELTER_ANIMAL_NEW: '/shelter/animals/new',         // ✅ 등록
+  SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications',
 
   // COMMON
   PET_CONNECT: '/pet/connect',               // (행정) 신청서 확인/승인 등
@@ -141,6 +143,14 @@ export default function App() {
             element={
               <Protected allow={['SHELTER']}>
                 <ShelterPage />
+              </Protected>
+            }
+          />
+          <Route
+            path={PATHS.SHELTER_ANIMALS}
+            element={
+              <Protected allow={['SHELTER']}>
+                <ShelterAnimalsPage />
               </Protected>
             }
           />

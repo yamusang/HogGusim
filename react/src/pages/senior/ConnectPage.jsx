@@ -1,3 +1,4 @@
+// src/pages/senior/ConnectPage.jsx
 import React, { useEffect, useState } from 'react';
 import useAuth from '../../hooks/useAuth';
 import { fetchMyApplications, cancelApplication } from '../../api/applications';
@@ -8,8 +9,8 @@ export default function ConnectPage() {
   const { user } = useAuth();
   const seniorId = user?.id || user?.seniorId || Number(localStorage.getItem('userId'));
 
-  const [page, setPage] = useState(1); // UI 1-base
-  const [data, setData] = useState({ content: [], total: 0, size: 10, number: 0 });
+  const [page, setPage] = useState(1);               // UI 1-base
+  const [data, setData] = useState({ content: [], total: 0, size: 10, number: 0, totalPages: 1 });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [actingId, setActingId] = useState(null);
@@ -18,88 +19,85 @@ export default function ConnectPage() {
     if (!seniorId) return;
     setLoading(true); setErr('');
     try {
-      let res;
-      try {
-        res = await fetchMyApplications({ seniorId, page: Math.max(0, page - 1), size: 10 });
-      } catch {
-        // /me 미지원 시 백업
-        const { fetchApplicationsBySenior } = await import('../../api/applications');
-        res = await fetchApplicationsBySenior(seniorId, Math.max(0, page - 1), 10);
-      }
-
+      const res = await fetchMyApplications({ seniorId, page: Math.max(0, page - 1), size: 10 });
       if (signal?.aborted) return;
-
-      const content = Array.isArray(res) ? res : (res?.content ?? res?.items ?? []);
-      const total   = Array.isArray(res) ? res.length : (res?.totalElements ?? res?.total ?? content.length ?? 0);
-      const size    = res?.size ?? 10;
-      const number  = res?.number ?? Math.max(0, page - 1);
-
-      setData({ content, total, size, number });
+      setData(res);
     } catch (e) {
-      if (!signal?.aborted) setErr(e.message || '매칭 현황을 불러오지 못했습니다.');
+      if (!signal?.aborted) setErr(e?.message || '신청 내역을 불러오지 못했습니다.');
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
-    const ac = new AbortController();
-    load(ac.signal);
-    return () => ac.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seniorId, page]);
+    const ctrl = new AbortController();
+    load(ctrl.signal);
+    return () => ctrl.abort();
+  }, [page, seniorId]);
 
-  const onCancel = async (app) => {
+  const onCancel = async (id) => {
     if (!window.confirm('이 신청을 취소할까요?')) return;
     try {
-      setActingId(app.id);
-      await cancelApplication(app.id);
+      setActingId(id);
+      await cancelApplication(id);
       await load();
     } catch (e) {
-      alert(e.message || '취소에 실패했습니다.');
+      alert(e?.message || '취소 실패');
     } finally {
       setActingId(null);
     }
   };
 
-  const pageHasNext = page * (data.size || 10) < (data.total || 0);
+  const list = data.content || [];
+  const totalPages = data.totalPages || Math.max(1, Math.ceil((data.total || 0) / (data.size || 10)));
 
   return (
-    <div className="p-4">
-      <h2>매칭 현황</h2>
-      {err && <div className="auth__error">{err}</div>}
-      {loading ? <p>불러오는 중…</p> : (
-        <>
-          <div className="connect__list">
-            {(data.content || []).map((it) => (
-              <div key={it.id} className="connect__row">
-                <div className="connect__main">
-                  <div className="connect__title">
-                    동물 #{it.pet?.desertionNo || it.petId} · 매니저 {it.manager?.name || `#${it.managerId}`}
+    <div className="senior">
+      <header className="senior__header">
+        <h1>내 신청 현황</h1>
+      </header>
+
+      {loading && <div className="card">불러오는 중…</div>}
+      {err && !loading && <div className="card" style={{ color: 'crimson' }}>{err}</div>}
+
+      {!loading && !err && list.length === 0 && (
+        <div className="card">신청 내역이 없습니다.</div>
+      )}
+
+      {!loading && !err && list.length > 0 && (
+        <section className="card">
+          <ul className="list">
+            {list.map(app => (
+              <li key={app.id} className="list__item" style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:12 }}>
+                <div>
+                  <div className="list__name">
+                    {app.animalName || `Animal#${app.animalId}`} · 상태: {app.status}
                   </div>
-                  <div className="connect__sub">
-                    상태: <b>{it.status}</b>
-                    {it.createdAt && <> · 신청일: {new Date(it.createdAt).toLocaleString()}</>}
-                    {it.reservedAt && <> · 예약일: {new Date(it.reservedAt).toLocaleString()}</>}
+                  <div className="list__meta" style={{ fontSize:12, color:'#6b7280' }}>
+                    신청일: {app.createdAt?.replace('T',' ').slice(0,16).replaceAll('-','.')}
                   </div>
                 </div>
-
-                {it.status === 'REQUESTED' && (
-                  <Button presetName="ghost" disabled={actingId === it.id} onClick={() => onCancel(it)}>
-                    {actingId === it.id ? '취소 중…' : '신청 취소'}
+                <div>
+                  <Button
+                    presetName="ghost"
+                    disabled={actingId === app.id || app.status !== 'PENDING'}
+                    onClick={() => onCancel(app.id)}
+                  >
+                    {actingId === app.id ? '취소 중…' : '신청 취소'}
                   </Button>
-                )}
-              </div>
+                </div>
+              </li>
             ))}
-            {(!data.content || data.content.length === 0) && <div className="muted">신청 내역이 없어요.</div>}
-          </div>
+          </ul>
 
-          <div className="senior__pagination">
-            <Button presetName="ghost" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>이전</Button>
-            <span>{page}</span>
-            <Button presetName="ghost" disabled={!pageHasNext} onClick={() => setPage(p => p + 1)}>다음</Button>
-          </div>
-        </>
+          {totalPages > 1 && (
+            <div style={{ display:'flex', justifyContent:'center', gap:8, marginTop:12 }}>
+              <Button presetName="ghost" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>이전</Button>
+              <span style={{ alignSelf:'center' }}>{page} / {totalPages}</span>
+              <Button presetName="ghost" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>다음</Button>
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

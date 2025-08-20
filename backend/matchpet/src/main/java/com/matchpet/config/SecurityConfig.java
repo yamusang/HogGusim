@@ -56,7 +56,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
 
             .requestMatchers("/error").permitAll() // 에러 페이지
-            // .requestMatchers("/favicon.ico", "/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg").permitAll()
+            // .requestMatchers("/favicon.ico", "/**/*.css", "/**/*.js", "/**/*.png",
+            // "/**/*.jpg").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
 
             // 나머지는 인증 필요
@@ -83,4 +84,3 @@ public class SecurityConfig {
     return src;
   }
 }
-

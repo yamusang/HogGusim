@@ -20,6 +20,7 @@ public class LoginResponse {
     private String name;
     private String affiliation;
     private String displayName;
+    private long expiresAt; // 토큰 만료 시간(epoch sec) 추가 추천
 }
 
 // 기본 성질: 불변(immutable), 모든 필드는 final, 세터 없음

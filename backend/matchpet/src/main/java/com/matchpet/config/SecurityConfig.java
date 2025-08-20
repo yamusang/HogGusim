@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -19,6 +20,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -34,34 +36,41 @@ public class SecurityConfig {
         .formLogin(f -> f.disable())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            // Actuator (디버깅 끝나면 /actuator/health만 남겨도 됨)
+            // Actuator (필요시 /actuator/health만 남겨도 됨)
             .requestMatchers("/actuator/**").permitAll()
 
-            // CORS preflight 전부 허용
+            // CORS preflight
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-            // ✅ 추천 API: GET만 오픈
+            // 정적 업로드 이미지(/uploads/**) 공개
+            .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+            // 인증/로그인 계열
+            .requestMatchers("/api/auth/**").permitAll() // login/refresh 등 전체 오픈
+
+            // 추천/동물/보호소: 조회는 공개
             .requestMatchers(HttpMethod.GET, "/api/reco/**").permitAll()
-
-            // ✅ 동물 목록: GET 전체 오픈 (/api/animals, /api/animals/{id}, /api/animals/recommended
-            // ...)
             .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
-
             .requestMatchers(HttpMethod.GET, "/api/shelters/**").permitAll()
 
-            // Swagger & OpenAPI 문서
+            // Swagger & OpenAPI
             .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-            // 인증/회원가입 등 (POST 허용)
-            .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
-
-            .requestMatchers("/error").permitAll() // 에러 페이지
-            // .requestMatchers("/favicon.ico", "/**/*.css", "/**/*.js", "/**/*.png",
-            // "/**/*.jpg").permitAll()
+            // 내부 적재(필요 시 보호) - 현재는 허용
             .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
 
-            // 나머지는 인증 필요
-            .anyRequest().authenticated())
+            // ---- 여기서부터는 인증 필요 ----
+            // applications(신청 생성/목록/승인/거절)
+            .requestMatchers("/api/applications/**").authenticated()
+
+            // animals 등록/사진 업로드 등 변경 작업
+            .requestMatchers(HttpMethod.POST, "/api/animals/**").authenticated()
+            .requestMatchers(HttpMethod.PUT,  "/api/animals/**").authenticated()
+            .requestMatchers(HttpMethod.DELETE,"/api/animals/**").authenticated()
+
+            // 그 외 전부 인증
+            .anyRequest().authenticated()
+        )
         // 필터 순서: 블랙리스트 → JWT 인증
         .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -72,12 +81,17 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(List.of(
-        "http://localhost:5173",
-        "http://localhost:3000"));
-    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    cfg.setAllowedHeaders(List.of("*"));
+
+    // credentials=true를 쓰는 경우 wildcard 대신 origin "패턴" 사용 권장
+    cfg.setAllowedOriginPatterns(List.of(
+        "http://localhost:*",
+        "http://127.0.0.1:*"
+    ));
+    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+    cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
+    cfg.setExposedHeaders(List.of("Authorization", "Location"));
     cfg.setAllowCredentials(true);
+    cfg.setMaxAge(3600L);
 
     UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
     src.registerCorsConfiguration("/**", cfg);

@@ -1,4 +1,3 @@
-// src/main/java/com/matchpet/auth/JwtAuthFilter.java
 package com.matchpet.auth;
 
 import io.jsonwebtoken.Claims;
@@ -6,22 +5,28 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-  private final JwtTokenProvider jwt;           // parse() 에 사용할 인스턴스
+  private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
+
+  private final JwtTokenProvider jwt; // 토큰 파서
   private static final AntPathMatcher PM = new AntPathMatcher();
 
-  // 공개 경로(토큰 없거나 잘못돼도 통과)
+  // 공개 경로(토큰 없어도 통과)
   private static final String[] PUBLIC_PATTERNS = new String[]{
       "/actuator/**", "/error", "/uploads/**",
       "/api/auth/**",
@@ -45,28 +50,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
 
     String auth = req.getHeader("Authorization");
-    // ✅ static 메서드라 클래스명으로 호출
     String token = JwtTokenProvider.resolveBearer(auth);
 
     try {
-      Long userId = null;
       if (token != null) {
-        // ✅ validate 대신 parse로 검증 + subject → userId 추출
-        Claims claims = jwt.parse(token);               // 유효하지 않으면 예외 발생
-        userId = Long.valueOf(claims.getSubject());
-      }
+        Claims claims = jwt.parse(token); // 유효하지 않으면 예외
+        Long userId = Long.valueOf(claims.getSubject());
+        String role = claims.get("role", String.class); // "SHELTER"/"SENIOR"/"MANAGER"/"ADMIN"
 
-      if (userId != null) {
-        var authToken = new UsernamePasswordAuthenticationToken(
-            userId, null, Collections.emptyList());
+        // 권한 부여 (ROLE_ 접두어 필수)
+        List<GrantedAuthority> authorities =
+            (role != null && !role.isBlank())
+                ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                : List.of();
+
+        var authToken = new UsernamePasswordAuthenticationToken(userId, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authToken);
-      } else {
-        // 토큰 없거나 파싱 실패: 공개 경로면 통과
-        if (isPublic(req)) {
-          chain.doFilter(req, res);
-          return;
-        }
-        // 보호 경로는 SecurityConfig의 exceptionHandling에서 401/403 처리
+
+        log.info("SECURITY AUTH: userId={}, authorities={}", userId, authorities);
+
+      } else if (!isPublic(req)) {
+        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing token");
+        return;
       }
     } catch (Exception e) {
       SecurityContextHolder.clearContext();
@@ -74,7 +79,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
         return;
       }
-      // 공개 경로면 그냥 통과
+      // 공개 경로는 통과
     }
 
     chain.doFilter(req, res);

@@ -1,5 +1,6 @@
 package com.matchpet.auth;
 
+import com.matchpet.domain.user.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -7,8 +8,6 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import com.matchpet.domain.user.Role;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -41,30 +40,13 @@ public class JwtTokenProvider {
         log.debug("JWT initialized. keyLen={} bytes, expSeconds={}", bytes.length, props.getAccessExpSeconds());
     }
 
-    public String createToken(Long userId) {
-        Instant now = Instant.now();
-        long expMillis = props.getAccessExpSeconds() * 1000L;
-        return Jwts.builder()
-                .subject(String.valueOf(userId))
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusMillis(expMillis)))
-                .signWith(key, Jwts.SIG.HS256) // jjwt 0.12.x
-                .compact();
-    }
-
-    public Claims parse(String token) {
-        return Jwts.parser()
-                .verifyWith(key) // jjwt 0.12.x
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
+    /** 권한/이메일 포함 토큰 발급 (권장) */
     public String create(Long id, String email, Role role) {
         Instant now = Instant.now();
         Map<String, Object> claims = Map.of(
-                "email", email,
-                "role", role.name());
+            "email", email,
+            "role", role.name()
+        );
         return Jwts.builder()
                 .subject(String.valueOf(id))
                 .claims(claims)
@@ -74,16 +56,23 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /** 파싱 + 서명검증 */
+    public Claims parse(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
     public long getExpirationEpochSeconds(String token) {
-        var claims = parse(token); // ← parseClaims 오타 대신 parse 사용
+        var claims = parse(token);
         return claims.getExpiration().toInstant().getEpochSecond();
     }
 
     public static String resolveBearer(String authHeader) {
-        if (authHeader == null)
-            return null;
-        if (!authHeader.startsWith("Bearer "))
-            return null;
+        if (authHeader == null) return null;
+        if (!authHeader.startsWith("Bearer ")) return null;
         return authHeader.substring(7);
     }
 }

@@ -25,27 +25,14 @@ export const normalizePet = (it = {}) => {
 
   // ✅ 종 추출 보강
   const rawKind =
-    it.kind ??
-    it.kindNm ??
-    it.kindName ??
-    it.kind_name ??
-    it.kind_cd_name ??
-    it.kindCd ??
-    it.species ??
-    '';
+    it.kind ?? it.kindNm ?? it.kindName ?? it.kind_name ?? it.kind_cd_name ??
+    it.kindCd ?? it.species ?? '';
   let species = String(rawKind || '');
   if (/^\[[^\]]+\]\s*/.test(species)) species = species.replace(/^\[[^\]]+\]\s*/, '');
-  if (/^\d+$/.test(species)) species = ''; // 순수 숫자코드면 표시 X
+  if (/^\d+$/.test(species)) species = ''; // 숫자코드면 표시 X
 
   return {
-    id:
-      it.id ??
-      it.desertionNo ??
-      it.noticeNo ??
-      it.externalId ??
-      it.desertion_no ??
-      null,
-
+    id: it.id ?? it.desertionNo ?? it.noticeNo ?? it.externalId ?? it.desertion_no ?? null,
     name: it.name ?? null,
 
     species,
@@ -84,9 +71,10 @@ const pickPageMeta = (data) => ({
   totalElements: data?.response?.body?.totalCount ?? data?.totalElements ?? 0,
   number:        data?.response?.body?.pageNo     ?? data?.number        ?? 0,
   size:          data?.response?.body?.numOfRows  ?? data?.size          ?? 0,
-  totalPages:    data?.totalPages ?? (data?.response?.body?.totalCount && data?.response?.body?.numOfRows
-                    ? Math.ceil(Number(data.response.body.totalCount) / Number(data.response.body.numOfRows))
-                    : 0),
+  totalPages:    data?.totalPages ??
+                 (data?.response?.body?.totalCount && data?.response?.body?.numOfRows
+                   ? Math.ceil(Number(data.response.body.totalCount) / Number(data.response.body.numOfRows))
+                   : 0),
   first:         data?.first ?? (data?.number === 0),
   last:          data?.last  ?? false,
   empty:         Array.isArray(data?.content) ? data.content.length === 0
@@ -96,18 +84,21 @@ const pickPageMeta = (data) => ({
 
 /** ==============================
  * 목록 (정규화 포함) — animals
+ *  - sort/status는 백엔드 지원 확인 전엔 보내지 않음
  * ============================== */
 export const fetchAnimals = async (params = {}, axiosCfg = {}) => {
-  const safe = { sort: 'id,DESC', page: 0, size: 20, ...params };
-  const { data } = await api.get('/animals', { params: safe, signal: axiosCfg?.signal });
+  const { page = 0, size = 20, careNm /*, sort, status*/ } = params;
+
+  const query = { page, size };
+  if (careNm && careNm.trim()) query.careNm = careNm.trim();
+  // ⛔ 백엔드 필드명이 불명확해서 일단 sort/status 제거
+  // if (sort) query.sort = sort;
+  // if (status) query.status = status;
+
+  const { data } = await api.get('/animals', { params: query, signal: axiosCfg?.signal });
 
   // ✅ 스프링 Page 우선 → 오픈API → 배열
-  const contentRaw =
-    data?.content ??
-    pickApiItems(data) ??
-    (Array.isArray(data) ? data : []) ??
-    [];
-
+  const contentRaw = data?.content ?? pickApiItems(data) ?? (Array.isArray(data) ? data : []) ?? [];
   const meta = pickPageMeta(data);
 
   return {
@@ -128,13 +119,10 @@ export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {
 
 /** ==============================
  * 추천 목록 (임시: /animals 폴백)
+ *  - 정렬 파라미터 제거(백 호환성)
  * ============================== */
-export const fetchRecommendedAnimals = async ({
-  page = 0, size = 20, careNm, sort = 'id,DESC', ...rest
-} = {}) => {
-  const { data } = await api.get('/animals', {
-    params: { page, size, sort, careNm, ...rest }
-  }); // ← /animals/recommended 대신 /animals로 폴백
+export const fetchRecommendedAnimals = async ({ page = 0, size = 20, careNm, ...rest } = {}) => {
+  const { data } = await api.get('/animals', { params: { page, size, careNm, ...rest } });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   return (raw || []).map(normalizePet);
 };
@@ -183,33 +171,26 @@ const uniqById = (arr=[]) => {
   });
 };
 
-/** 메인 슬라이드 */
+/** 메인 슬라이드 (정렬 파라미터 제거) */
 export const fetchFeaturedDogs = async ({
   take = 18,
   page = 0,
   size = 120,
   status = 'AVAILABLE',
-  sort = 'id,DESC',
+  // sort 제거
 } = {}) => {
-  const { data } = await api.get('/animals', {
-    params: { page, size, status, kind: 'DOG', sort }
-  });
+  const { data } = await api.get('/animals', { params: { page, size, status, kind: 'DOG' } });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   const items = (raw || []).map(normalizePet);
 
   const onlyDogs = items.filter(isDog);
-  const ranked = [...onlyDogs].sort((a, b) => {
-    const aa = a.photoUrl ? 1 : 0;
-    const bb = b.photoUrl ? 1 : 0;
-    return bb - aa;
-  });
-
+  const ranked = [...onlyDogs].sort((a, b) => (b.photoUrl ? 1 : 0) - (a.photoUrl ? 1 : 0));
   const uniq = uniqById(ranked);
   return uniq.slice(0, take);
 };
 
-/** 최신 강아지 */
+/** 최신 강아지 (fetchAnimals 내부가 sort 무시하므로 안전) */
 export const fetchLatestDogs = async ({ take = 18 } = {}) => {
-  const { content } = await fetchAnimals({ page: 0, size: 120, sort: 'id,DESC' });
+  const { content } = await fetchAnimals({ page: 0, size: 120 });
   return content.filter(isDog).filter(hasPhoto).slice(0, take);
 };

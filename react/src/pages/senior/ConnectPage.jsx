@@ -1,9 +1,8 @@
 // src/pages/senior/ConnectPage.jsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import useAuth from '../../hooks/useAuth';
 import { fetchMyApplications, cancelApplication } from '../../api/applications';
 import Button from '../../components/ui/Button';
-import Badge from '../../components/common/Badge';
 import './senior.css';
 
 const fmtDateTime = (iso) => {
@@ -16,50 +15,86 @@ const fmtDateTime = (iso) => {
   }
 };
 
-const statusMeta = {
-  PENDING:   { label: '대기',    tone: 'warning'  },
-  APPROVED:  { label: '수락',    tone: 'success'  },
-  REJECTED:  { label: '거절',    tone: 'danger'   },
-  CANCELED:  { label: '취소됨',  tone: 'neutral'  },
+const StatusChip = ({ status }) => {
+  const s = String(status || 'PENDING').toUpperCase();
+  const map = {
+    PENDING: { label: '대기', cls: 'chip chip--pending' },
+    APPROVED: { label: '승인', cls: 'chip chip--approved' },
+    REJECTED: { label: '거절', cls: 'chip chip--rejected' },
+  };
+  const meta = map[s] || map.PENDING;
+  return <span className={meta.cls}>{meta.label}</span>;
 };
 
 export default function ConnectPage() {
   const { user } = useAuth();
 
-  // seniorId fallback: user.seniorId > user.id > localStorage
-  const seniorId = useMemo(() => {
-    const fromLS = localStorage.getItem('seniorId');
-    return user?.seniorId ?? user?.id ?? (fromLS ? Number(fromLS) : null);
-  }, [user]);
+  // seniorId: user.seniorId -> user.id -> localStorage.seniorId
+  const seniorId =
+    user?.seniorId ??
+    user?.id ??
+    (localStorage.getItem('seniorId') ? Number(localStorage.getItem('seniorId')) : null);
 
-  const [page, setPage] = useState(1); // 1-based
-  const [data, setData] = useState({ content: [], total: 0, size: 10, number: 0, totalPages: 1 });
+  const [page1, setPage1] = useState(1); // UI 1-based
+  const [data, setData] = useState({
+    content: [],
+    number: 0,
+    size: 10,
+    totalElements: 0,
+    totalPages: 0,
+    first: true,
+    last: true,
+    empty: true,
+  });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [actingId, setActingId] = useState(null);
 
-  // lightweight toast
-  const [toast, setToast] = useState({ show: false, text: '', tone: 'neutral' });
-  const showToast = (text, tone = 'neutral') => {
-    setToast({ show: true, text, tone });
-    window.clearTimeout(showToast._t);
-    showToast._t = window.setTimeout(() => setToast({ show: false, text: '', tone: 'neutral' }), 2200);
-  };
+  // 진행 중 요청 취소용
+  const abortRef = useRef(null);
 
   const load = async () => {
     if (!seniorId) return;
-    setLoading(true); setErr('');
+    setLoading(true);
+    setErr('');
+
+    // 이전 요청 취소
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     try {
-      const res = await fetchMyApplications({ seniorId, page: Math.max(0, page - 1), size: 10 });
-      setData(res || { content: [], total: 0, size: 10, number: page - 1, totalPages: 1 });
+      const res = await fetchMyApplications({
+        seniorId,
+        page: Math.max(0, page1 - 1),
+        size: data.size || 10,
+        signal: ctrl.signal,
+      });
+      if (ctrl.signal.aborted) return;
+      setData(
+        res || {
+          content: [],
+          number: page1 - 1,
+          size: 10,
+          totalElements: 0,
+          totalPages: 0,
+          first: true,
+          last: true,
+          empty: true,
+        },
+      );
     } catch (e) {
-      setErr(e?.message || '신청 내역을 불러오지 못했습니다.');
+      if (!ctrl.signal.aborted) setErr(e?.message || '신청 내역을 불러오지 못했습니다.');
     } finally {
-      setLoading(false);
+      if (!ctrl.signal.aborted) setLoading(false);
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, seniorId]);
+  useEffect(() => {
+    load();
+    return () => abortRef.current?.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page1, seniorId]);
 
   const onCancel = async (id) => {
     if (!window.confirm('이 신청을 취소할까요?')) return;
@@ -67,16 +102,17 @@ export default function ConnectPage() {
       setActingId(id);
       await cancelApplication(id);
       await load();
-      showToast('신청을 취소했어요.', 'neutral');
     } catch (e) {
-      showToast(e?.message || '취소 실패', 'danger');
+      alert(e?.message || '취소 실패');
     } finally {
       setActingId(null);
     }
   };
 
-  const list = data.content || [];
-  const totalPages = data.totalPages || Math.max(1, Math.ceil((data.total || 0) / (data.size || 10)));
+  const list = Array.isArray(data.content) ? data.content : [];
+  const totalPages =
+    data.totalPages || Math.max(0, Math.ceil((data.totalElements || 0) / (data.size || 10)));
+  const noPages = !totalPages || totalPages <= 0;
 
   return (
     <div className="senior">
@@ -89,21 +125,6 @@ export default function ConnectPage() {
         </div>
       </header>
 
-      {/* toast */}
-      {toast.show && (
-        <div
-          className="card"
-          role="status"
-          style={{
-            position: 'fixed', right: 16, bottom: 16, zIndex: 50,
-            borderColor: toast.tone === 'danger' ? '#fecaca' : '#e5e7eb',
-            color: toast.tone === 'danger' ? '#b91c1c' : '#111827',
-          }}
-        >
-          {toast.text}
-        </div>
-      )}
-
       {loading && <div className="card">불러오는 중…</div>}
       {err && !loading && <div className="card" style={{ color: 'crimson' }}>{err}</div>}
 
@@ -113,34 +134,37 @@ export default function ConnectPage() {
 
       {!loading && !err && list.length > 0 && (
         <section className="card">
-          <ul className="list">
+          <ul className="list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {list.map((app) => {
-              const st = (app.status || 'PENDING').toUpperCase();
-              const meta = statusMeta[st] || { label: st, tone: 'neutral' };
+              const pending = String(app.status || 'PENDING').toUpperCase() === 'PENDING';
+              const animalLabel = app.animalName || app.petName || `Animal#${app.animalId}`;
               return (
                 <li
                   key={app.id}
                   className="list__item"
-                  style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12 }}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: 12,
+                    alignItems: 'center',
+                    border: '1px solid #eee',
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
                 >
                   <div>
-                    <div className="list__name" style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span>{app.animalName || `Animal#${app.animalId}`}</span>
-                      <Badge tone={meta.tone}>{meta.label}</Badge>
+                    <div className="list__name" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <b>{animalLabel}</b> <StatusChip status={app.status} />
                     </div>
                     <div className="list__meta" style={{ fontSize: 12, color: '#6b7280' }}>
                       신청일: {fmtDateTime(app.createdAt)}
                       {app.reservedAt ? ` / 예약일: ${fmtDateTime(app.reservedAt)}` : ''}
-                      {app.updatedAt ? ` / 처리: ${fmtDateTime(app.updatedAt)}` : ''}
                     </div>
                   </div>
                   <div>
                     <Button
                       presetName="danger"
-                      disabled={
-                        actingId === app.id ||
-                        (app.status && String(app.status).toUpperCase() !== 'PENDING')
-                      }
+                      disabled={actingId === app.id || !pending}
                       onClick={() => onCancel(app.id)}
                     >
                       {actingId === app.id ? '취소 중…' : '신청 취소'}
@@ -151,27 +175,24 @@ export default function ConnectPage() {
             })}
           </ul>
 
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
-              <Button
-                presetName="ghost"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                이전
-              </Button>
-              <span style={{ alignSelf: 'center' }}>
-                {page} / {totalPages}
-              </span>
-              <Button
-                presetName="ghost"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                다음
-              </Button>
-            </div>
-          )}
+          {/* 페이지네이션 */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12 }}>
+            <Button
+              presetName="ghost"
+              disabled={noPages || page1 <= 1 || data.first}
+              onClick={() => setPage1((p) => Math.max(1, p - 1))}
+            >
+              이전
+            </Button>
+            <span style={{ alignSelf: 'center' }}>{noPages ? 0 : page1} / {noPages ? 0 : totalPages}</span>
+            <Button
+              presetName="ghost"
+              disabled={noPages || data.last || page1 >= totalPages}
+              onClick={() => setPage1((p) => p + 1)}
+            >
+              다음
+            </Button>
+          </div>
         </section>
       )}
     </div>

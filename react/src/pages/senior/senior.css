@@ -81,9 +81,7 @@ button[presetname="connectbtn"], .btn.connectbtn{ composes: btn btn--connectbtn;
 button[presetname="ghost"], .btn.ghost{ composes: btn btn--ghost; }
 button[presetname="apply"], .btn.apply{ composes: btn btn--apply; }
 
-/* ===================================================== */
 /* 🔧 chip 전역 스타일 충돌 방지: 절대배치 강제 해제 */
-/* ===================================================== */
 .senior .chips .chip {
   position: static !important;
   display: inline-flex !important;
@@ -101,8 +99,19 @@ button[presetname="apply"], .btn.apply{ composes: btn btn--apply; }
   background: rgba(99,102,241,.12);
   border-color: rgba(99,102,241,.32);
 }
-/* 모드 스위치 */
-.seg { display:flex; gap:6px; }
-.seg__btn { padding:8px 12px; border-radius:12px; border:1px solid #ddd; background:#fff; }
-.seg__btn.is-active { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.18) inset; }
 
+/* 모드 스위치 */
+.seg { display:inline-flex; gap:6px; background:#f8fafc; border:1px solid #e5e7eb; padding:4px; border-radius:12px; }
+.seg__btn { border:0; background:transparent; padding:8px 12px; border-radius:8px; cursor:pointer; }
+.seg__btn.is-active { background:#eef2ff; font-weight:600; }
+
+/* ✅ 추천 이유 말줄임 (2~3줄) */
+.card .reason{
+  display:-webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+  max-height: calc(1.35em * 3);
+}

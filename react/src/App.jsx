@@ -5,7 +5,7 @@ import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
 // pages
-import MainPage from './pages/Mainpage/MainPage';   // 폴더명 대소문자 확인!
+import MainPage from './pages/Mainpage/MainPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import LogoutPage from './pages/auth/LogoutPage';
@@ -15,7 +15,10 @@ import ConnectPage from './pages/senior/ConnectPage';
 import SeniorApplicationsPage from './pages/senior/SeniorApplicationsPage';
 import ApplyPage from './pages/senior/ApplyPage';
 
-import ManagerPage from './pages/manager/ManagerPage';
+// Manager (home + nested routes)
+import ManagerHome from './pages/manager/ManagerHome';
+import ManagerInboxPage from './pages/manager/ManagerInboxPage';
+import ManagerProfilePage from './pages/manager/ManagerProfilePage';
 
 import ShelterPage from './pages/shelter/ShelterPage';
 import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';
@@ -25,9 +28,7 @@ import PetNewPage from './pages/shelter/PetNewPage';
 import PetConnectPage from './pages/pet/PetConnectPage';
 import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
 
-import ManagerQueuePage from './pages/manager/ManagerQueuePage'; 
-import ManagerProfilePage from './pages/manager/ManagerProfilePage';
-// ⭐ 추가: 보호소 동물 탐색 페이지
+// Public animal browse
 import AnimalsPage from './pages/pet/AnimalsPage';
 
 // ---------- Routes Consts
@@ -43,10 +44,8 @@ const PATHS = {
   SENIOR_CONNECT: '/senior/connect',
   SENIOR_APPS: '/senior/applications',
 
-  // MANAGER
+  // MANAGER (use nested under /manager)
   MANAGER_HOME: '/manager',
-  MANAGER_APPS: '/manager/applications', // (이전 단계에서 추가된 큐)
-  MANAGER_PROFILE: '/manager/profile',   // ⭐ 추가
 
   // SHELTER
   SHELTER_HOME: '/shelter',
@@ -60,7 +59,7 @@ const PATHS = {
   PET_CONNECT_LEGACY: '/pet/connect',
   PET_MANAGERS: '/pet/:petId/managers',
 
-  // ⭐ 추가: Animals 탐색
+  // Public browse
   ANIMALS: '/animals',
 };
 
@@ -102,7 +101,6 @@ export default function App() {
         <Routes>
           {/* 공개 */}
           <Route path={PATHS.ROOT} element={<MainPage />} />
-          {/* ⭐ 탐색 페이지는 공개로 두었음(원하면 Protected로 감싸도 됨) */}
           <Route path={PATHS.ANIMALS} element={<AnimalsPage />} />
 
           <Route
@@ -157,31 +155,19 @@ export default function App() {
             }
           />
 
-          {/* 매니저 */}
+          {/* 매니저: /manager (중첩 라우트) */}
           <Route
-  path={PATHS.MANAGER_HOME}
-  element={
-    <Protected allow={['MANAGER']}>
-      <ManagerPage />
-    </Protected>
-  }
-/>
-<Route
-  path={PATHS.MANAGER_APPS}
-  element={
-    <Protected allow={['MANAGER']}>
-      <ManagerQueuePage />
-    </Protected>
-  }
-/>
-<Route
-  path={PATHS.MANAGER_PROFILE}       // ⭐ 추가
-  element={
-    <Protected allow={['MANAGER']}>
-      <ManagerProfilePage />
-    </Protected>
-  }
-/>
+            path={PATHS.MANAGER_HOME}
+            element={
+              <Protected allow={['MANAGER']}>
+                <ManagerHome />
+              </Protected>
+            }
+          >
+            <Route index element={<ManagerInboxPage />} />
+            <Route path="inbox" element={<ManagerInboxPage />} />
+            <Route path="profile" element={<ManagerProfilePage />} />
+          </Route>
 
           {/* 보호소 */}
           <Route
@@ -250,23 +236,7 @@ export default function App() {
               </Protected>
             }
           />
-           <Route
-            path={PATHS.MANAGER_HOME}
-            element={
-              <Protected allow={['MANAGER']}>
-                <ManagerPage />
-              </Protected>
-            }
-          />
-          {/* ⭐ 매니저 큐 */}
-          <Route
-            path={PATHS.MANAGER_APPS}
-            element={
-              <Protected allow={['MANAGER']}>
-                <ManagerQueuePage />
-              </Protected>
-            }
-          />
+
           {/* 기타 */}
           <Route path="*" element={<Navigate to={PATHS.ROOT} replace />} />
         </Routes>

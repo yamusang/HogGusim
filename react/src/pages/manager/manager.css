@@ -42,3 +42,16 @@
   cursor:pointer; user-select:none; font-size:.92rem;
 }
 .chip--on { background: rgba(99,102,241,.12); border-color: rgba(99,102,241,.32); }
+.tabs { display:flex; gap:8px; margin: 8px 0 12px; }
+.tab { padding:8px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#fff; text-decoration:none; color:#111827; }
+.tab.is-active { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.14) inset; }
+
+/* Inbox rows */
+.mgr__inbox { display:flex; flex-direction:column; gap:12px; }
+.mgr__row {
+  display:flex; align-items:center; gap:12px; justify-content:space-between;
+  border:1px solid #eee; border-radius:12px; padding:12px; background:#fff;
+}
+.mgr__main .title { font-weight:700; }
+.mgr__main .sub { color:#666; font-size:13px; margin-top:2px; }
+.mgr__actions { display:flex; gap:8px; }

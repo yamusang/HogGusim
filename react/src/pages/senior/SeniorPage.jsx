@@ -92,7 +92,7 @@ export default function SeniorPage() {
       const res = await getPetsRecommended(
         seniorId,
         { mode: recoMode, page: Math.max(0, page1 - 1), size: data.size || 12 },
-        { signal: ctrl.signal } // ✅ recommendations.js가 signal 받도록 패치됨
+        { signal: ctrl.signal } // getPetsRecommended가 signal 받도록 구현된 경우에만 사용됨
       );
       if (ctrl.signal.aborted) return;
 
@@ -242,7 +242,7 @@ export default function SeniorPage() {
                     </Button>
                   }
                 >
-                  {/* ✅ 말줄임 처리용 클래스 적용 */}
+                  {/* 말줄임 처리용 클래스는 CSS에서 .reason로 스타일링 가능 */}
                   {it.reason
                     ? <span className="reason" title={it.reason}>{it.reason}</span>
                     : <span className="muted">추천 이유 정보 없음</span>}

@@ -174,7 +174,6 @@ export default function ApplyPage() {
       };
 
       if (petId) payload.petId = Number(petId);
-      // 선택 펫이 없어도 신청만 먼저 처리 가능(백엔드 허용 시)
 
       await createApplication(payload);
 

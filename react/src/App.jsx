@@ -25,6 +25,8 @@ import PetNewPage from './pages/shelter/PetNewPage';
 import PetConnectPage from './pages/pet/PetConnectPage';
 import PetManagerRecoPage from './pages/pet/PetManagerRecoPage';
 
+import ManagerQueuePage from './pages/manager/ManagerQueuePage'; 
+import ManagerProfilePage from './pages/manager/ManagerProfilePage';
 // ⭐ 추가: 보호소 동물 탐색 페이지
 import AnimalsPage from './pages/pet/AnimalsPage';
 
@@ -43,6 +45,8 @@ const PATHS = {
 
   // MANAGER
   MANAGER_HOME: '/manager',
+  MANAGER_APPS: '/manager/applications', // (이전 단계에서 추가된 큐)
+  MANAGER_PROFILE: '/manager/profile',   // ⭐ 추가
 
   // SHELTER
   SHELTER_HOME: '/shelter',
@@ -155,13 +159,29 @@ export default function App() {
 
           {/* 매니저 */}
           <Route
-            path={PATHS.MANAGER_HOME}
-            element={
-              <Protected allow={['MANAGER']}>
-                <ManagerPage />
-              </Protected>
-            }
-          />
+  path={PATHS.MANAGER_HOME}
+  element={
+    <Protected allow={['MANAGER']}>
+      <ManagerPage />
+    </Protected>
+  }
+/>
+<Route
+  path={PATHS.MANAGER_APPS}
+  element={
+    <Protected allow={['MANAGER']}>
+      <ManagerQueuePage />
+    </Protected>
+  }
+/>
+<Route
+  path={PATHS.MANAGER_PROFILE}       // ⭐ 추가
+  element={
+    <Protected allow={['MANAGER']}>
+      <ManagerProfilePage />
+    </Protected>
+  }
+/>
 
           {/* 보호소 */}
           <Route
@@ -230,7 +250,23 @@ export default function App() {
               </Protected>
             }
           />
-
+           <Route
+            path={PATHS.MANAGER_HOME}
+            element={
+              <Protected allow={['MANAGER']}>
+                <ManagerPage />
+              </Protected>
+            }
+          />
+          {/* ⭐ 매니저 큐 */}
+          <Route
+            path={PATHS.MANAGER_APPS}
+            element={
+              <Protected allow={['MANAGER']}>
+                <ManagerQueuePage />
+              </Protected>
+            }
+          />
           {/* 기타 */}
           <Route path="*" element={<Navigate to={PATHS.ROOT} replace />} />
         </Routes>

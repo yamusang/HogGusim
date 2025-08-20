@@ -1,4 +1,3 @@
-// src/api/animals.js
 import api from './apiClient';
 
 /** ==============================
@@ -6,7 +5,7 @@ import api from './apiClient';
  * ============================== */
 export const toAbsoluteUrl = (url) => {
   if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url; // 이미 절대경로면 그대로
+  if (/^https?:\/\//i.test(url)) return url;
   const base = (api.defaults.baseURL || '').replace(/\/+$/, '');
   const rel  = (`/${String(url)}`).replace(/\/+/, '/');
   return `${base}${rel}`;
@@ -23,13 +22,12 @@ export const normalizePet = (it = {}) => {
     it.popfile ?? it.filename ?? it.photoUrl ?? it.thumb ?? it.image ?? '';
   const photoUrl = rawPhoto ? toAbsoluteUrl(rawPhoto) : '';
 
-  // ✅ 종 추출 보강
   const rawKind =
     it.kind ?? it.kindNm ?? it.kindName ?? it.kind_name ?? it.kind_cd_name ??
     it.kindCd ?? it.species ?? '';
   let species = String(rawKind || '');
   if (/^\[[^\]]+\]\s*/.test(species)) species = species.replace(/^\[[^\]]+\]\s*/, '');
-  if (/^\d+$/.test(species)) species = ''; // 숫자코드면 표시 X
+  if (/^\d+$/.test(species)) species = '';
 
   return {
     id: it.id ?? it.desertionNo ?? it.noticeNo ?? it.externalId ?? it.desertion_no ?? null,
@@ -38,11 +36,11 @@ export const normalizePet = (it = {}) => {
     species,
     breed: it.breed ?? null,
     color: it.colorCd || it.color || '',
-    gender,                                // 🇰🇷 레이블(수컷/암컷/미상)
-    sex: it.sex || it.sexCd || '',         // 원본 코드 보존
+    gender,
+    sex: it.sex || it.sexCd || '',
     age: it.age || '',
     weight: it.weight || '',
-    neuter: it.neuterYn || it.neuter || '',// 'Y'|'N'|'U' or ''
+    neuter: it.neuterYn || it.neuter || '',
     status: it.processState || it.status || '보호중',
 
     happenDt: it.happenDt || null,
@@ -83,21 +81,20 @@ const pickPageMeta = (data) => ({
 });
 
 /** ==============================
- * 목록 (정규화 포함) — animals
- *  - sort/status는 백엔드 지원 확인 전엔 보내지 않음
+ * 목록 (정규화 포함)
  * ============================== */
 export const fetchAnimals = async (params = {}, axiosCfg = {}) => {
-  const { page = 0, size = 20, careNm /*, sort, status*/ } = params;
+  const { page = 0, size = 20, careNm } = params;
 
   const query = { page, size };
   if (careNm && careNm.trim()) query.careNm = careNm.trim();
-  // ⛔ 백엔드 필드명이 불명확해서 일단 sort/status 제거
-  // if (sort) query.sort = sort;
-  // if (status) query.status = status;
 
-  const { data } = await api.get('/animals', { params: query, signal: axiosCfg?.signal });
+  // __noAuth, headers, signal 등 외부 옵션 그대로 전달
+  const { data } = await api.get('/animals', {
+    params: query,
+    ...(axiosCfg || {}),
+  });
 
-  // ✅ 스프링 Page 우선 → 오픈API → 배열
   const contentRaw = data?.content ?? pickApiItems(data) ?? (Array.isArray(data) ? data : []) ?? [];
   const meta = pickPageMeta(data);
 
@@ -107,30 +104,27 @@ export const fetchAnimals = async (params = {}, axiosCfg = {}) => {
   };
 };
 
-/** ==============================
- * 보호소 기준 목록(A안: careNm)
- * ============================== */
-export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {}) => {
-  const query = {};
-  if (careNm) query.careNm = careNm;
-  const { content } = await fetchAnimals({ ...query, page, size });
+/** 보호소 기준 목록 */
+export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {}, axiosCfg = {}) => {
+  const { content } = await fetchAnimals({ careNm, page, size }, axiosCfg);
   return content;
 };
 
-/** ==============================
- * 추천 목록 (임시: /animals 폴백)
- *  - 정렬 파라미터 제거(백 호환성)
- * ============================== */
-export const fetchRecommendedAnimals = async ({ page = 0, size = 20, careNm, ...rest } = {}) => {
-  const { data } = await api.get('/animals', { params: { page, size, careNm, ...rest } });
+/** 추천 목록 (임시: /animals 폴백) */
+export const fetchRecommendedAnimals = async (
+  { page = 0, size = 20, careNm, ...rest } = {},
+  axiosCfg = {}
+) => {
+  const { data } = await api.get('/animals', {
+    params: { page, size, careNm, ...rest },
+    ...(axiosCfg || {}),
+  });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   return (raw || []).map(normalizePet);
 };
 export const fetchRecommendedPets = fetchRecommendedAnimals;
 
-/** ==============================
- * 생성 / 업로드
- * ============================== */
+/** 생성 / 업로드 */
 export const createAnimal = async (payload = {}) => {
   const { data } = await api.post('/animals', payload);
   return data;
@@ -153,14 +147,6 @@ const isDog = (a) => {
   return s.includes('개') || s.includes('dog');
 };
 const hasPhoto = (a) => !!a.photoUrl;
-const shuffle = (arr=[]) => {
-  const r = arr.slice();
-  for (let i=r.length-1; i>0; i--) {
-    const j = Math.floor(Math.random() * (i+1));
-    [r[i], r[j]] = [r[j], r[i]];
-  }
-  return r;
-};
 const uniqById = (arr=[]) => {
   const seen = new Set();
   return arr.filter(x => {
@@ -171,15 +157,15 @@ const uniqById = (arr=[]) => {
   });
 };
 
-/** 메인 슬라이드 (정렬 파라미터 제거) */
-export const fetchFeaturedDogs = async ({
-  take = 18,
-  page = 0,
-  size = 120,
-  status = 'AVAILABLE',
-  // sort 제거
-} = {}) => {
-  const { data } = await api.get('/animals', { params: { page, size, status, kind: 'DOG' } });
+/** 메인 슬라이드 */
+export const fetchFeaturedDogs = async (
+  { take = 18, page = 0, size = 120, status = 'AVAILABLE' } = {},
+  axiosCfg = {}
+) => {
+  const { data } = await api.get('/animals', {
+    params: { page, size, status, kind: 'DOG' },
+    ...(axiosCfg || {}),
+  });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   const items = (raw || []).map(normalizePet);
 
@@ -189,8 +175,8 @@ export const fetchFeaturedDogs = async ({
   return uniq.slice(0, take);
 };
 
-/** 최신 강아지 (fetchAnimals 내부가 sort 무시하므로 안전) */
-export const fetchLatestDogs = async ({ take = 18 } = {}) => {
-  const { content } = await fetchAnimals({ page: 0, size: 120 });
+/** 최신 강아지 */
+export const fetchLatestDogs = async ({ take = 18 } = {}, axiosCfg = {}) => {
+  const { content } = await fetchAnimals({ page: 0, size: 120 }, axiosCfg);
   return content.filter(isDog).filter(hasPhoto).slice(0, take);
 };

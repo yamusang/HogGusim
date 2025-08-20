@@ -1,4 +1,3 @@
-// src/api/apiClient.js
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -35,13 +34,17 @@ export const clearAuth = () => {
   localStorage.removeItem(USER_KEY);
 };
 
-const addAuthHeader = (config) => {
+// ===== 요청 인터셉터 =====
+// 공개 API 호출 시 { __noAuth: true }를 넘기면 토큰을 붙이지 않음
+const addAuthHeader = (config = {}) => {
+  if (config.__noAuth) return config;
   const token = getAccessToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 };
-
-// 요청 인터셉터
 api.interceptors.request.use(addAuthHeader);
 
 // ===== 401 재발급 공통 처리 =====
@@ -88,11 +91,16 @@ const normalizeError = (error) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const originalRequest = error?.config;
+    const originalRequest = error?.config || {};
     const status = error?.response?.status;
 
+    // ✅ 공개 호출은 401이어도 리프레시/리다이렉트 금지
+    if (status === 401 && originalRequest.__noAuth) {
+      return Promise.reject(normalizeError(error));
+    }
+
     // 1차: 리프레시 시도
-    if (status === 401 && !originalRequest?._retry) {
+    if (status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           addRefreshSubscriber((newToken) => {
@@ -130,7 +138,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 2차: 여전히 401이면(재시도 후에도) 강제 로그아웃 + 리다이렉트
+    // 2차: 여전히 401이면 강제 로그아웃 + 리다이렉트
     if (status === 401) {
       const norm = normalizeError(error);
       try { clearAuth(); } catch {}

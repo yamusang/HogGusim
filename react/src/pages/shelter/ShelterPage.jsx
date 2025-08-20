@@ -24,16 +24,13 @@ export default function ShelterPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // header
   const [shelterName, setShelterName] = useState('');
   const [metaLoading, setMetaLoading] = useState(true);
 
-  // animals
   const [animals, setAnimals] = useState([]);
   const [animalsLoading, setAnimalsLoading] = useState(true);
   const [animalsError, setAnimalsError] = useState('');
 
-  // applications(상단)
   const [apps, setApps] = useState([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [appsError, setAppsError] = useState('');
@@ -47,14 +44,12 @@ export default function ShelterPage() {
      localStorage.getItem('selectedCareNm') || '')
   ).trim(), [user]);
 
-  // 헤더
   useEffect(() => {
     setMetaLoading(true);
     setShelterName(careNm || '보호소');
     setMetaLoading(false);
   }, [careNm]);
 
-  // 동물 로드
   useEffect(() => {
     let ignore = false;
     const load = async () => {
@@ -79,7 +74,6 @@ export default function ShelterPage() {
     return () => { ignore = true; };
   }, [careNm, navigate]);
 
-  // 신청 현황 로드
   const reloadApps = async () => {
     if (!careNm) { setApps([]); setAppsLoading(false); setAppsError('보호소 정보가 없습니다.'); return; }
     setAppsLoading(true); setAppsError('');
@@ -95,7 +89,6 @@ export default function ShelterPage() {
   };
   useEffect(() => { reloadApps(); /* eslint-disable-next-line */ }, [careNm, appsFilter]);
 
-  // 승인/거절
   const onApprove = async (id) => {
     if (!window.confirm('이 신청을 승인할까요?')) return;
     try { setAppsActingId(id); await approveApplication(id); await reloadApps(); }
@@ -109,7 +102,6 @@ export default function ShelterPage() {
     finally { setAppsActingId(null); }
   };
 
-  // 이동 버튼
   const goNewPet  = () => navigate('/shelter/animals/new');
   const goAllPets = () => navigate('/shelter/animals');
   const goLogout  = () => navigate('/logout');
@@ -118,7 +110,6 @@ export default function ShelterPage() {
 
   return (
     <div className="shelter">
-      {/* Header */}
       <header className="shelter__header">
         <div className="shelter__titlebox">
           <h1 className="shelter__title">{metaLoading ? '보호소 불러오는 중…' : (shelterName || '보호소')}</h1>
@@ -131,7 +122,6 @@ export default function ShelterPage() {
         </div>
       </header>
 
-      {/* 상단: 신청 현황 */}
       <section className="card">
         <div className="card__head">
           <h2 className="card__title">신청 현황</h2>
@@ -181,7 +171,6 @@ export default function ShelterPage() {
         )}
       </section>
 
-      {/* 기존: 보호 중인 동물 */}
       <main className="shelter__content">
         <section className="card">
           <div className="card__head">

@@ -126,21 +126,20 @@ public class ExternalAnimalIngestService {
 
     /** 외부 레코드에서 내부 고유키(externalId) 생성: desertionNo 우선, 없으면 해시 */
     private static String toExternalId(ExternalResponse.Item it) {
-        String dn = trimToNull(it.getDesertionNo());
-        if (dn != null) return "V2:" + dn; // 버전/소스 구분 prefix
+    String dn = trimToNull(it.getDesertionNo());
+    if (dn != null) return dn; // ★ prefix 제거
 
-        // fallback: 안정 필드 조합 해시
-        String base = String.join("|",
-                nullToEmpty(asYmd(it.getHappenDt())),
-                nullToEmpty(it.getOrgNm()),
-                nullToEmpty(it.getNoticeNo()),
-                nullToEmpty(it.getKindCd()),
-                nullToEmpty(it.getFilename()),
-                nullToEmpty(it.getPopfile())
-        );
-        String h = sha1(base);
-        return (h == null || h.isBlank()) ? null : "V2H:" + h;
-    }
+    String base = String.join("|",
+        nullToEmpty(asYmd(it.getHappenDt())),
+        nullToEmpty(it.getOrgNm()),
+        nullToEmpty(it.getNoticeNo()),
+        nullToEmpty(it.getKindCd()),
+        nullToEmpty(it.getFilename()),
+        nullToEmpty(it.getPopfile())
+    );
+    String h = sha1(base);
+    return (h == null || h.isBlank()) ? null : "H:" + h; // or just h
+}
 
     private static String asYmd(LocalDate d) { return (d == null) ? null : d.toString().replace("-", ""); }
     private static String trimToNull(String s) {

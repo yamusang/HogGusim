@@ -16,10 +16,10 @@ public final class AnimalMapper {
             .id(a.getId())
             .desertionNo(a.getDesertionNo())
             .happenDt(a.getHappenDt() != null ? a.getHappenDt().format(D) : null)
-            .kind(a.getBreed())
-            .color(a.getColor())
-            .sex(sexLabel(a.getSex()))
-            .neuter(a.getNeuter() == null ? "U" : a.getNeuter())
+            .kind(a.getKindCd())                            // breed → kindCd
+            .color(a.getColorCd())                          // color → colorCd
+            .sex(sexLabel(a.getSexCd()))                    // sex   → sexCd
+            .neuter(a.getNeuterYn() == null ? "U" : a.getNeuterYn()) // neuter → neuterYn
             .processState(a.getProcessState())
             .thumbnail(a.getFilename())
             .image(a.getPopfile())
@@ -35,12 +35,12 @@ public final class AnimalMapper {
             .id(a.getId())
             .desertionNo(a.getDesertionNo())
             .name(null)
-            .breed(a.getBreed())
+            .breed(a.getKindCd())
             .age(a.getAge())
             .photoUrl(a.getPopfile())
             .thumbnail(a.getFilename())
-            .sex(sexLabel(a.getSex()))
-            .neuter(neuterLabel(a.getNeuter()))
+            .sex(sexLabel(a.getSexCd()))
+            .neuter(neuterLabel(a.getNeuterYn()))
             .matchScore(score)
             .reason(reason)
             .build();

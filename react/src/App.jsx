@@ -1,4 +1,3 @@
-// src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
@@ -19,6 +18,7 @@ import ApplyPage from './pages/senior/ApplyPage';
 import ManagerHome from './pages/manager/ManagerHome';
 import ManagerInboxPage from './pages/manager/ManagerInboxPage';
 import ManagerProfilePage from './pages/manager/ManagerProfilePage';
+import ManagerQueuePage from './pages/manager/ManagerQueuePage';
 
 import ShelterPage from './pages/shelter/ShelterPage';
 import ShelterApplicationsPage from './pages/shelter/ShelterApplicationsPage';
@@ -166,6 +166,7 @@ export default function App() {
           >
             <Route index element={<ManagerInboxPage />} />
             <Route path="inbox" element={<ManagerInboxPage />} />
+            <Route path="queue" element={<ManagerQueuePage />} />   {/* ⭐ 작업 큐 */}
             <Route path="profile" element={<ManagerProfilePage />} />
           </Route>
 

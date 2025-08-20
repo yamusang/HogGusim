@@ -55,3 +55,8 @@
 .mgr__main .title { font-weight:700; }
 .mgr__main .sub { color:#666; font-size:13px; margin-top:2px; }
 .mgr__actions { display:flex; gap:8px; }
+.manager__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

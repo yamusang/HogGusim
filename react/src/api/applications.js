@@ -4,33 +4,29 @@ import api, { logApiError } from './apiClient';
 /** 공통 페이지 변환 (Spring Data Page 호환) */
 const toPage = (data, { page = 0, size = 20 } = {}) => {
   const content = Array.isArray(data?.content) ? data.content : [];
-  const total = Number.isFinite(data?.totalElements) ? data.totalElements : content.length;
-  const number = Number.isFinite(data?.number) ? data.number : page;
-  const _size = Number.isFinite(data?.size) ? data.size : size;
+  const total   = Number.isFinite(data?.totalElements) ? data.totalElements : content.length;
+  const number  = Number.isFinite(data?.number) ? data.number : page;
+  const _size   = Number.isFinite(data?.size) ? data.size : size;
 
   const totalPages =
     Number.isFinite(data?.totalPages) ? data.totalPages : (total > 0 ? Math.ceil(total / _size) : 0);
 
   return {
     content,
-    number,         // 0-based
+    number,                                   // 0-based
     size: _size,
     totalElements: total,
     totalPages,
-    first: !!data?.first ?? number === 0,
-    last: !!data?.last ?? (number >= totalPages - 1 && totalPages > 0),
-    empty: !!data?.empty ?? content.length === 0,
+    first: (data?.first !== undefined) ? !!data.first : (number === 0),
+    last:  (data?.last  !== undefined) ? !!data.last  : (totalPages > 0 && number >= totalPages - 1),
+    empty: (data?.empty !== undefined) ? !!data.empty : content.length === 0,
   };
 };
 
 /* ───────────────────────
  * Senior(고령자)
  * ─────────────────────── */
-/**
- * 내 신청 목록
- * - 백엔드가 `/applications/by-senior/{seniorId}`를 제공한다고 가정
- * - axios 취소를 위해 signal 지원
- */
+/** 내 신청 목록 */
 export const fetchMyApplications = async ({ seniorId, page = 0, size = 10, signal } = {}) => {
   const { data } = await api.get(`/applications/by-senior/${seniorId}`, {
     params: { page, size },

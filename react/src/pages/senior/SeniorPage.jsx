@@ -42,14 +42,22 @@ export default function SeniorPage() {
   // 매니저 모드는 권한 있을 때만 노출
   const canSeeManager = ['MANAGER', 'SHELTER', 'ADMIN'].includes((user?.role || '').toUpperCase());
 
-  const [isReco, setIsReco] = useState(initialRecommend);
+  const [isReco, setIsReco]   = useState(initialRecommend);
   const [recoMode, setRecoMode] = useState(initialRecoMode);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
-  const [errStatus, setErrStatus] = useState(0); // ⭐ 추가
-  const [page1, setPage1] = useState(1); // UI 1-based
+  const [err, setErr]         = useState('');
+  const [errStatus, setErrStatus] = useState(0);
+  const [page1, setPage1]     = useState(1); // UI 1-based
+
   const [data, setData] = useState({
-    content: [], number: 0, size: 12, totalElements: 0, totalPages: 0, first: true, last: true, empty: true,
+    content: [],
+    number: 0,
+    size: 12,
+    totalElements: 0,
+    totalPages: 0,
+    first: true,
+    last: true,
+    empty: true,
   });
 
   // 진행 중 요청 취소용
@@ -84,7 +92,7 @@ export default function SeniorPage() {
       const res = await getPetsRecommended(
         seniorId,
         { mode: recoMode, page: Math.max(0, page1 - 1), size: data.size || 12 },
-        { signal: ctrl.signal } // getPetsRecommended가 signal 지원하는 버전이면 전달됨
+        { signal: ctrl.signal } // ✅ recommendations.js가 signal 받도록 패치됨
       );
       if (ctrl.signal.aborted) return;
 
@@ -102,7 +110,7 @@ export default function SeniorPage() {
       if (!ctrl.signal.aborted) {
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
         setErr(offline ? '오프라인 상태예요. 네트워크를 확인해 주세요.' : (e?.message || '추천을 불러오지 못했습니다.'));
-        setErrStatus(e?.status || 0); // ⭐ 추가
+        setErrStatus(e?.status || 0);
       }
     } finally {
       if (!ctrl.signal.aborted) setLoading(false);
@@ -112,7 +120,7 @@ export default function SeniorPage() {
   useEffect(() => {
     if (isReco) loadRecommended();
     return () => { abortRef.current?.abort(); };
-  }, [isReco, page1, recoMode, seniorId]); // 의존성 OK
+  }, [isReco, page1, recoMode, seniorId]);
 
   // 모드 전환 시 URL 동기화
   const setModeAndSync = (m) => {
@@ -126,7 +134,10 @@ export default function SeniorPage() {
 
   const onClickApply = (pet) => {
     localStorage.setItem('selectedPet', JSON.stringify({
-      id: pet.id, breed: pet.breed ?? '', photoUrl: pet.photoUrl ?? pet.thumbnail ?? '', desertionNo: pet.desertionNo ?? null,
+      id: pet.id,
+      breed: pet.breed ?? '',
+      photoUrl: pet.photoUrl ?? pet.thumbnail ?? '',
+      desertionNo: pet.desertionNo ?? null,
     }));
     navigate(`/pet/${pet.id}/apply`);
   };
@@ -139,32 +150,43 @@ export default function SeniorPage() {
         <h1>{isReco ? '맞춤 추천 동물' : '입양/체험 신청'}</h1>
         <div style={{ display:'flex', gap:8 }}>
           {isReco ? (
-            <Button presetName="ghost" onClick={() => { setIsReco(false); setPage1(1);
-              const qs = new URLSearchParams(location.search);
-              qs.delete('mode'); qs.delete('recoMode');
-              navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
-            }}>
+            <Button
+              presetName="ghost"
+              onClick={() => {
+                setIsReco(false);
+                setPage1(1);
+                const qs = new URLSearchParams(location.search);
+                qs.delete('mode'); qs.delete('recoMode');
+                navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
+              }}
+            >
               신청 화면으로
             </Button>
           ) : null}
-          <Button presetName="connectbtn" onClick={() => navigate('/senior/connect')}>내 신청 현황</Button>
-          <Button presetName="ghost" onClick={() => navigate('/logout')}>로그아웃</Button>
+          <Button presetName="connectbtn" onClick={() => navigate('/senior/connect')}>
+            내 신청 현황
+          </Button>
+          <Button presetName="ghost" onClick={() => navigate('/logout')}>
+            로그아웃
+          </Button>
         </div>
       </div>
 
       {/* 모드 스위치 (추천일 때만) */}
       {isReco && (
         <div className="seg" style={{ marginBottom: 8 }}>
-          {MODES.filter(m => m.key !== 'manager' || canSeeManager).map(m => (
-            <button
-              key={m.key}
-              className={`seg__btn ${recoMode === m.key ? 'is-active' : ''}`}
-              onClick={() => setModeAndSync(m.key)}
-              aria-pressed={recoMode === m.key}
-            >
-              {m.label}
-            </button>
-          ))}
+          {MODES
+            .filter(m => m.key !== 'manager' || canSeeManager)
+            .map(m => (
+              <button
+                key={m.key}
+                className={`seg__btn ${recoMode === m.key ? 'is-active' : ''}`}
+                onClick={() => setModeAndSync(m.key)}
+                aria-pressed={recoMode === m.key}
+              >
+                {m.label}
+              </button>
+            ))}
         </div>
       )}
 
@@ -172,8 +194,13 @@ export default function SeniorPage() {
       {isReco ? (
         <>
           {loading && <p>불러오는 중…</p>}
+
           {err && !loading && (
-            <div className="auth__error" role="alert" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+            <div
+              className="auth__error"
+              role="alert"
+              style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}
+            >
               <span>{err}</span>
               <Button presetName="ghost" onClick={loadRecommended}>재시도</Button>
               {errStatus === 500 && (
@@ -199,15 +226,25 @@ export default function SeniorPage() {
                     ) : null
                   }
                   title={it.breed || '품종 미상'}
-                  subtitle={[it.sex || '-', it.neuter || '-', (it.age || '').trim() || null]
-                    .filter(Boolean).join(' · ')}
-                  actions={typeof it.matchScore === 'number'
-                    ? <Badge>매칭점수 {Math.round(it.matchScore)}</Badge>
-                    : null}
-                  footer={<Button type="button" presetName="apply" onClick={() => onClickApply(it)}>신청하기</Button>}
+                  subtitle={
+                    [it.sex || '-', it.neuter || '-', (it.age || '').trim() || null]
+                      .filter(Boolean)
+                      .join(' · ')
+                  }
+                  actions={
+                    typeof it.matchScore === 'number'
+                      ? <Badge>매칭점수 {Math.round(it.matchScore)}</Badge>
+                      : null
+                  }
+                  footer={
+                    <Button type="button" presetName="apply" onClick={() => onClickApply(it)}>
+                      신청하기
+                    </Button>
+                  }
                 >
+                  {/* ✅ 말줄임 처리용 클래스 적용 */}
                   {it.reason
-                    ? <span title={it.reason}>{it.reason}</span>
+                    ? <span className="reason" title={it.reason}>{it.reason}</span>
                     : <span className="muted">추천 이유 정보 없음</span>}
                 </Card>
               ))}
@@ -250,13 +287,18 @@ export default function SeniorPage() {
           <h2 className="h6">입양/체험을 신청하시면 맞춤 추천을 보여드려요</h2>
           <p className="muted">간단한 정보 입력 후, 알고리즘이 어르신께 맞는 동물을 추천해드립니다.</p>
           <div style={{ display:'flex', gap:8, marginTop:12 }}>
-            <Button presetName="applibtn" onClick={() => navigate('/senior/apply')}>신청하러 가기</Button>
-            <Button presetName="ghost" onClick={() => {
-              setIsReco(true); setPage1(1);
-              const qs = new URLSearchParams(location.search);
-              qs.set('mode', 'recommend'); qs.set('recoMode', recoMode);
-              navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
-            }}>
+            <Button presetName="applibtn" onClick={() => navigate('/senior/apply')}>
+              신청하러 가기
+            </Button>
+            <Button
+              presetName="ghost"
+              onClick={() => {
+                setIsReco(true); setPage1(1);
+                const qs = new URLSearchParams(location.search);
+                qs.set('mode', 'recommend'); qs.set('recoMode', recoMode);
+                navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
+              }}
+            >
               (데모) 추천 먼저 보기
             </Button>
           </div>

@@ -174,6 +174,7 @@ export default function ApplyPage() {
       };
 
       if (petId) payload.petId = Number(petId);
+      // 선택 펫이 없어도 신청만 먼저 처리 가능(백엔드 허용 시)
 
       await createApplication(payload);
 
@@ -201,12 +202,8 @@ export default function ApplyPage() {
       <header className="senior__header">
         <h1>입양/체험 신청</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button presetName="ghost" onClick={() => navigate(-1)}>
-            뒤로
-          </Button>
-          <Button presetName="connectbtn" onClick={() => navigate('/senior/connect')}>
-            내 신청 현황
-          </Button>
+          <Button presetName="ghost" onClick={() => navigate(-1)}>뒤로</Button>
+          <Button presetName="connectbtn" onClick={() => navigate('/senior/connect')}>내 신청 현황</Button>
         </div>
       </header>
 
@@ -223,136 +220,69 @@ export default function ApplyPage() {
         <div className="form-grid">
           <label>
             이름
-            <input
-              ref={refs.name}
-              value={form.name}
-              onChange={(e) => set('name', e.target.value)}
-              required
-            />
+            <input ref={refs.name} value={form.name} onChange={(e) => set('name', e.target.value)} required />
           </label>
           <label>
             연락처
-            <input
-              ref={refs.phoneNumber}
-              value={form.phoneNumber}
-              onChange={(e) => set('phoneNumber', e.target.value)}
-              required
-            />
+            <input ref={refs.phoneNumber} value={form.phoneNumber} onChange={(e) => set('phoneNumber', e.target.value)} required />
           </label>
           <label>
             주소
-            <input
-              ref={refs.address}
-              value={form.address}
-              onChange={(e) => set('address', e.target.value)}
-              required
-            />
+            <input ref={refs.address} value={form.address} onChange={(e) => set('address', e.target.value)} required />
           </label>
           <label>
             생년월일
-            <input
-              ref={refs.birthDate}
-              type="date"
-              value={form.birthDate}
-              onChange={(e) => set('birthDate', e.target.value)}
-              required
-            />
+            <input ref={refs.birthDate} type="date" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} required />
           </label>
           <label>
             비상연락망
-            <input
-              ref={refs.emergencyContact}
-              value={form.emergencyContact}
-              onChange={(e) => set('emergencyContact', e.target.value)}
-              required
-            />
+            <input ref={refs.emergencyContact} value={form.emergencyContact} onChange={(e) => set('emergencyContact', e.target.value)} required />
           </label>
           <label>
             담당 복지사 ID(선택)
             <input
               type="number"
               value={form.welfareOfficerId ?? ''}
-              onChange={(e) =>
-                set('welfareOfficerId', e.target.value ? Number(e.target.value) : null)
-              }
+              onChange={(e) => set('welfareOfficerId', e.target.value ? Number(e.target.value) : null)}
             />
           </label>
         </div>
 
         <h2 className="h6">B. 반려/돌봄</h2>
         <label className="row">
-          <input
-            type="checkbox"
-            checked={form.hasPetExperience}
-            onChange={(e) => set('hasPetExperience', e.target.checked)}
-          />
+          <input type="checkbox" checked={form.hasPetExperience} onChange={(e) => set('hasPetExperience', e.target.checked)} />
           반려/돌봄 경험이 있어요
         </label>
 
         <div className="form-grid">
           <label>
             선호 종
-            <select
-              value={form.preferredPetInfo.species}
-              onChange={(e) => setNested('preferredPetInfo', 'species', e.target.value)}
-            >
-              {SPECIES_OPTS_LOCAL.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <select value={form.preferredPetInfo.species} onChange={(e) => setNested('preferredPetInfo', 'species', e.target.value)}>
+              {SPECIES_OPTS_LOCAL.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </label>
           <label>
             선호 크기
-            <select
-              value={form.preferredPetInfo.size}
-              onChange={(e) => setNested('preferredPetInfo', 'size', e.target.value)}
-            >
-              {SIZE_OPTS_LOCAL.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <select value={form.preferredPetInfo.size} onChange={(e) => setNested('preferredPetInfo', 'size', e.target.value)}>
+              {SIZE_OPTS_LOCAL.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </label>
           <label>
             선호 성별
-            <select
-              value={form.preferredPetInfo.genderPref}
-              onChange={(e) => setNested('preferredPetInfo', 'genderPref', e.target.value)}
-            >
-              {GENDER_PREF_OPTS_LOCAL.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <select value={form.preferredPetInfo.genderPref} onChange={(e) => setNested('preferredPetInfo', 'genderPref', e.target.value)}>
+              {GENDER_PREF_OPTS_LOCAL.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </label>
           <label>
             선호 성격
-            <select
-              value={form.preferredPetInfo.temperamentPref}
-              onChange={(e) => setNested('preferredPetInfo', 'temperamentPref', e.target.value)}
-            >
-              {TEMPERAMENT_OPTS_LOCAL.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <select value={form.preferredPetInfo.temperamentPref} onChange={(e) => setNested('preferredPetInfo', 'temperamentPref', e.target.value)}>
+              {TEMPERAMENT_OPTS_LOCAL.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </label>
           <label>
             건강 상태 허용 범위
-            <select
-              value={form.preferredPetInfo.healthTolerance}
-              onChange={(e) => setNested('preferredPetInfo', 'healthTolerance', e.target.value)}
-            >
-              {HEALTH_TOL_OPTS_LOCAL.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <select value={form.preferredPetInfo.healthTolerance} onChange={(e) => setNested('preferredPetInfo', 'healthTolerance', e.target.value)}>
+              {HEALTH_TOL_OPTS_LOCAL.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </label>
         </div>
@@ -387,12 +317,7 @@ export default function ApplyPage() {
               ref={refs.startTime}
               type="time"
               value={form.careAvailability.timeRange.start}
-              onChange={(e) =>
-                setNested('careAvailability', 'timeRange', {
-                  ...form.careAvailability.timeRange,
-                  start: e.target.value,
-                })
-              }
+              onChange={(e) => setNested('careAvailability', 'timeRange', { ...form.careAvailability.timeRange, start: e.target.value })}
             />
           </label>
           <label>
@@ -401,26 +326,14 @@ export default function ApplyPage() {
               ref={refs.endTime}
               type="time"
               value={form.careAvailability.timeRange.end}
-              onChange={(e) =>
-                setNested('careAvailability', 'timeRange', {
-                  ...form.careAvailability.timeRange,
-                  end: e.target.value,
-                })
-              }
+              onChange={(e) => setNested('careAvailability', 'timeRange', { ...form.careAvailability.timeRange, end: e.target.value })}
             />
           </label>
 
           <label>
             돌봄 방식
-            <select
-              value={form.careAvailability.visitStyle}
-              onChange={(e) => setNested('careAvailability', 'visitStyle', e.target.value)}
-            >
-              {VISIT_STYLE_OPTS_LOCAL.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <select value={form.careAvailability.visitStyle} onChange={(e) => setNested('careAvailability', 'visitStyle', e.target.value)}>
+              {VISIT_STYLE_OPTS_LOCAL.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </label>
 
@@ -432,24 +345,14 @@ export default function ApplyPage() {
               min={1}
               max={7}
               value={form.careAvailability.visitFreqPerWeek}
-              onChange={(e) =>
-                setNested(
-                  'careAvailability',
-                  'visitFreqPerWeek',
-                  Number(e.target.value || 1),
-                )
-              }
+              onChange={(e) => setNested('careAvailability', 'visitFreqPerWeek', Number(e.target.value || 1))}
             />
           </label>
         </div>
 
         <div className="card" style={{ marginTop: 12 }}>
           <label className="row">
-            <input
-              type="checkbox"
-              checked={form.needManager}
-              onChange={(e) => set('needManager', e.target.checked)}
-            />
+            <input type="checkbox" checked={form.needManager} onChange={(e) => set('needManager', e.target.checked)} />
             청년 돌봄 지원(산책/돌봄 방문)을 요청합니다
           </label>
           <p className="muted" style={{ marginTop: 6 }}>
@@ -459,31 +362,17 @@ export default function ApplyPage() {
 
         <h2 className="h6">D. 동의/약관</h2>
         <label className="row">
-          <input
-            ref={refs.termsAgree}
-            type="checkbox"
-            checked={form.termsAgree}
-            onChange={(e) => set('termsAgree', e.target.checked)}
-          />
+          <input ref={refs.termsAgree} type="checkbox" checked={form.termsAgree} onChange={(e) => set('termsAgree', e.target.checked)} />
           이용 약관에 동의합니다.
         </label>
         <label className="row">
-          <input
-            ref={refs.bodycamAgree}
-            type="checkbox"
-            checked={form.bodycamAgree}
-            onChange={(e) => set('bodycamAgree', e.target.checked)}
-          />
+          <input ref={refs.bodycamAgree} type="checkbox" checked={form.bodycamAgree} onChange={(e) => set('bodycamAgree', e.target.checked)} />
           방문 시 바디캠 촬영에 동의합니다.
         </label>
 
         {err && <div className="auth__error">{err}</div>}
 
-        <Button
-          type="submit"
-          presetName="applibtn"
-          disabled={submitting || !form.termsAgree || !form.bodycamAgree}
-        >
+        <Button type="submit" presetName="applibtn" disabled={submitting || !form.termsAgree || !form.bodycamAgree}>
           {submitting ? '신청 중…' : '신청하기'}
         </Button>
       </form>

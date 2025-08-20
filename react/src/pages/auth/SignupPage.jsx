@@ -1,10 +1,11 @@
+// src/pages/auth/SignupPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/apiClient';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/common/FormField';
 import { fetchCareNames } from '../../api/shelters';
-import './auth.css'; // ✅ 통일
+import './auth.css';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -17,12 +18,12 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [affiliation, setAffiliation] = useState(''); // 선택된 보호소(이름)
+  const [affiliation, setAffiliation] = useState('');
   const [careList, setCareList] = useState([]);
   const [loadingCare, setLoadingCare] = useState(false);
 
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);      // ✅ 제출 로딩
+  const [loading, setLoading] = useState(false);
 
   const minLen = 8;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,22 +35,25 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (!isAffiliationRequired) return;
+    let alive = true;
     (async () => {
       setLoadingCare(true);
       try {
         const names = await fetchCareNames();
         const list = (names || []).filter(Boolean);
+        if (!alive) return;
         setCareList(list);
         const saved = localStorage.getItem('selectedCareNm');
         if (saved && list.includes(saved)) setAffiliation(saved);
       } finally {
-        setLoadingCare(false);
+        if (alive) setLoadingCare(false);
       }
     })();
+    return () => { alive = false; };
   }, [isAffiliationRequired]);
 
   const disabled =
-    loading ||                   // ✅ 로딩 중 차단
+    loading ||
     !email ||
     !password ||
     !confirm ||
@@ -60,7 +64,7 @@ export default function SignupPage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (loading) return;        // ✅ 더블클릭 차단
+    if (loading) return;
     setError('');
 
     if (isInvalidEmail) return setError('올바른 이메일 형식을 입력하세요.');
@@ -72,26 +76,22 @@ export default function SignupPage() {
       email: email.trim(),
       password,
       role,
-      ...(isAffiliationRequired ? { affiliation } : {}), // ✅ 이름 그대로 전송
+      ...(isAffiliationRequired ? { affiliation } : {}),
     };
 
     setLoading(true);
     try {
       await api.post('/auth/signup', payload);
-
-      // 다음 로그인 UX용 저장
       sessionStorage.setItem('selectedRole', role);
       if (isAffiliationRequired) {
         sessionStorage.setItem('affiliation', affiliation);
         localStorage.setItem('selectedCareNm', affiliation);
       }
-
       alert('회원가입이 완료되었습니다. 로그인 해주세요.');
-      navigate(`/login?role=${role}`, { replace: true }); // ✅ 히스토리 교체
+      navigate(`/login?role=${role}`, { replace: true });
     } catch (err) {
       const status = err?.status || err?.response?.status;
       if (status === 409) {
-        // ✅ 중복 명확 안내
         setError('이미 가입된 이메일입니다. 다른 이메일로 진행하거나 로그인하세요.');
       } else {
         const msg =
@@ -169,7 +169,7 @@ export default function SignupPage() {
             presetName="primary"
             type="submit"
             disabled={disabled}
-            loading={loading}             // ✅ 로딩 스피너 표시
+            loading={loading}
             className="auth__submit auth__submit--primary"
           >
             회원가입

@@ -36,9 +36,9 @@ public class RecommendationService {
         List<RecoPetDto> scored = base.stream().map(a -> {
             double score = 0.0;
             if (a.getStatus() == Animal.Status.AVAILABLE) score += 30;
-            if ("Y".equalsIgnoreCase(a.getNeuter())) score += 5;
+            if ("Y".equalsIgnoreCase(a.getNeuterYn())) score += 5;
             String reason = "안전도 " + (a.getStatus()==Animal.Status.AVAILABLE?"+30":"0")
-                + " · 중성화" + ("Y".equalsIgnoreCase(a.getNeuter())?"+5":"0");
+                + " · 중성화" + ("Y".equalsIgnoreCase(a.getNeuterYn()) ? "+5" : "0");
             return AnimalMapper.toReco(a, score, reason);
         }).toList();
 

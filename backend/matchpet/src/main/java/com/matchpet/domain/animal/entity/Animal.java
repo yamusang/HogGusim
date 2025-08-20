@@ -8,11 +8,14 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Getter @Setter
-@Entity @Table(name = "animals")
+@Getter
+@Setter
+@Entity
+@Table(name = "animals")
 public class Animal {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "external_id", nullable = false, unique = true, length = 64)
@@ -57,8 +60,8 @@ public class Animal {
     @Column(name = "process_state")
     private String processState;
 
-    private String filename;   // thumbnail
-    private String popfile;    // photo url
+    private String filename; // thumbnail
+    private String popfile; // photo url
 
     // 공고/행정 필드 (서비스 apply()/upsertOne() 에서 사용)
     @Column(name = "notice_no")
@@ -84,16 +87,25 @@ public class Animal {
     // 서비스 확장 필드들(이미 DB ALTER 했던 것들)
     @Enumerated(EnumType.STRING)
     private Status status = Status.AVAILABLE;
-    public enum Status { AVAILABLE, MATCHING, CONNECTED, RETURNED }
+
+    public enum Status {
+        AVAILABLE, MATCHING, CONNECTED, RETURNED
+    }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "energy_level")
     private EnergyLevel energyLevel;
-    public enum EnergyLevel { LOW, MID, HIGH }
+
+    public enum EnergyLevel {
+        LOW, MID, HIGH
+    }
 
     @Enumerated(EnumType.STRING)
     private Temperament temperament;
-    public enum Temperament { QUIET, ACTIVE, COMPANION }
+
+    public enum Temperament {
+        QUIET, ACTIVE, COMPANION
+    }
 
     @Column(name = "device_required")
     private boolean deviceRequired;
@@ -106,4 +118,24 @@ public class Animal {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Transient
+    public String getBreed() {
+        return getKindCd();
+    }
+
+    @Transient
+    public String getColor() {
+        return getColorCd();
+    }
+
+    @Transient
+    public String getSex() {
+        return getSexCd();
+    }
+
+    @Transient
+    public String getNeuter() {
+        return getNeuterYn();
+    }
 }

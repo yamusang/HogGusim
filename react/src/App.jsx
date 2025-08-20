@@ -34,6 +34,7 @@ const PATHS = {
 
   // SENIOR
   SENIOR_HOME: '/senior',
+  SENIOR_APPLY: '/senior/apply',        // ⭐ 추가
   SENIOR_CONNECT: '/senior/connect',
   SENIOR_APPS: '/senior/applications',
 
@@ -47,9 +48,9 @@ const PATHS = {
   SHELTER_ANIMAL_APPS: '/shelter/animals/:animalId/applications',
 
   // COMMON (Pet)
-  PET_APPLY: '/pet/:petId/apply',        // ⭐ 신청 페이지 (필수)
-  PET_CONNECT: '/pet/:petId/connect',    // ⭐ 특정 동물 연결/확인 (파라미터 버전)
-  PET_CONNECT_LEGACY: '/pet/connect',    // (선택) 레거시 경로 유지 시
+  PET_APPLY: '/pet/:petId/apply',        // ⭐ 신청 페이지 (펫 선택 시)
+  PET_CONNECT: '/pet/:petId/connect',
+  PET_CONNECT_LEGACY: '/pet/connect',
   PET_MANAGERS: '/pet/:petId/managers',
 };
 
@@ -116,6 +117,14 @@ export default function App() {
             element={
               <Protected allow={['SENIOR']}>
                 <SeniorPage />
+              </Protected>
+            }
+          />
+          <Route
+            path={PATHS.SENIOR_APPLY}   // ⭐ 새 라우트
+            element={
+              <Protected allow={['SENIOR']}>
+                <ApplyPage />
               </Protected>
             }
           />
@@ -197,7 +206,6 @@ export default function App() {
               </Protected>
             }
           />
-          {/* (선택) 과거 링크 호환 */}
           <Route
             path={PATHS.PET_CONNECT_LEGACY}
             element={

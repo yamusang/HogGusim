@@ -25,7 +25,7 @@ export const DAY_OPTS = [
   { value: 'SAT', label: '토' },
   { value: 'SUN', label: '일' },
 ];
-// ✅ 기존 코드 호환을 위해 values 배열도 유지
+// 기존 values 배열 유지(호환)
 export const DAYS = DAY_OPTS.map(o => o.value);
 
 // 종
@@ -45,13 +45,7 @@ export const SIZE_OPTS = [
 ];
 export const SIZE = SIZE_OPTS.map(o => o.value);
 
-// 연령 선호
-export const AGE_PREF_OPTS = [
-  { value: 'youngAdult', label: '청년' },
-  { value: 'seniorOnly', label: '노령 위주' },
-  { value: 'any', label: '상관없음' },
-];
-export const AGE_PREF = AGE_PREF_OPTS.map(o => o.value);
+// ⛔️ 연령 선호(AGE_PREF) 삭제했습니다.
 
 // 성별 선호
 export const GENDER_PREF_OPTS = [
@@ -77,3 +71,11 @@ export const HEALTH_TOL_OPTS = [
   { value: 'any', label: '상관없음' },
 ];
 export const HEALTH_TOL = HEALTH_TOL_OPTS.map(o => o.value);
+
+// 🔹 돌봄 방식(집/외부)
+export const VISIT_STYLE_OPTS = [
+  { value: 'HOME_VISIT', label: '집 방문 돌봄' },
+  { value: 'OUTDOOR_WALK', label: '외부 산책 중심' },
+  { value: 'EITHER', label: '상황에 따라' },
+];
+export const VISIT_STYLE = VISIT_STYLE_OPTS.map(o => o.value);

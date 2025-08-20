@@ -1,14 +1,82 @@
-.connect__list { display: flex; flex-direction: column; gap: 12px; }
-.connect__row { border:1px solid #eee; border-radius:12px; padding:12px; background:#fff; }
-.connect__title { font-weight: 600; margin-bottom: 6px; }
-.connect__sub { color:#666; font-size: 14px; }
-.senior__pagination { display:flex; align-items:center; gap:8px; margin-top:12px; }
-.muted { color:#999; }
-.modal { position: fixed; inset:0; display:grid; place-items:center; z-index: 50; }
-.modal__scrim { position:absolute; inset:0; background:rgba(0,0,0,.4); }
-.modal__content { position:relative; z-index:1; }
-.form-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; }
-.row { display:flex; align-items:center; gap:8px; }
-.chips { display:flex; flex-wrap:wrap; gap:8px; }
-.chip { padding:6px 10px; border:1px solid #e5e7eb; border-radius:999px; font-size:12px; }
-.chip--on { background:#f3f4f6; border-color:#d1d5db; }
+/* 페이지 컨테이너 */
+.senior{
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+/* 헤더 */
+.senior__header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 16px;
+}
+.senior__header h1{
+  margin:0;
+  font-size: 1.55rem;
+  letter-spacing:-0.2px;
+}
+
+/* 추천 그리드 */
+.senior__grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:14px;
+  margin-top:12px;
+}
+@media (max-width: 980px){
+  .senior__grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 640px){
+  .senior__grid{ grid-template-columns: 1fr; }
+}
+
+/* 카드(리스트) 안 이미지 */
+.senior__grid .card img{
+  width:100%; height:180px; object-fit:cover;
+  border-radius:12px; margin-bottom:10px;
+  background:#f3f4f6;
+}
+
+/* 카드 하단 구조 보조 */
+.senior__grid .card .muted{ font-size:.9rem; }
+
+/* CTA 카드 */
+.senior .card .h6{ margin:0 0 2px; }
+
+/* 페이지네이션 */
+.senior__pagination{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-top:16px;
+}
+.senior__pagination span{
+  min-width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+  border-radius:10px; background:rgba(99,102,241,.09);
+  border:1px solid rgba(99,102,241,.16);
+}
+
+/* 칩/토글 */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 12px; border-radius:999px;
+  background:rgba(0,0,0,.04);
+  border:1px solid rgba(0,0,0,.06);
+  cursor:pointer; user-select:none;
+  font-size:.92rem;
+}
+.chip input{ display:none; }
+.chip--on{
+  background: rgba(99,102,241,.12);
+  border-color: rgba(99,102,241,.32);
+}
+
+/* 동의 섹션 */
+.senior .row input[type="checkbox"]{
+  width:auto; transform: translateY(1px);
+}
+
+/* 버튼 preset alias (Button.jsx가 class 매핑 못하면 fallback) */
+button[presetname="applibtn"], .btn.applibtn{ composes: btn btn--applibtn; }
+button[presetname="connectbtn"], .btn.connectbtn{ composes: btn btn--connectbtn; }
+button[presetname="ghost"], .btn.ghost{ composes: btn btn--ghost; }
+button[presetname="apply"], .btn.apply{ composes: btn btn--apply; }

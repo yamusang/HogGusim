@@ -6,8 +6,9 @@ import {
   listByPet,
   approveApplication,
   rejectApplication,
-  updateApplication,   // ✅ 추가
+  updateApplication,
 } from '../../api/applications';
+import { buildICS, downloadText } from '../../utils/ics';
 import './shelter.css';
 
 const fmtDT = (iso) => {
@@ -15,10 +16,9 @@ const fmtDT = (iso) => {
   try { return new Date(iso).toLocaleString('ko-KR'); } catch { return iso; }
 };
 
-// YYYY-MM-DDTHH:mm 값 → ISO 문자열로 변환
+// YYYY-MM-DDTHH:mm → ISO(UTC) 문자열
 const localToIso = (local) => {
   if (!local) return null;
-  // local like "2025-08-23T14:30"
   const d = new Date(local);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
@@ -30,7 +30,33 @@ const isoToLocal = (iso) => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+// 간단 CSV 만들기
+const toCSV = (rows=[]) => {
+  const header = ['id','status','seniorName','managerName','phone','createdAt','reservedAt','memo'];
+  const esc = (v='') => {
+    const s = String(v ?? '');
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const lines = [header.join(',')];
+  rows.forEach((it) => {
+    const seniorName = it.senior?.name || it.seniorName || `Senior#${it.seniorId}`;
+    const mgrName = it.manager?.name || it.managerName || (it.managerId ? `Manager#${it.managerId}` : '');
+    lines.push([
+      it.id,
+      it.status || 'PENDING',
+      seniorName,
+      mgrName,
+      it.phone || '',
+      it.createdAt || '',
+      it.reservedAt || '',
+      it.memo || '',
+    ].map(esc).join(','));
+  });
+  return lines.join('\n');
 };
 
 export default function ShelterApplicationsPage() {
@@ -49,10 +75,10 @@ export default function ShelterApplicationsPage() {
   const [err, setErr] = useState('');
   const [actingId, setActingId] = useState(null);
 
-  // 편집중(열린) 항목 ID
+  // 편집 상태
   const [editingId, setEditingId] = useState(null);
   const [editReservedAt, setEditReservedAt] = useState(''); // datetime-local
-  const [editNote, setEditNote] = useState('');
+  const [editNote, setEditNote] = useState(''); // 화면 변수명은 note, 서버는 memo
 
   // 서버 페이지 응답
   const [data, setData] = useState({
@@ -129,7 +155,7 @@ export default function ShelterApplicationsPage() {
   const openEdit = (item) => {
     setEditingId(item.id);
     setEditReservedAt(isoToLocal(item.reservedAt));
-    setEditNote(item.note || '');
+    setEditNote(item.memo || '');
   };
   const closeEdit = () => {
     setEditingId(null);
@@ -143,7 +169,7 @@ export default function ShelterApplicationsPage() {
       setActingId(editingId);
       const payload = {
         reservedAt: editReservedAt ? localToIso(editReservedAt) : null,
-        note: editNote ?? '',
+        memo: editNote ?? '',
       };
       await updateApplication(editingId, payload);
       closeEdit();
@@ -160,6 +186,51 @@ export default function ShelterApplicationsPage() {
     return s === 'APPROVED' ? 'badge--ok' : s === 'REJECTED' ? 'badge--no' : 'badge--wait';
   };
 
+  // ✅ CSV 다운로드
+  const downloadCSV = () => {
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const statusPart = statusFilter === 'ALL' ? 'ALL' : statusFilter;
+    a.download = `applications_animal-${animalId}_${statusPart}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // ✅ ICS 다운로드(개별)
+  const downloadICS = (item) => {
+    if (!item?.reservedAt) {
+      alert('예약일이 없습니다. 먼저 예약일을 저장해 주세요.');
+      return;
+    }
+    const seniorName = item.senior?.name || item.seniorName || `Senior#${item.seniorId}`;
+    const mgrName =
+      item.manager?.name || item.managerName || (item.managerId ? `Manager#${item.managerId}` : '미배정');
+
+    const title = `입양/체험 예약 - 신청#${item.id}`;
+    const descLines = [
+      `신청자: ${seniorName}`,
+      `매니저: ${mgrName}`,
+      item.memo ? `메모: ${item.memo}` : null,
+      item.phone ? `연락처: ${item.phone}` : null,
+    ].filter(Boolean).join('\n');
+
+    const ics = buildICS({
+      uid: `application-${item.id}@matchpet`,
+      startISO: item.reservedAt,
+      // endISO는 기본 1시간 (buildICS에서 기본값 처리)
+      title,
+      description: descLines,
+      location: '', // 필요 시 보호소 주소/명 추가
+    });
+
+    downloadText(`application-${item.id}.ics`, ics);
+  };
+
   return (
     <div className="shelter">
       <header className="shelter__header">
@@ -167,7 +238,8 @@ export default function ShelterApplicationsPage() {
           <h1 className="shelter__title">동물 #{animalId} · 신청자 관리</h1>
           <p className="shelter__subtitle">총 {rows.length}건 (페이지 {page + 1}/{totalPages})</p>
         </div>
-        <div className="shelter__actions">
+        <div className="shelter__actions" style={{ display:'flex', gap:8 }}>
+          <Button presetName="ghost" onClick={downloadCSV}>CSV 다운로드</Button>
           <Button onClick={() => navigate(-1)}>목록으로</Button>
         </div>
       </header>
@@ -236,7 +308,7 @@ export default function ShelterApplicationsPage() {
                       신청ID: {it.id}
                     </div>
 
-                    {/* ✅ 인라인 편집 폼 */}
+                    {/* 인라인 편집 폼 */}
                     {editing && (
                       <div className="editbox">
                         <div className="editbox__grid">
@@ -271,7 +343,17 @@ export default function ShelterApplicationsPage() {
                     )}
                   </div>
 
-                  <div className="shelter__app-actions">
+                  <div className="shelter__app-actions" style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    {/* ICS 버튼 */}
+                    <Button
+                      presetName="ghost"
+                      disabled={!it.reservedAt}
+                      onClick={() => downloadICS(it)}
+                      title={it.reservedAt ? '캘린더(.ics) 다운로드' : '예약일이 있어야 생성됩니다'}
+                    >
+                      일정(.ics)
+                    </Button>
+
                     {!editing && (
                       <Button presetName="ghost" onClick={() => openEdit(it)}>
                         예약/메모

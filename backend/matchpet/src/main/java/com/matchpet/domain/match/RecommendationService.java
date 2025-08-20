@@ -26,20 +26,24 @@ public class RecommendationService {
      * 시니어별 추천 동물 (프로필 없으면 기본 목록/점수로 폴백)
      */
     public Page<RecoPetDto> recommendPets(Long seniorId, Pageable pageable) {
-        var senior = seniorRepo.findById(seniorId).orElse(null); // ← orElseThrow 제거
-        log.info("recommendPets seniorId={} profile? {}", seniorId, senior != null);
+    var senior = seniorRepo.findById(seniorId).orElse(null); // 없으면 null
+    log.info("recommendPets seniorId={} profile? {}", seniorId, senior != null);
 
-        Page<Animal> page = animalRepo.findAll(
-            PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
-                           Sort.by(Sort.Direction.DESC, "id"))
-        );
+    Page<Animal> page = animalRepo.findAll(
+        PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                       Sort.by(Sort.Direction.DESC, "id"))
+    );
 
-        List<RecoPetDto> content = page.getContent().stream()
-            .map(a -> toRecoPet(senior, a))
-            .toList();
+    List<RecoPetDto> content = page.getContent().stream()
+        .map(a -> {
+            double score = 0.7; // 필요하면 가감
+            return RecoPetDto.from(a, score, "기본 노출");
+        })
+        .toList(); // JDK 16+ (낮으면 .collect(Collectors.toList()))
 
-        return new PageImpl<>(content, page.getPageable(), page.getTotalElements());
-    }
+    // ★ 빠졌던 부분
+    return new PageImpl<>(content, page.getPageable(), page.getTotalElements());
+}
 
     /** Animal → RecoPetDto (프론트가 쓰는 필드명에 정확히 맞춤) */
     private RecoPetDto toRecoPet(SeniorProfile senior, Animal a) {
@@ -54,40 +58,42 @@ public class RecommendationService {
             // TODO: senior의 선호(크기, 성별, 성격 등)로 score 가감
         }
 
-        String breed = sanitizeBreedFromKindCd(a.getKindCd());     // "[개] 시바견" → "시바견"
+        String breed = sanitizeBreedFromKindCd(a.getKindCd()); // "[개] 시바견" → "시바견"
         String photoUrl = hasText(a.getPopfile()) ? a.getPopfile()
-                        : hasText(a.getFilename()) ? a.getFilename()
+                : hasText(a.getFilename()) ? a.getFilename()
                         : null;
 
         return RecoPetDto.builder()
-            .id(a.getId())
-            .desertionNo(a.getDesertionNo())
-            .name(null)                 // Animal에 name 없으면 null 유지
-            .breed(breed)
-            .age(a.getAge())            // 문자열 컬럼 그대로 전달
-            .photoUrl(photoUrl)
-            .matchScore(score)
-            .build();
+                .id(a.getId())
+                .desertionNo(a.getDesertionNo())
+                .name(null) // Animal에 name 없으면 null 유지
+                .breed(breed)
+                .age(a.getAge()) // 문자열 컬럼 그대로 전달
+                .photoUrl(photoUrl)
+                .matchScore(score)
+                .build();
     }
 
     /** (선택) 펫별 매니저 추천 임시 Mock */
     public Page<RecoManagerDto> recommendManagers(Long seniorId, Long petId, Pageable pageable) {
         RecoManagerDto m1 = RecoManagerDto.builder()
-            .id(101L).name("케어매니저 A").intro("강아지 산책 전문")
-            .matchScore(0.92).photoUrl(null).build();
+                .id(101L).name("케어매니저 A").intro("강아지 산책 전문")
+                .matchScore(0.92).photoUrl(null).build();
         RecoManagerDto m2 = RecoManagerDto.builder()
-            .id(102L).name("케어매니저 B").intro("고양이 케어 특화")
-            .matchScore(0.88).photoUrl(null).build();
+                .id(102L).name("케어매니저 B").intro("고양이 케어 특화")
+                .matchScore(0.88).photoUrl(null).build();
         List<RecoManagerDto> list = List.of(m1, m2);
         return new PageImpl<>(list, pageable, list.size());
     }
 
     /** kindCd 정리: 숫자코드면 null, "[개] 시바견" 접두 제거 */
     private String sanitizeBreedFromKindCd(String kindCd) {
-        if (!hasText(kindCd)) return null;
+        if (!hasText(kindCd))
+            return null;
         String v = kindCd.trim();
-        if (v.matches("^\\d+$")) return null;                 // 전부 숫자면 코드로 판단 → 표시 생략
-        v = v.replaceFirst("^\\[[^\\]]+\\]\\s*", "");         // "[개] " 같은 접두 제거
+        if (v.matches("^\\d+$"))
+            return null; // 전부 숫자면 코드로 판단 → 표시 생략
+        v = v.replaceFirst("^\\[[^\\]]+\\]\\s*", ""); // "[개] " 같은 접두 제거
         return hasText(v) ? v : null;
     }
 

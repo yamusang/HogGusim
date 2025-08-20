@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import {
   fetchManagerQueue,
@@ -30,7 +31,9 @@ export default function ManagerQueuePage() {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
 
-  const [data, setData] = useState({ content: [], number:0, size, totalElements:0, totalPages:0, first:true, last:true, empty:true });
+  const [data, setData] = useState({
+    content: [], number:0, size, totalElements:0, totalPages:0, first:true, last:true, empty:true
+  });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [actingId, setActingId] = useState(null);
@@ -131,6 +134,11 @@ export default function ManagerQueuePage() {
         <div>
           <h1 className="manager__title">매니저 작업 큐</h1>
           <p className="manager__subtitle">대기 → 처리중 → 보호소 전달</p>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          <Link to="/logout">
+            <Button presetName="ghost">로그아웃</Button>
+          </Link>
         </div>
       </header>
 

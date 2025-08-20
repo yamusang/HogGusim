@@ -6,7 +6,7 @@ import api from './apiClient';
 /* -------------------------
  * 공통 유틸
  * ------------------------- */
-const toPage = (res, { page = 0, size = 10 } = {}) => {
+const toPage = (res, { page = 0, size = 12 } = {}) => {
   if (Array.isArray(res)) return { content: res, total: res.length, size, number: page };
   const content = res?.content ?? res?.items ?? [];
   const total   = res?.totalElements ?? res?.total ?? content.length ?? 0;
@@ -35,6 +35,12 @@ const normalizePetReco = (it = {}) => {
     age: it.age ?? null,
     photoUrl: photo ? toAbsoluteUrl(photo) : null,
     matchScore: it.matchScore ?? it.score ?? it.match_score ?? null,
+    careNm: it.careNm ?? it.shelterName ?? null,
+    temperament: it.temperament ?? it.character ?? null,
+    neutered:
+      typeof it.neutered === 'boolean'
+        ? it.neutered
+        : (String(it.neutered ?? '').toUpperCase() === 'Y'),
   };
 };
 
@@ -45,7 +51,7 @@ const normalizePetReco = (it = {}) => {
  * getPetsRecommended(seniorId, page, size)
  * 반환 형태: { content: [...], total, size, number }
  */
-export const getPetsRecommended = async (seniorId, page = 0, size = 10) => {
+export const getPetsRecommended = async (seniorId, page = 0, size = 12) => {
   const { data } = await api.get('/reco/pets', { params: { seniorId, page, size } });
 
   // 백엔드가 바로 Page<RecoPetDto>를 주면 그대로, 아닐 때 방어
@@ -63,7 +69,7 @@ export const getPetsRecommended = async (seniorId, page = 0, size = 10) => {
 };
 
 /* -------------------------
- * 추천: 매니저 (PetManagerRecoPage)
+ * 추천: 매니저 (PetManagerRecoPage) — 필요시 사용
  * ------------------------- */
 /**
  * getManagersRecommended(seniorId, petId, page, size)
@@ -73,7 +79,7 @@ export const getManagersRecommended = async (
   seniorId,
   petId,
   page = 0,
-  size = 10
+  size = 12
 ) => {
   const { data } = await api.get('/reco/managers', {
     params: { seniorId, petId, page, size },

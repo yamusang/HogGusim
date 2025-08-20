@@ -1,13 +1,17 @@
 // src/pages/senior/ApplyPage.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
 import { createApplication } from '../../api/applications';
-import { DAYS, SPECIES, SIZE, AGE_PREF, GENDER_PREF, TEMPERAMENT, HEALTH_TOL } from '../../config/constants';
+import {
+  DAY_OPTS, SPECIES_OPTS, SIZE_OPTS,
+  GENDER_PREF_OPTS, TEMPERAMENT_OPTS, HEALTH_TOL_OPTS,
+  VISIT_STYLE_OPTS,
+} from '../../config/constants';
 import './senior.css';
 
-const ymd = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+const ymd  = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const hhmm = (s) => /^\d{2}:\d{2}$/.test(s);
 
 export default function ApplyPage() {
@@ -15,12 +19,15 @@ export default function ApplyPage() {
   const { user } = useAuth();
   const { petId: petIdParam } = useParams();
 
+  /** URL > localStorage('selectedPet') > null */
   const petId = useMemo(() => {
     if (petIdParam) return Number(petIdParam);
     try {
       const sel = JSON.parse(localStorage.getItem('selectedPet') || 'null');
       return sel?.id ? Number(sel.id) : null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }, [petIdParam]);
 
   const [form, setForm] = useState({
@@ -36,7 +43,6 @@ export default function ApplyPage() {
     preferredPetInfo: {
       species: 'dog',
       size: 'small',
-      agePref: 'any',
       genderPref: 'any',
       temperamentPref: 'any',
       healthTolerance: 'any',
@@ -45,8 +51,10 @@ export default function ApplyPage() {
       days: [],
       timeRange: { start: '', end: '' },
       visitFreqPerWeek: 1,
+      visitStyle: 'EITHER',
     },
 
+    needManager: false,
     termsAgree: false,
     bodycamAgree: false,
   });
@@ -54,39 +62,43 @@ export default function ApplyPage() {
   const [err, setErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!petId) {
-      alert('신청할 동물이 선택되지 않았어요.');
-      navigate('/senior');
-    }
-  }, [petId, navigate]);
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setNested = (group, k, v) =>
-    setForm(f => ({ ...f, [group]: { ...f[group], [k]: v } }));
+    setForm((f) => ({ ...f, [group]: { ...f[group], [k]: v } }));
 
-  const toggleDay = (d) => setForm(f => {
-    const setD = new Set(f.careAvailability.days);
-    setD.has(d) ? setD.delete(d) : setD.add(d);
-    return { ...f, careAvailability: { ...f.careAvailability, days: [...setD] } };
-  });
+  const toggleDay = (dayValue) =>
+    setForm((f) => {
+      const setD = new Set(f.careAvailability.days);
+      setD.has(dayValue) ? setD.delete(dayValue) : setD.add(dayValue);
+      return {
+        ...f,
+        careAvailability: { ...f.careAvailability, days: [...setD] },
+      };
+    });
 
   const validate = () => {
-    if (!form.name || !form.address || !form.birthDate || !form.emergencyContact) return '필수값을 확인해 주세요.';
+    if (!form.name || !form.address || !form.birthDate || !form.emergencyContact)
+      return '필수값을 확인해 주세요.';
     if (!ymd(form.birthDate)) return '생년월일은 YYYY-MM-DD 형식이어야 해요.';
     if (!form.termsAgree) return '이용 약관 동의가 필요합니다.';
     if (!form.bodycamAgree) return '바디캠 필수 동의에 체크해야 신청 가능합니다.';
     const ca = form.careAvailability;
-    if (!Array.isArray(ca.days) || ca.days.length === 0) return '가능 요일을 한 개 이상 선택해 주세요.';
-    if (!hhmm(ca.timeRange.start) || !hhmm(ca.timeRange.end)) return '시간대는 HH:MM 형식이어야 합니다.';
-    if (ca.visitFreqPerWeek < 1 || ca.visitFreqPerWeek > 7) return '주 방문 횟수는 1~7 사이여야 합니다.';
+    if (!Array.isArray(ca.days) || ca.days.length === 0)
+      return '가능 요일을 한 개 이상 선택해 주세요.';
+    if (!hhmm(ca.timeRange.start) || !hhmm(ca.timeRange.end))
+      return '시간대는 HH:MM 형식이어야 합니다.';
+    if (ca.visitFreqPerWeek < 1 || ca.visitFreqPerWeek > 7)
+      return '주 방문 횟수는 1~7 사이여야 합니다.';
     return '';
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     const v = validate();
-    if (v) { setErr(v); return; }
+    if (v) {
+      setErr(v);
+      return;
+    }
     setErr('');
     setSubmitting(true);
 
@@ -106,16 +118,26 @@ export default function ApplyPage() {
           days: form.careAvailability.days,
           timeRange: { ...form.careAvailability.timeRange },
           visitFreqPerWeek: Number(form.careAvailability.visitFreqPerWeek),
+          visitStyle: form.careAvailability.visitStyle,
         },
 
+        needManager: !!form.needManager,
         termsAgree: !!form.termsAgree,
         bodycamAgree: !!form.bodycamAgree,
-        petId: Number(petId),
       };
 
+      // ✅ petId는 선택일 때만 포함
+      if (petId) payload.petId = Number(petId);
+
       await createApplication(payload);
+
+      // 플로우 전환 준비
+      localStorage.removeItem('selectedPet');
+      localStorage.setItem('afterApply', '1');
+
       alert('신청 완료! 보호소 검토 후 안내 드릴게요.');
-      navigate('/senior/connect');
+      // ✅ 추천 모드로 전환
+      navigate('/senior?mode=recommend', { replace: true });
     } catch (e2) {
       setErr(e2?.message || '신청에 실패했어요.');
     } finally {
@@ -127,58 +149,270 @@ export default function ApplyPage() {
     <div className="senior">
       <header className="senior__header">
         <h1>입양/체험 신청</h1>
-        <Button presetName="ghost" onClick={() => navigate(-1)}>뒤로</Button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button presetName="ghost" onClick={() => navigate(-1)}>
+            뒤로
+          </Button>
+          <Button presetName="connectbtn" onClick={() => navigate('/senior/connect')}>
+            내 신청 현황
+          </Button>
+        </div>
       </header>
 
-      <form className="card" onSubmit={onSubmit} style={{ display:'grid', gap:14 }}>
+      <div className="card" style={{ marginBottom: 12 }}>
+        {petId ? (
+          <p className="muted">선택한 동물(ID: {petId})로 신청합니다.</p>
+        ) : (
+          <p className="muted">선택한 동물 없이 신청합니다. 제출 후 맞춤 추천을 보여드릴게요.</p>
+        )}
+      </div>
+
+      <form className="card" onSubmit={onSubmit} style={{ display: 'grid', gap: 14 }}>
         <h2 className="h6">A. 기본 신원/연락</h2>
         <div className="form-grid">
-          <label>이름<input value={form.name} onChange={e=>set('name', e.target.value)} required /></label>
-          <label>연락처<input value={form.phoneNumber} onChange={e=>set('phoneNumber', e.target.value)} required /></label>
-          <label>주소<input value={form.address} onChange={e=>set('address', e.target.value)} required /></label>
-          <label>생년월일<input type="date" value={form.birthDate} onChange={e=>set('birthDate', e.target.value)} required /></label>
-          <label>비상연락망<input value={form.emergencyContact} onChange={e=>set('emergencyContact', e.target.value)} required /></label>
-          <label>담당 복지사 ID(선택)<input type="number" value={form.welfareOfficerId ?? ''} onChange={e=>set('welfareOfficerId', e.target.value ? Number(e.target.value) : null)} /></label>
+          <label>
+            이름
+            <input value={form.name} onChange={(e) => set('name', e.target.value)} required />
+          </label>
+          <label>
+            연락처
+            <input
+              value={form.phoneNumber}
+              onChange={(e) => set('phoneNumber', e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            주소
+            <input value={form.address} onChange={(e) => set('address', e.target.value)} required />
+          </label>
+          <label>
+            생년월일
+            <input
+              type="date"
+              value={form.birthDate}
+              onChange={(e) => set('birthDate', e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            비상연락망
+            <input
+              value={form.emergencyContact}
+              onChange={(e) => set('emergencyContact', e.target.value)}
+              required
+            />
+          </label>
+          <label>
+            담당 복지사 ID(선택)
+            <input
+              type="number"
+              value={form.welfareOfficerId ?? ''}
+              onChange={(e) =>
+                set('welfareOfficerId', e.target.value ? Number(e.target.value) : null)
+              }
+            />
+          </label>
         </div>
 
         <h2 className="h6">B. 반려/돌봄</h2>
         <label className="row">
-          <input type="checkbox" checked={form.hasPetExperience} onChange={e=>set('hasPetExperience', e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={form.hasPetExperience}
+            onChange={(e) => set('hasPetExperience', e.target.checked)}
+          />
           반려/돌봄 경험이 있어요
         </label>
 
         <div className="form-grid">
-          <label>종<select value={form.preferredPetInfo.species} onChange={e=>setNested('preferredPetInfo','species', e.target.value)}>{SPECIES.map(v => <option key={v}>{v}</option>)}</select></label>
-          <label>크기<select value={form.preferredPetInfo.size} onChange={e=>setNested('preferredPetInfo','size', e.target.value)}>{SIZE.map(v => <option key={v}>{v}</option>)}</select></label>
-          <label>연령<select value={form.preferredPetInfo.agePref} onChange={e=>setNested('preferredPetInfo','agePref', e.target.value)}>{AGE_PREF.map(v => <option key={v}>{v}</option>)}</select></label>
-          <label>성별<select value={form.preferredPetInfo.genderPref} onChange={e=>setNested('preferredPetInfo','genderPref', e.target.value)}>{GENDER_PREF.map(v => <option key={v}>{v}</option>)}</select></label>
-          <label>성격<select value={form.preferredPetInfo.temperamentPref} onChange={e=>setNested('preferredPetInfo','temperamentPref', e.target.value)}>{TEMPERAMENT.map(v => <option key={v}>{v}</option>)}</select></label>
-          <label>건강<select value={form.preferredPetInfo.healthTolerance} onChange={e=>setNested('preferredPetInfo','healthTolerance', e.target.value)}>{HEALTH_TOL.map(v => <option key={v}>{v}</option>)}</select></label>
+          <label>
+            선호 종
+            <select
+              value={form.preferredPetInfo.species}
+              onChange={(e) => setNested('preferredPetInfo', 'species', e.target.value)}
+            >
+              {SPECIES_OPTS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            선호 크기
+            <select
+              value={form.preferredPetInfo.size}
+              onChange={(e) => setNested('preferredPetInfo', 'size', e.target.value)}
+            >
+              {SIZE_OPTS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            선호 성별
+            <select
+              value={form.preferredPetInfo.genderPref}
+              onChange={(e) => setNested('preferredPetInfo', 'genderPref', e.target.value)}
+            >
+              {GENDER_PREF_OPTS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            선호 성격
+            <select
+              value={form.preferredPetInfo.temperamentPref}
+              onChange={(e) => setNested('preferredPetInfo', 'temperamentPref', e.target.value)}
+            >
+              {TEMPERAMENT_OPTS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            건강 상태 허용 범위
+            <select
+              value={form.preferredPetInfo.healthTolerance}
+              onChange={(e) => setNested('preferredPetInfo', 'healthTolerance', e.target.value)}
+            >
+              {HEALTH_TOL_OPTS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="form-grid">
-          <label>가능 요일
+          <label>
+            가능 요일
             <div className="chips">
-              {DAYS.map(d => (
-                <label key={d} className={`chip ${form.careAvailability.days.includes(d) ? 'chip--on':''}`}>
-                  <input type="checkbox" checked={form.careAvailability.days.includes(d)} onChange={() => toggleDay(d)} />
-                  {d}
+              {DAY_OPTS.map((d) => (
+                <label
+                  key={d.value}
+                  className={`chip ${
+                    form.careAvailability.days.includes(d.value) ? 'chip--on' : ''
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.careAvailability.days.includes(d.value)}
+                    onChange={() => toggleDay(d.value)}
+                  />
+                  {d.label}
                 </label>
               ))}
             </div>
           </label>
-          <label>시간대(시작)<input type="time" value={form.careAvailability.timeRange.start} onChange={e=>setNested('careAvailability','timeRange',{...form.careAvailability.timeRange, start: e.target.value})} /></label>
-          <label>시간대(종료)<input type="time" value={form.careAvailability.timeRange.end} onChange={e=>setNested('careAvailability','timeRange',{...form.careAvailability.timeRange, end: e.target.value})} /></label>
-          <label>주 방문 횟수<input type="number" min={1} max={7} value={form.careAvailability.visitFreqPerWeek} onChange={e=>setNested('careAvailability','visitFreqPerWeek', Number(e.target.value || 1))} /></label>
+
+          <label>
+            시간대(시작)
+            <input
+              type="time"
+              value={form.careAvailability.timeRange.start}
+              onChange={(e) =>
+                setNested('careAvailability', 'timeRange', {
+                  ...form.careAvailability.timeRange,
+                  start: e.target.value,
+                })
+              }
+            />
+          </label>
+          <label>
+            시간대(종료)
+            <input
+              type="time"
+              value={form.careAvailability.timeRange.end}
+              onChange={(e) =>
+                setNested('careAvailability', 'timeRange', {
+                  ...form.careAvailability.timeRange,
+                  end: e.target.value,
+                })
+              }
+            />
+          </label>
+
+          <label>
+            돌봄 방식
+            <select
+              value={form.careAvailability.visitStyle}
+              onChange={(e) => setNested('careAvailability', 'visitStyle', e.target.value)}
+            >
+              {VISIT_STYLE_OPTS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            주 방문 횟수
+            <input
+              type="number"
+              min={1}
+              max={7}
+              value={form.careAvailability.visitFreqPerWeek}
+              onChange={(e) =>
+                setNested(
+                  'careAvailability',
+                  'visitFreqPerWeek',
+                  Number(e.target.value || 1),
+                )
+              }
+            />
+          </label>
+        </div>
+
+        <div className="card" style={{ marginTop: 12 }}>
+          <label className="row">
+            <input
+              type="checkbox"
+              checked={form.needManager}
+              onChange={(e) => set('needManager', e.target.checked)}
+            />
+            청년 돌봄 지원(산책/돌봄 방문)을 요청합니다
+          </label>
+          <p className="muted" style={{ marginTop: 6 }}>
+            요청 시, 가능한 청년 펫매니저가 자동 배정됩니다. (집 방문/외부 산책은 ‘돌봄 방식’에 맞춰 조정)
+          </p>
         </div>
 
         <h2 className="h6">D. 동의/약관</h2>
-        <label className="row"><input type="checkbox" checked={form.termsAgree} onChange={e=>set('termsAgree', e.target.checked)} /> 약관 동의</label>
-        <label className="row"><input type="checkbox" checked={form.bodycamAgree} onChange={e=>set('bodycamAgree', e.target.checked)} /> 바디캠 동의</label>
+        <label className="row">
+          <input
+            type="checkbox"
+            checked={form.termsAgree}
+            onChange={(e) => set('termsAgree', e.target.checked)}
+          />
+          이용 약관에 동의합니다.
+        </label>
+        <label className="row">
+          <input
+            type="checkbox"
+            checked={form.bodycamAgree}
+            onChange={(e) => set('bodycamAgree', e.target.checked)}
+          />
+          방문 시 바디캠 촬영에 동의합니다.
+        </label>
 
         {err && <div className="auth__error">{err}</div>}
 
-        <Button type="submit" presetName="applibtn" disabled={submitting || !form.termsAgree || !form.bodycamAgree}>
+        <Button
+          type="submit"
+          presetName="applibtn"
+          disabled={submitting || !form.termsAgree || !form.bodycamAgree}
+        >
           {submitting ? '신청 중…' : '신청하기'}
         </Button>
       </form>

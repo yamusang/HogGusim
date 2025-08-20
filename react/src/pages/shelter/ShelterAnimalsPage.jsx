@@ -31,6 +31,9 @@ export default function ShelterAnimalsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
+  // 상세보기 모달 상태
+  const [detail, setDetail] = useState(null); // 선택된 동물 객체
+
   // 상태 변환(백엔드가 ENDED를 따로 안 쓰면 ADOPTED/RETURNED를 종료로 묶어서 표시)
   const toEndedKey = (s) => {
     const v = String(s || '').toUpperCase();
@@ -45,13 +48,13 @@ export default function ShelterAnimalsPage() {
     try {
       // 백엔드가 status 파라미터를 지원하면 넘겨서 서버에서 필터:
       const serverStatus = statusFilter === 'ALL' ? undefined
-                         : statusFilter === 'ENDED' ? 'ENDED' // 지원하면 ENDED, 아니면 프론트에서 거름
+                         : statusFilter === 'ENDED' ? 'ENDED'
                          : 'AVAILABLE';
 
       const res = await fetchAnimals({
         page, size, sort: 'id,DESC',
         careNm,
-        status: serverStatus, // 없으면 서버는 무시함
+        status: serverStatus,
       });
 
       let list = res.content || [];
@@ -126,60 +129,121 @@ export default function ShelterAnimalsPage() {
           <div className="list__empty">데이터가 없습니다.</div>
         )}
 
+        {/* ✅ 카드 그리드 */}
         {!loading && !err && rows.length > 0 && (
-          <ul className="list" style={{marginTop:8}}>
-            {rows.map((a, i) => {
-              const title = a.name || a.species || a.breed || a.color || '이름/품종 미상';
+          <div className="petgrid">
+            {rows.map((a) => {
+              const title = a.name || a.species || a.breed || '이름/품종 미상';
               const meta = [a.gender || a.sex, a.age, a.weight].filter(Boolean).join(' · ');
               const date = fmtDate(a.happenDt || a.createdAt);
               const statusKey = toEndedKey(a.status);
-              const statusLabel = statusKey === 'AVAILABLE' ? '보호중'
-                                : statusKey === 'ENDED' ? '종료' : (a.status || '상태 미상');
+              const statusLabel = statusKey === 'AVAILABLE' ? '보호중' : '종료';
 
               return (
-                <li key={a.id ?? `${careNm}-${i}`} className="list__item"
-                    style={{display:'grid', gridTemplateColumns:'64px 1fr auto', gap:12, alignItems:'center'}}>
-                  <div style={{
-                    width:64, height:64, borderRadius:10, overflow:'hidden', background:'#f3f4f6',
-                    display:'flex', alignItems:'center', justifyContent:'center'
-                  }}>
-                    {a.photoUrl ? (
-                      <img src={a.photoUrl} alt={title} loading="lazy"
-                           style={{width:'100%', height:'100%', objectFit:'cover'}}
-                           onError={(e)=>{ e.currentTarget.style.display='none'; }} />
-                    ) : <span style={{fontSize:12, color:'#9ca3af'}}>no image</span>}
+                <article key={a.id} className="petcard" onClick={() => setDetail(a)} role="button">
+                  <div className="petcard__media">
+                    {a.photoUrl
+                      ? <img src={a.photoUrl} alt={title} loading="lazy"
+                             onError={(e)=>{ e.currentTarget.style.display='none'; }} />
+                      : <div className="petcard__placeholder">NO IMAGE</div>}
+                    <span className={`chip ${statusKey==='AVAILABLE' ? 'chip--blue' : 'chip--gray'}`}>{statusLabel}</span>
                   </div>
-
-                  <div style={{minWidth:0}}>
-                    <div className="list__name" style={{whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</div>
-                    <div className="list__meta" style={{marginTop:2}}>{meta || a.color || '-'}</div>
-                    <div className="list__date" style={{marginTop:2}}>
-                      {a.careNm || careNm}{date ? ` · 입소: ${date}` : ''}
-                    </div>
+                  <div className="petcard__body">
+                    <h3 className="petcard__title">{title}</h3>
+                    <p className="petcard__meta">{meta || a.color || '-'}</p>
+                    <p className="petcard__sub">{careNm}{date ? ` · 입소 ${date}` : ''}</p>
                   </div>
-
-                  <div className="list__sub">
-                    <span style={{fontSize:12, padding:'2px 8px', borderRadius:999,
-                                  background: statusKey==='AVAILABLE' ? '#eef2ff' : '#f1f5f9',
-                                  color: statusKey==='AVAILABLE' ? '#4338ca' : '#334155'}}>
-                      {statusLabel}
-                    </span>
-                  </div>
-                </li>
+                </article>
               );
             })}
-          </ul>
+          </div>
         )}
 
         {/* 페이지네이션 */}
         {!loading && totalPages > 1 && (
-          <div style={{display:'flex', justifyContent:'center', gap:8, marginTop:12}}>
+          <div className="shelter__pagination">
             <Button presetName="ghost" disabled={page<=0} onClick={()=>setPage(p=>Math.max(0,p-1))}>이전</Button>
-            <span style={{alignSelf:'center'}}>{page+1} / {totalPages}</span>
+            <span>{page+1} / {totalPages}</span>
             <Button presetName="ghost" disabled={page+1>=totalPages} onClick={()=>setPage(p=>p+1)}>다음</Button>
           </div>
         )}
       </section>
+
+      {/* ✅ 상세 모달 */}
+      {detail && (
+        <DetailModal data={detail} onClose={() => setDetail(null)} />
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────
+ * 상세 모달 컴포넌트 (파일 분리 원하면 분리해도 됨)
+ * ───────────────────────── */
+function Row({ label, value }) {
+  if (!value) return null;
+  return (
+    <div className="detail__row">
+      <div className="detail__label">{label}</div>
+      <div className="detail__value">{value}</div>
+    </div>
+  );
+}
+
+function DetailModal({ data, onClose }) {
+  const closeOnBg = (e) => { if (e.target === e.currentTarget) onClose?.(); };
+  useEffect(() => {
+    const onEsc = (e) => e.key === 'Escape' && onClose?.();
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [onClose]);
+
+  const neuterLabel = data.neuter === 'Y' ? '중성화 O'
+                    : data.neuter === 'N' ? '중성화 X' : '중성화 미상';
+
+  return (
+    <div className="modal" onMouseDown={closeOnBg}>
+      <div className="modal__panel">
+        <button className="modal__close" onClick={onClose} aria-label="닫기">×</button>
+
+        <div className="detail">
+          <div className="detail__media">
+            {data.photoUrl
+              ? <img src={data.photoUrl} alt={data.name || data.breed || ''} />
+              : <div className="petcard__placeholder">NO IMAGE</div>}
+          </div>
+
+          <div className="detail__content">
+            <h3 className="detail__title">{data.name || data.species || data.breed || '동물 정보'}</h3>
+            <div className="detail__chips">
+              {data.gender && <span className="chip chip--gray">{data.gender}</span>}
+              {neuterLabel && <span className="chip chip--gray">{neuterLabel}</span>}
+              {data.breed && <span className="chip chip--gray">{data.breed}</span>}
+            </div>
+
+            <div className="detail__rows">
+              <Row label="나이" value={data.age} />
+              <Row label="체중" value={data.weight} />
+              <Row label="모색" value={data.color} />
+              <Row label="특이사항" value={data.specialMark} />
+              <Row label="공고기간" value={
+                data.noticeSdt || data.noticeEdt
+                  ? `${fmtDate(data.noticeSdt)} ~ ${fmtDate(data.noticeEdt)}`
+                  : null
+              } />
+              <Row label="보호소" value={data.careNm} />
+              <Row label="연락처" value={data.careTel} />
+              <Row label="주소" value={data.careAddr} />
+            </div>
+
+            <div className="detail__actions">
+              <Button onClick={onClose}>닫기</Button>
+              {/* 필요하면 상세 관리 페이지로 이동 */}
+              {/* <Button presetName="ghost" onClick={()=> navigate(`/shelter/animals/${data.id}/applications`) }>신청자 보기</Button> */}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

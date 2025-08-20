@@ -1,39 +1,49 @@
 // src/main/java/com/matchpet/auth/JwtBlacklistFilter.java
 package com.matchpet.auth;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.util.AntPathMatcher;
+
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor
 public class JwtBlacklistFilter extends OncePerRequestFilter {
 
-    private final TokenBlacklistService tokenBlacklistService;
+  private final TokenBlacklistService blacklist;
+  private static final AntPathMatcher PM = new AntPathMatcher();
+  private static final String[] PUBLIC_PATTERNS = new String[]{
+      "/actuator/**", "/error", "/uploads/**",
+      "/api/auth/**", "/api/reco/**", "/api/animals/**", "/api/shelters/**",
+      "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
+  };
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+  public JwtBlacklistFilter(TokenBlacklistService blacklist) { this.blacklist = blacklist; }
 
-        // Authorization 헤더에서 Bearer 토큰만 추출 (없으면 null)
-        String token = JwtTokenProvider.resolveBearer(request.getHeader("Authorization"));
+  private boolean isPublic(HttpServletRequest req) {
+    if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
+    String path = req.getRequestURI();
+    for (String p : PUBLIC_PATTERNS) if (PM.match(p, path)) return true;
+    return false;
+  }
 
-        // 토큰이 있고, 블랙리스트면 즉시 차단 (모든 경로 공통)
-        if (token != null && tokenBlacklistService.isBlacklisted(token)) {
-            SecurityContextHolder.clearContext();
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-            // 필요 시 헤더 추가: response.setHeader("WWW-Authenticate", "Bearer error=\"invalid_token\"");
-            return;
-        }
+  @Override
+  protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+      throws ServletException, IOException {
+    String auth = req.getHeader("Authorization");
+    String token = JwtTokenProvider.resolveBearer(auth);
 
-        // 토큰 없거나 블랙리스트가 아니면 통과
-        chain.doFilter(request, response);
+    if (token != null && blacklist.isBlacklisted(token)) {
+      // 공개 경로면 차단하지 않고 통과 (토큰만 무시)
+      if (isPublic(req)) {
+        chain.doFilter(req, res);
+        return;
+      }
+      res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token revoked");
+      return;
     }
+    chain.doFilter(req, res);
+  }
 }

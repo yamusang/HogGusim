@@ -222,10 +222,10 @@ export default function ShelterApplicationsPage() {
     const ics = buildICS({
       uid: `application-${item.id}@matchpet`,
       startISO: item.reservedAt,
-      // endISO는 기본 1시간 (buildICS에서 기본값 처리)
+      // endISO는 기본 1시간 (buildICS 내부에서 처리)
       title,
       description: descLines,
-      location: '', // 필요 시 보호소 주소/명 추가
+      location: '',
     });
 
     downloadText(`application-${item.id}.ics`, ics);

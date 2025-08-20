@@ -18,7 +18,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -29,38 +28,55 @@ public class SecurityConfig {
   private final JwtBlacklistFilter jwtBlacklistFilter;
 
   @Bean
-public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-  http
-      .csrf(csrf -> csrf.disable())
-      .cors(Customizer.withDefaults())
-      .httpBasic(b -> b.disable())
-      .formLogin(f -> f.disable())
-      .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-      .authorizeHttpRequests(auth -> auth
-          .requestMatchers("/actuator/**").permitAll()
-          .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-          .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
-          .requestMatchers("/api/auth/**").permitAll()
-          .requestMatchers(HttpMethod.GET, "/api/reco/**").permitAll()
-          .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
-          .requestMatchers(HttpMethod.GET, "/api/shelters/**").permitAll()
-          .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
-          .requestMatchers("/api/applications/**").authenticated()
-          .requestMatchers(HttpMethod.POST, "/api/animals/**").authenticated()
-          .requestMatchers(HttpMethod.PUT,  "/api/animals/**").authenticated()
-          .requestMatchers(HttpMethod.DELETE,"/api/animals/**").authenticated()
-          .anyRequest().authenticated()
-      )
-      // ✅ 여기 추가
-      .exceptionHandling(e -> e
-        .authenticationEntryPoint((req, res, ex) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED))
-        .accessDeniedHandler((req, res, ex) -> res.sendError(HttpServletResponse.SC_FORBIDDEN))
-    )
-    .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
-    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable())
+        .cors(Customizer.withDefaults())
+        .httpBasic(b -> b.disable())
+        .formLogin(f -> f.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            // Actuator (필요시 /actuator/health만 남겨도 됨)
+            .requestMatchers("/actuator/**").permitAll()
 
-  return http.build();
-}
+            // CORS preflight
+            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+            // 정적 업로드 이미지(/uploads/**) 공개
+            .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
+            // 인증/로그인 계열
+            .requestMatchers("/api/auth/**").permitAll() // login/refresh 등 전체 오픈
+
+            // 추천/동물/보호소: 조회는 공개
+            .requestMatchers(HttpMethod.GET, "/api/reco/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/animals/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/shelters/**").permitAll()
+
+            // Swagger & OpenAPI
+            .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+            // 내부 적재(필요 시 보호) - 현재는 허용
+            .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
+
+            // ---- 여기서부터는 인증 필요 ----
+            // applications(신청 생성/목록/승인/거절)
+            .requestMatchers("/api/applications/**").authenticated()
+
+            // animals 등록/사진 업로드 등 변경 작업
+            .requestMatchers(HttpMethod.POST, "/api/animals/**").authenticated()
+            .requestMatchers(HttpMethod.PUT,  "/api/animals/**").authenticated()
+            .requestMatchers(HttpMethod.DELETE,"/api/animals/**").authenticated()
+
+            // 그 외 전부 인증
+            .anyRequest().authenticated()
+        )
+        // 필터 순서: 블랙리스트 → JWT 인증
+        .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+    return http.build();
+  }
 
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {

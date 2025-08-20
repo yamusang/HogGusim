@@ -23,7 +23,6 @@ export default function ShelterAnimalsPage() {
     [user]
   );
 
-  // 쿼리 파라미터 (페이지/상태)
   const pageFromUrl = Number(sp.get('page') || 0);
   const sizeFromUrl = Number(sp.get('size') || 20);
   const statusFilter = sp.get('status') || 'ALL'; // ALL | AVAILABLE | ENDED
@@ -35,55 +34,32 @@ export default function ShelterAnimalsPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
-  // 상세보기 모달 상태
-  const [detail, setDetail] = useState(null); // 선택된 동물 객체
+  const [detail, setDetail] = useState(null);
 
-  // 상태 변환(백엔드가 ENDED를 따로 안 쓰면 ADOPTED/RETURNED를 종료로 묶어서 표시)
   const toEndedKey = (s) => {
     const v = String(s || '').toUpperCase();
-    return ['ADOPTED', 'RETURNED', 'ENDED', '입양완료', '복귀'].includes(v)
-      ? 'ENDED'
-      : v === 'AVAILABLE' || v === '보호중'
-      ? 'AVAILABLE'
-      : v;
+    return ['ADOPTED','RETURNED','ENDED','입양완료','복귀'].includes(v) ? 'ENDED'
+         : v === 'AVAILABLE' || v === '보호중' ? 'AVAILABLE'
+         : v;
   };
 
   const reload = async () => {
-    if (!careNm) {
-      setErr('보호소 정보가 없습니다.');
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setErr('');
+    if (!careNm) { setErr('보호소 정보가 없습니다.'); setLoading(false); return; }
+    setLoading(true); setErr('');
     try {
-      // ✅ "종료"는 서버 status 전달 없이 전체를 받고 프론트에서 필터
-      const serverStatus = statusFilter === 'AVAILABLE' ? 'AVAILABLE' : undefined;
-
-      const res = await fetchAnimals({
-        page,
-        size,
-        sort: 'id,DESC',
-        careNm,
-        status: serverStatus,
-      });
+      // ⛔ 서버 정렬/상태 필터 확실치 않으므로 파라미터 최소화
+      const res = await fetchAnimals({ page, size, careNm });
 
       let list = res.content || [];
-      // 프론트 필터
       if (statusFilter !== 'ALL') {
-        list = list.filter((row) => toEndedKey(row.status) === statusFilter);
+        list = list.filter(row => toEndedKey(row.status) === statusFilter);
       }
 
       setRows(list);
-
-      // ✅ 총 개수 계산 보정
-      // - 전체(ALL): 서버 totalElements 사용
-      // - 그 외(AVAILABLE/ENDED): 현재 필터링된 리스트 길이
       const totalCount =
         statusFilter === 'ALL'
           ? Number.isFinite(res.totalElements) ? res.totalElements : list.length
           : list.length;
-
       setTotal(totalCount);
     } catch (e) {
       setErr(e?.response?.data?.message || e.message || '목록을 불러오지 못했습니다.');
@@ -92,30 +68,22 @@ export default function ShelterAnimalsPage() {
     }
   };
 
-  useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [careNm, page, size, statusFilter]);
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [careNm, page, size, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil((total || 0) / size));
 
-  // URL 동기화
   useEffect(() => {
     const next = new URLSearchParams(sp);
     next.set('page', String(page));
     next.set('size', String(size));
     next.set('status', statusFilter);
     setSp(next, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [page, size, statusFilter]);
 
   const onChangeStatus = (e) => {
     setPage(0);
-    setSp((prev) => {
-      const n = new URLSearchParams(prev);
-      n.set('status', e.target.value);
-      return n;
-    });
+    setSp(prev => { const n = new URLSearchParams(prev); n.set('status', e.target.value); return n; });
   };
 
   return (
@@ -127,29 +95,20 @@ export default function ShelterAnimalsPage() {
         </div>
         <div className="shelter__actions">
           <Button onClick={() => navigate('/shelter')}>대시보드</Button>
-          <Button presetName="primary" onClick={() => navigate('/shelter/animals/new')}>
-            동물 등록
-          </Button>
+          <Button presetName="primary" onClick={() => navigate('/shelter/animals/new')}>동물 등록</Button>
         </div>
       </header>
 
-      {/* 필터/컨트롤 */}
       <section className="card">
-        <div className="card__head" style={{ gap: 12 }}>
+        <div className="card__head" style={{gap:12}}>
           <h2 className="card__title">목록</h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
+          <div style={{display:'flex', gap:8, alignItems:'center', marginLeft:'auto'}}>
             <select value={statusFilter} onChange={onChangeStatus}>
               <option value="ALL">전체</option>
               <option value="AVAILABLE">보호중</option>
               {/* <option value="ENDED">종료</option> */}
             </select>
-            <select
-              value={size}
-              onChange={(e) => {
-                setPage(0);
-                setSize(Number(e.target.value));
-              }}
-            >
+            <select value={size} onChange={e => { setPage(0); setSize(Number(e.target.value)); }}>
               <option value={10}>10개</option>
               <option value={20}>20개</option>
               <option value={50}>50개</option>
@@ -158,11 +117,12 @@ export default function ShelterAnimalsPage() {
         </div>
 
         {loading && <div className="card__body">불러오는 중…</div>}
-        {err && !loading && <div className="card__error" style={{ color: 'crimson' }}>{err}</div>}
+        {err && !loading && <div className="card__error" style={{color:'crimson'}}>{err}</div>}
 
-        {!loading && !err && rows.length === 0 && <div className="list__empty">데이터가 없습니다.</div>}
+        {!loading && !err && rows.length === 0 && (
+          <div className="list__empty">데이터가 없습니다.</div>
+        )}
 
-        {/* 카드 그리드 */}
         {!loading && !err && rows.length > 0 && (
           <div className="petgrid">
             {rows.map((a) => {
@@ -175,31 +135,16 @@ export default function ShelterAnimalsPage() {
               return (
                 <article key={a.id} className="petcard" onClick={() => setDetail(a)} role="button">
                   <div className="petcard__media">
-                    {a.photoUrl ? (
-                      <img
-                        src={a.photoUrl}
-                        alt={title}
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="petcard__placeholder">NO IMAGE</div>
-                    )}
-                    <span
-                      className={`chip ${statusKey === 'AVAILABLE' ? 'chip--blue' : 'chip--gray'}`}
-                    >
-                      {statusLabel}
-                    </span>
+                    {a.photoUrl
+                      ? <img src={a.photoUrl} alt={title} loading="lazy"
+                             onError={(e)=>{ e.currentTarget.style.display='none'; }} />
+                      : <div className="petcard__placeholder">NO IMAGE</div>}
+                    <span className={`chip ${statusKey==='AVAILABLE' ? 'chip--blue' : 'chip--gray'}`}>{statusLabel}</span>
                   </div>
                   <div className="petcard__body">
                     <h3 className="petcard__title">{title}</h3>
                     <p className="petcard__meta">{meta || a.color || '-'}</p>
-                    <p className="petcard__sub">
-                      {careNm}
-                      {date ? ` · 입소 ${date}` : ''}
-                    </p>
+                    <p className="petcard__sub">{careNm}{date ? ` · 입소 ${date}` : ''}</p>
                   </div>
                 </article>
               );
@@ -207,31 +152,20 @@ export default function ShelterAnimalsPage() {
           </div>
         )}
 
-        {/* 페이지네이션 */}
         {!loading && totalPages > 1 && (
           <div className="shelter__pagination">
-            <Button presetName="ghost" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
-              이전
-            </Button>
-            <span>
-              {page + 1} / {totalPages}
-            </span>
-            <Button presetName="ghost" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
-              다음
-            </Button>
+            <Button presetName="ghost" disabled={page<=0} onClick={()=>setPage(p=>Math.max(0,p-1))}>이전</Button>
+            <span>{page+1} / {totalPages}</span>
+            <Button presetName="ghost" disabled={page+1>=totalPages} onClick={()=>setPage(p=>p+1)}>다음</Button>
           </div>
         )}
       </section>
 
-      {/* 상세 모달 */}
       {detail && <DetailModal data={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }
 
-/* ─────────────────────────
- * 상세 모달 컴포넌트
- * ───────────────────────── */
 function Row({ label, value }) {
   if (!value) return null;
   return (
@@ -245,35 +179,28 @@ function Row({ label, value }) {
 function DetailModal({ data, onClose }) {
   const navigate = useNavigate();
 
-  const closeOnBg = (e) => {
-    if (e.target === e.currentTarget) onClose?.();
-  };
+  const closeOnBg = (e) => { if (e.target === e.currentTarget) onClose?.(); };
   useEffect(() => {
     const onEsc = (e) => e.key === 'Escape' && onClose?.();
     window.addEventListener('keydown', onEsc);
     return () => window.removeEventListener('keydown', onEsc);
   }, [onClose]);
 
-  const neuterLabel =
-    data.neuter === 'Y' ? '중성화 O' : data.neuter === 'N' ? '중성화 X' : '중성화 미상';
+  const neuterLabel = data.neuter === 'Y' ? '중성화 O'
+                    : data.neuter === 'N' ? '중성화 X' : '중성화 미상';
 
-  // ✅ animalId 추출(백 필드 다양성 방어)
   const animalId = data.id ?? data.animalId ?? data.desertionNo ?? data.noticeNo ?? null;
 
   return (
     <div className="modal" onMouseDown={closeOnBg}>
       <div className="modal__panel">
-        <button className="modal__close" onClick={onClose} aria-label="닫기">
-          ×
-        </button>
+        <button className="modal__close" onClick={onClose} aria-label="닫기">×</button>
 
         <div className="detail">
           <div className="detail__media">
-            {data.photoUrl ? (
-              <img src={data.photoUrl} alt={data.name || data.breed || ''} />
-            ) : (
-              <div className="petcard__placeholder">NO IMAGE</div>
-            )}
+            {data.photoUrl
+              ? <img src={data.photoUrl} alt={data.name || data.breed || ''} />
+              : <div className="petcard__placeholder">NO IMAGE</div>}
           </div>
 
           <div className="detail__content">
@@ -289,14 +216,11 @@ function DetailModal({ data, onClose }) {
               <Row label="체중" value={data.weight} />
               <Row label="모색" value={data.color} />
               <Row label="특이사항" value={data.specialMark} />
-              <Row
-                label="공고기간"
-                value={
-                  data.noticeSdt || data.noticeEdt
-                    ? `${fmtDate(data.noticeSdt)} ~ ${fmtDate(data.noticeEdt)}`
-                    : null
-                }
-              />
+              <Row label="공고기간" value={
+                data.noticeSdt || data.noticeEdt
+                  ? `${fmtDate(data.noticeSdt)} ~ ${fmtDate(data.noticeEdt)}`
+                  : null
+              } />
               <Row label="보호소" value={data.careNm} />
               <Row label="연락처" value={data.careTel} />
               <Row label="주소" value={data.careAddr} />
@@ -306,10 +230,7 @@ function DetailModal({ data, onClose }) {
               <Button onClick={onClose}>닫기</Button>
               <Button
                 disabled={!animalId}
-                onClick={() => {
-                  if (!animalId) return;
-                  navigate(`/shelter/animals/${animalId}/applications`);
-                }}
+                onClick={() => { if (animalId) navigate(`/shelter/animals/${animalId}/applications`); }}
               >
                 신청자 관리
               </Button>

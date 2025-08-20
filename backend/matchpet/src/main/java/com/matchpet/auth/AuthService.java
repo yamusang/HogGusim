@@ -117,32 +117,32 @@ public class AuthService {
   }
 
   // 로그인
-  
+
   public LoginResponse login(LoginRequest req) {
-  User u = userRepository.findByEmail(req.getEmail())
-      .orElseThrow(() -> new ResponseStatusException(
-          HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
+    User u = userRepository.findByEmail(req.getEmail())
+        .orElseThrow(() -> new ResponseStatusException(
+            HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
 
-  if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
-    throw new ResponseStatusException(
-        HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
+    if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
+      throw new ResponseStatusException(
+          HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    u.setLastLoginAt(java.time.LocalDateTime.now());
+    userRepository.save(u);
+
+    String token = jwtTokenProvider.createToken(u.getId());
+
+    // ★ 프론트가 쓰는 필드로 맞춰서 응답
+    return LoginResponse.builder()
+        .token(token)
+        .role(u.getRole().name())
+        .email(u.getEmail())
+        .userId(u.getId())
+        .displayName(u.getDisplayName())
+        .affiliation(u.getAffiliation())
+        .build();
   }
-
-  u.setLastLoginAt(java.time.LocalDateTime.now());
-  userRepository.save(u);
-
- String token = jwtTokenProvider.createToken(u.getId());
-
-  // ★ 프론트가 쓰는 필드로 맞춰서 응답
-  return LoginResponse.builder()
-    .token(token)
-    .role(u.getRole().name())
-    .email(u.getEmail())
-    .userId(u.getId())
-    .displayName(u.getDisplayName())
-    .affiliation(u.getAffiliation())
-    .build();
-}
 
   public void logout(String authHeader) {
     String token = JwtTokenProvider.resolveBearer(authHeader);
@@ -156,7 +156,8 @@ public class AuthService {
 
   /** SHELTER 가입 시 affiliation(보호소명) 검증: 필수 + DB 존재 여부 확인 */
   private void validateShelterAffiliationOr400(SignupCommon req) {
-    if (req.getRole() != Role.SHELTER) return;
+    if (req.getRole() != Role.SHELTER)
+      return;
 
     String aff = normalizeAffiliation(req.getAffiliation());
     if (!StringUtils.hasText(aff)) {
@@ -170,10 +171,30 @@ public class AuthService {
 
   /** 비교/저장 일관성을 위한 간단 정규화(앞뒤 공백 제거 + 내부 연속 공백 1칸) */
   private static String normalizeAffiliation(String s) {
-    if (s == null) return "";
+    if (s == null)
+      return "";
     String t = s.trim();
     t = t.replaceAll("\\s+", " ");
     return t;
   }
+
+  public LoginResponse refresh(String authHeader) {
+    String old = JwtTokenProvider.resolveBearer(authHeader);
+    if (old == null)
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No token");
+    var claims = jwtTokenProvider.parse(old);
+    Long userId = Long.valueOf(claims.getSubject());
+    var u = userRepository.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+    String token = jwtTokenProvider.createToken(u.getId());
+    return LoginResponse.builder()
+        .token(token)
+        .role(u.getRole().name())
+        .email(u.getEmail())
+        .userId(u.getId())
+        .displayName(u.getDisplayName())
+        .affiliation(u.getAffiliation())
+        .build();
+  }
 }
-// aa

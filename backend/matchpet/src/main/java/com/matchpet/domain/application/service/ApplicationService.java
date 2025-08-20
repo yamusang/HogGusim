@@ -3,90 +3,74 @@ package com.matchpet.domain.application.service;
 import com.matchpet.domain.animal.entity.Animal;
 import com.matchpet.domain.animal.repository.AnimalRepository;
 import com.matchpet.domain.application.entity.Application;
-import com.matchpet.domain.application.enums.ApplicationStatus;
 import com.matchpet.domain.application.repository.ApplicationRepository;
-import com.matchpet.domain.match.AddressUtil;
-import com.matchpet.domain.match.SpecialMarkClassifier;
-import com.matchpet.domain.senior.entity.SeniorProfile;
-import com.matchpet.domain.senior.repository.SeniorProfileRepository;
-import com.matchpet.web.dto.*;
+import com.matchpet.web.dto.ApplicationRow;
+import com.matchpet.web.dto.ApplicationUpdateReq;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class ApplicationService {
-  private final ApplicationRepository appRepo;
-  private final SeniorProfileRepository seniorRepo;
-  private final AnimalRepository animalRepo;
 
-  @Transactional
-  public Long create(Long userId, ApplicationCreateRequest req){
-    if (req.getPetId()==null) throw new IllegalArgumentException("petId required");
-    if (!req.isAgreeTerms() || !req.isAgreeBodycam())
-      throw new IllegalStateException("약관/바디캠 동의 필요");
+    private final ApplicationRepository appRepo;
+    private final AnimalRepository animalRepo;
 
-    SeniorProfile s = seniorRepo.findById(userId)
-        .orElseThrow(() -> new IllegalStateException("시니어 프로필 필요"));
-    Animal a = animalRepo.findById(req.getPetId())
-        .orElseThrow(() -> new IllegalArgumentException("동물 없음"));
+    public Page<ApplicationRow> findBySenior(Long seniorId, Pageable pageable) {
+        return appRepo.findBySeniorIdOrderByCreatedAtDesc(seniorId, pageable)
+            .map(this::toRow);
+    }
 
-    if (!"보호중".equals(a.getProcessState()))
-      throw new IllegalStateException("보호중만 신청 가능");
-    if (!AddressUtil.isInBusan(a.getCareAddr()) || !AddressUtil.isInBusan(s.getAddress())
-        || !AddressUtil.sameCityGuInBusan(s.getAddress(), a.getCareAddr()))
-      throw new IllegalStateException("부산 동일 시/구만 신청 가능");
+    public Page<ApplicationRow> findByPet(Long animalId, Pageable pageable) {
+        return appRepo.findByAnimalIdOrderByCreatedAtDesc(animalId, pageable)
+            .map(this::toRow);
+    }
 
-    var cls = SpecialMarkClassifier.classify(a.getSpecialMark());
-    boolean beginner = !s.isHasPetExperience();
-    if (beginner && (cls.isAggressive() || cls.isMedicationRequired()))
-      throw new IllegalStateException("초보자 제한 개체");
+    @Transactional
+    public ApplicationRow update(Long id, ApplicationUpdateReq req) {
+        Application app = appRepo.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("application not found"));
 
-    Application app = Application.builder()
-      .seniorUserId(userId).animalId(a.getId()).status(ApplicationStatus.PENDING)
-      .name(req.getName()).gender(req.getGender()).applicantAge(req.getAge())
-      .experience(req.getExperience()).address(req.getAddress())
-      .timeRange(req.getTimeRange()).days(req.getDays()).dateText(req.getDate())
-      .phone(req.getPhone()).emergency(req.getEmergency())
-      .agreeTerms(req.isAgreeTerms()).agreeBodycam(req.isAgreeBodycam())
-      .visitsPerWeek(req.getVisitsPerWeek())
-      .build();
+        if (req.getReservedAt() != null) app.setReservedAt(req.getReservedAt());
+        if (req.getNote() != null) app.setNote(req.getNote());
 
-    return appRepo.save(app).getId();
-  }
+        return toRow(app);
+    }
 
-  @Transactional(readOnly=true)
-  public Page<Application> myApplications(Long userId, Pageable pageable){
-    return appRepo.findBySeniorUserId(userId, pageable);
-  }
+    @Transactional
+    public ApplicationRow approve(Long id) {
+        Application app = appRepo.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("application not found"));
+        app.setStatus(Application.Status.APPROVED);
 
-  @Transactional(readOnly=true)
-  public Page<ApplicationListItem> listByShelter(String careNm, ApplicationStatus status, Pageable pageable){
-    return appRepo.findByShelterAndStatus(careNm, status, pageable)
-      .map(app -> {
-        var a = animalRepo.findById(app.getAnimalId()).orElse(null);
-        var s = seniorRepo.findById(app.getSeniorUserId()).orElse(null);
-        return ApplicationListItem.builder()
-          .id(app.getId()).status(app.getStatus()).createdAt(app.getCreatedAt())
-          .seniorUserId(app.getSeniorUserId())
-          .seniorName(s!=null? s.getName(): null)
-          .seniorPhone(s!=null? s.getPhoneNumber(): null)
-          .animalId(app.getAnimalId())
-          .desertionNo(a!=null? a.getDesertionNo(): null)
-          .kind(a!=null? a.getKindCd(): null)
-          .careNm(a!=null? a.getCareNm(): null)
-          .build();
-      });
-  }
+        // 보호소 동물 상태 갱신: MATCHING
+        Animal animal = animalRepo.findById(app.getAnimalId())
+            .orElseThrow(() -> new IllegalArgumentException("animal not found"));
+        animal.setStatus(Animal.Status.MATCHING);
 
-  @Transactional public void approve(Long id){
-    var app = appRepo.findById(id).orElseThrow();
-    app.setStatus(ApplicationStatus.APPROVED);
-  }
+        return toRow(app);
+    }
 
-  @Transactional public void reject(Long id){
-    var app = appRepo.findById(id).orElseThrow();
-    app.setStatus(ApplicationStatus.REJECTED);
-  }
+    @Transactional
+    public ApplicationRow reject(Long id) {
+        Application app = appRepo.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("application not found"));
+        app.setStatus(Application.Status.REJECTED);
+        return toRow(app);
+    }
+
+    private ApplicationRow toRow(Application a) {
+        return ApplicationRow.builder()
+            .id(a.getId())
+            .animalId(a.getAnimalId())
+            .animalName(null)               // 필요 시 조인하여 채워도 됨
+            .status(a.getStatus().name())
+            .createdAt(a.getCreatedAt())
+            .reservedAt(a.getReservedAt())
+            .note(a.getNote())
+            .build();
+    }
 }

@@ -58,6 +58,7 @@ const callRefreshToken = async () => {
   const refreshToken = getRefreshToken();
   if (!refreshToken) throw new Error('NO_REFRESH_TOKEN');
 
+  // authClient는 Authorization 헤더 주입 안 함(순수 리프레시 전용)
   const { data } = await authClient.post('/auth/refresh', { refreshToken });
   const newAccessToken = data?.token || data?.accessToken;
   const newRefreshToken = data?.refreshToken || refreshToken;
@@ -75,7 +76,13 @@ const normalizeError = (error) => {
     error?.response?.data?.message ||
     error?.message ||
     '요청 중 오류가 발생했어요.';
-  return { status, code: std?.code || 'UNKNOWN', message, details: std?.details || error?.response?.data || null, raw: error };
+  return {
+    status,
+    code: std?.code || 'UNKNOWN',
+    message,
+    details: std?.details || error?.response?.data || null,
+    raw: error,
+  };
 };
 
 api.interceptors.response.use(
@@ -84,6 +91,7 @@ api.interceptors.response.use(
     const originalRequest = error?.config;
     const status = error?.response?.status;
 
+    // 1차: 리프레시 시도
     if (status === 401 && !originalRequest?._retry && !originalRequest?.__isRefreshCall) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -93,7 +101,9 @@ api.interceptors.response.use(
               originalRequest.headers.Authorization = `Bearer ${newToken}`;
               originalRequest._retry = true;
               resolve(api(originalRequest));
-            } catch (e) { reject(normalizeError(e)); }
+            } catch (e) {
+              reject(normalizeError(e));
+            }
           });
         });
       }
@@ -108,10 +118,27 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshErr) {
+        // ⬇️ 리프레시 실패 시: 즉시 로그아웃 + 로그인으로 이동
         isRefreshing = false;
-        clearAuth();
-        return Promise.reject(normalizeError(refreshErr));
+        const norm = normalizeError(refreshErr);
+        try { clearAuth(); } catch {}
+        const here = typeof window !== 'undefined' ? window.location.pathname : '/';
+        if (typeof window !== 'undefined') {
+          window.location.assign(`/login?from=${encodeURIComponent(here)}&expired=1`);
+        }
+        return Promise.reject(norm);
       }
+    }
+
+    // 2차: 여전히 401이면(재시도 후에도) 강제 로그아웃 + 리다이렉트
+    if (status === 401) {
+      const norm = normalizeError(error);
+      try { clearAuth(); } catch {}
+      const here = typeof window !== 'undefined' ? window.location.pathname : '/';
+      if (typeof window !== 'undefined') {
+        window.location.assign(`/login?from=${encodeURIComponent(here)}&expired=1`);
+      }
+      return Promise.reject(norm);
     }
 
     return Promise.reject(normalizeError(error));
@@ -128,7 +155,10 @@ export const apiUpload = (url, formData, config = {}) => {
 export const logApiError = (err) => {
   if (import.meta.env.DEV) {
     console.error('API Error:', {
-      status: err?.status, code: err?.code, message: err?.message, details: err?.details,
+      status: err?.status,
+      code: err?.code,
+      message: err?.message,
+      details: err?.details,
     });
   }
 };

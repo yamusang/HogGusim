@@ -101,3 +101,8 @@ button[presetname="apply"], .btn.apply{ composes: btn btn--apply; }
   background: rgba(99,102,241,.12);
   border-color: rgba(99,102,241,.32);
 }
+/* 모드 스위치 */
+.seg { display:flex; gap:6px; }
+.seg__btn { padding:8px 12px; border-radius:12px; border:1px solid #ddd; background:#fff; }
+.seg__btn.is-active { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.18) inset; }
+

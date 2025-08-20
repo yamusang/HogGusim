@@ -1,5 +1,5 @@
 // src/pages/senior/ApplyPage.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
@@ -13,7 +13,6 @@ import './senior.css';
 
 const ymd  = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
 const hhmm = (s) => /^\d{2}:\d{2}$/.test(s);
-
 const isArr = (v) => Array.isArray(v) && v.length > 0;
 
 const DAY_OPTS_LOCAL = isArr(DAY_OPTS) ? DAY_OPTS : [
@@ -79,6 +78,21 @@ export default function ApplyPage() {
   const [err, setErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // refs for focusing invalid fields
+  const refs = {
+    name: useRef(null),
+    phoneNumber: useRef(null),
+    address: useRef(null),
+    birthDate: useRef(null),
+    emergencyContact: useRef(null),
+    days: useRef(null),
+    startTime: useRef(null),
+    endTime: useRef(null),
+    visitFreqPerWeek: useRef(null),
+    termsAgree: useRef(null),
+    bodycamAgree: useRef(null),
+  };
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setNested = (group, k, v) =>
     setForm((f) => ({ ...f, [group]: { ...f[group], [k]: v } }));
@@ -93,27 +107,43 @@ export default function ApplyPage() {
       };
     });
 
+  const focusKey = (key) => {
+    const el = refs[key]?.current;
+    if (el && typeof el.focus === 'function') {
+      el.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      el.focus();
+    }
+  };
+
   const validate = () => {
-    if (!form.name || !form.address || !form.birthDate || !form.emergencyContact)
-      return '필수값을 확인해 주세요.';
-    if (!ymd(form.birthDate)) return '생년월일은 YYYY-MM-DD 형식이어야 해요.';
-    if (!form.termsAgree) return '이용 약관 동의가 필요합니다.';
-    if (!form.bodycamAgree) return '바디캠 필수 동의에 체크해야 신청 가능합니다.';
+    if (!form.name) return { msg: '필수값을 확인해 주세요. (이름)', key: 'name' };
+    if (!form.address) return { msg: '필수값을 확인해 주세요. (주소)', key: 'address' };
+    if (!form.birthDate) return { msg: '생년월일을 입력해 주세요.', key: 'birthDate' };
+    if (!ymd(form.birthDate)) return { msg: '생년월일은 YYYY-MM-DD 형식이어야 해요.', key: 'birthDate' };
+    if (!form.emergencyContact) return { msg: '비상연락망을 입력해 주세요.', key: 'emergencyContact' };
+
+    if (!form.termsAgree) return { msg: '이용 약관 동의가 필요합니다.', key: 'termsAgree' };
+    if (!form.bodycamAgree) return { msg: '바디캠 필수 동의에 체크해야 신청 가능합니다.', key: 'bodycamAgree' };
+
     const ca = form.careAvailability;
     if (!Array.isArray(ca.days) || ca.days.length === 0)
-      return '가능 요일을 한 개 이상 선택해 주세요.';
-    if (!hhmm(ca.timeRange.start) || !hhmm(ca.timeRange.end))
-      return '시간대는 HH:MM 형식이어야 합니다.';
+      return { msg: '가능 요일을 한 개 이상 선택해 주세요.', key: 'days' };
+    if (!hhmm(ca.timeRange.start))
+      return { msg: '시간대(시작)는 HH:MM 형식이어야 합니다.', key: 'startTime' };
+    if (!hhmm(ca.timeRange.end))
+      return { msg: '시간대(종료)는 HH:MM 형식이어야 합니다.', key: 'endTime' };
     if (ca.visitFreqPerWeek < 1 || ca.visitFreqPerWeek > 7)
-      return '주 방문 횟수는 1~7 사이여야 합니다.';
-    return '';
+      return { msg: '주 방문 횟수는 1~7 사이여야 합니다.', key: 'visitFreqPerWeek' };
+
+    return null;
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     const v = validate();
     if (v) {
-      setErr(v);
+      setErr(v.msg);
+      focusKey(v.key);
       return;
     }
     setErr('');
@@ -193,11 +223,17 @@ export default function ApplyPage() {
         <div className="form-grid">
           <label>
             이름
-            <input value={form.name} onChange={(e) => set('name', e.target.value)} required />
+            <input
+              ref={refs.name}
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              required
+            />
           </label>
           <label>
             연락처
             <input
+              ref={refs.phoneNumber}
               value={form.phoneNumber}
               onChange={(e) => set('phoneNumber', e.target.value)}
               required
@@ -205,11 +241,17 @@ export default function ApplyPage() {
           </label>
           <label>
             주소
-            <input value={form.address} onChange={(e) => set('address', e.target.value)} required />
+            <input
+              ref={refs.address}
+              value={form.address}
+              onChange={(e) => set('address', e.target.value)}
+              required
+            />
           </label>
           <label>
             생년월일
             <input
+              ref={refs.birthDate}
               type="date"
               value={form.birthDate}
               onChange={(e) => set('birthDate', e.target.value)}
@@ -219,6 +261,7 @@ export default function ApplyPage() {
           <label>
             비상연락망
             <input
+              ref={refs.emergencyContact}
               value={form.emergencyContact}
               onChange={(e) => set('emergencyContact', e.target.value)}
               required
@@ -315,10 +358,10 @@ export default function ApplyPage() {
         </div>
 
         <div className="form-grid">
-          {/* 가능 요일 수정된 부분 */}
+          {/* 가능 요일 */}
           <div className="form-field">
             <label className="form-label">가능 요일</label>
-            <div className="chips">
+            <div className="chips" ref={refs.days}>
               {DAY_OPTS_LOCAL.map((d) => {
                 const on = form.careAvailability.days.includes(d.value);
                 return (
@@ -341,6 +384,7 @@ export default function ApplyPage() {
           <label>
             시간대(시작)
             <input
+              ref={refs.startTime}
               type="time"
               value={form.careAvailability.timeRange.start}
               onChange={(e) =>
@@ -354,6 +398,7 @@ export default function ApplyPage() {
           <label>
             시간대(종료)
             <input
+              ref={refs.endTime}
               type="time"
               value={form.careAvailability.timeRange.end}
               onChange={(e) =>
@@ -382,6 +427,7 @@ export default function ApplyPage() {
           <label>
             주 방문 횟수
             <input
+              ref={refs.visitFreqPerWeek}
               type="number"
               min={1}
               max={7}
@@ -414,6 +460,7 @@ export default function ApplyPage() {
         <h2 className="h6">D. 동의/약관</h2>
         <label className="row">
           <input
+            ref={refs.termsAgree}
             type="checkbox"
             checked={form.termsAgree}
             onChange={(e) => set('termsAgree', e.target.checked)}
@@ -422,6 +469,7 @@ export default function ApplyPage() {
         </label>
         <label className="row">
           <input
+            ref={refs.bodycamAgree}
             type="checkbox"
             checked={form.bodycamAgree}
             onChange={(e) => set('bodycamAgree', e.target.checked)}

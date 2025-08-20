@@ -51,12 +51,12 @@ export const normalizePet = (it = {}) => {
     species,
     breed: it.breed ?? null,
     color: it.colorCd || it.color || '',
-    gender,
-    sex: it.sex || it.sexCd || '',
+    gender,                                // 🇰🇷 레이블(수컷/암컷/미상)
+    sex: it.sex || it.sexCd || '',         // 원본 코드 보존
     age: it.age || '',
     weight: it.weight || '',
-    neuter: it.neuterYn || it.neuter || '',
-    status: it.processState || it.status || 'AVAILABLE',
+    neuter: it.neuterYn || it.neuter || '',// 'Y'|'N'|'U' or ''
+    status: it.processState || it.status || '보호중',
 
     happenDt: it.happenDt || null,
     createdAt: it.createdAt || it.happenDt || null,
@@ -84,15 +84,22 @@ const pickPageMeta = (data) => ({
   totalElements: data?.response?.body?.totalCount ?? data?.totalElements ?? 0,
   number:        data?.response?.body?.pageNo     ?? data?.number        ?? 0,
   size:          data?.response?.body?.numOfRows  ?? data?.size          ?? 0,
-  totalPages:    data?.totalPages ?? 1,
+  totalPages:    data?.totalPages ?? (data?.response?.body?.totalCount && data?.response?.body?.numOfRows
+                    ? Math.ceil(Number(data.response.body.totalCount) / Number(data.response.body.numOfRows))
+                    : 0),
+  first:         data?.first ?? (data?.number === 0),
+  last:          data?.last  ?? false,
+  empty:         Array.isArray(data?.content) ? data.content.length === 0
+                 : Array.isArray(pickApiItems(data)) ? pickApiItems(data).length === 0
+                 : false,
 });
 
 /** ==============================
  * 목록 (정규화 포함) — animals
  * ============================== */
-export const fetchAnimals = async (params = {}) => {
+export const fetchAnimals = async (params = {}, axiosCfg = {}) => {
   const safe = { sort: 'id,DESC', page: 0, size: 20, ...params };
-  const { data } = await api.get('animals', { params: safe }); // ← 슬래시 제거
+  const { data } = await api.get('/animals', { params: safe, signal: axiosCfg?.signal });
 
   // ✅ 스프링 Page 우선 → 오픈API → 배열
   const contentRaw =
@@ -125,9 +132,9 @@ export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {
 export const fetchRecommendedAnimals = async ({
   page = 0, size = 20, careNm, sort = 'id,DESC', ...rest
 } = {}) => {
-  const { data } = await api.get('animals', {
+  const { data } = await api.get('/animals', {
     params: { page, size, sort, careNm, ...rest }
-  }); // ← /animals/recommended 대신 animals로 폴백
+  }); // ← /animals/recommended 대신 /animals로 폴백
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   return (raw || []).map(normalizePet);
 };
@@ -137,16 +144,16 @@ export const fetchRecommendedPets = fetchRecommendedAnimals;
  * 생성 / 업로드
  * ============================== */
 export const createAnimal = async (payload = {}) => {
-  const { data } = await api.post('animals', payload); // ← 슬래시 제거
+  const { data } = await api.post('/animals', payload);
   return data;
 };
 
 export const uploadAnimalPhoto = async (animalId, file) => {
   const fd = new FormData();
   fd.append('file', file);
-  const { data } = await api.post(`animals/${animalId}/photo`, fd, {
+  const { data } = await api.post(`/animals/${animalId}/photo`, fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
-  }); // ← 슬래시 제거
+  });
   return data;
 };
 
@@ -184,9 +191,9 @@ export const fetchFeaturedDogs = async ({
   status = 'AVAILABLE',
   sort = 'id,DESC',
 } = {}) => {
-  const { data } = await api.get('animals', {
+  const { data } = await api.get('/animals', {
     params: { page, size, status, kind: 'DOG', sort }
-  }); // ← 슬래시 제거
+  });
   const raw = pickApiItems(data) || data?.content || data?.items || [];
   const items = (raw || []).map(normalizePet);
 

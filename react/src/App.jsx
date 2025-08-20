@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
@@ -44,7 +45,7 @@ const PATHS = {
   SENIOR_CONNECT: '/senior/connect',
   SENIOR_APPS: '/senior/applications',
 
-  // MANAGER (use nested under /manager)
+  // MANAGER (nested under /manager)
   MANAGER_HOME: '/manager',
 
   // SHELTER
@@ -105,137 +106,77 @@ export default function App() {
 
           <Route
             path={PATHS.LOGIN}
-            element={
-              <RedirectIfAuthed>
-                <LoginPage />
-              </RedirectIfAuthed>
-            }
+            element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>}
           />
           <Route
             path={PATHS.SIGNUP}
-            element={
-              <RedirectIfAuthed>
-                <SignupPage />
-              </RedirectIfAuthed>
-            }
+            element={<RedirectIfAuthed><SignupPage /></RedirectIfAuthed>}
           />
           <Route path={PATHS.LOGOUT} element={<LogoutPage />} />
 
           {/* 고령자 */}
           <Route
             path={PATHS.SENIOR_HOME}
-            element={
-              <Protected allow={['SENIOR']}>
-                <SeniorPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR']}><SeniorPage /></Protected>}
           />
           <Route
             path={PATHS.SENIOR_APPLY}
-            element={
-              <Protected allow={['SENIOR']}>
-                <ApplyPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR']}><ApplyPage /></Protected>}
           />
           <Route
             path={PATHS.SENIOR_CONNECT}
-            element={
-              <Protected allow={['SENIOR']}>
-                <ConnectPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR']}><ConnectPage /></Protected>}
           />
           <Route
             path={PATHS.SENIOR_APPS}
-            element={
-              <Protected allow={['SENIOR']}>
-                <SeniorApplicationsPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR']}><SeniorApplicationsPage /></Protected>}
           />
 
           {/* 매니저: /manager (중첩 라우트) */}
           <Route
             path={PATHS.MANAGER_HOME}
-            element={
-              <Protected allow={['MANAGER']}>
-                <ManagerHome />
-              </Protected>
-            }
+            element={<Protected allow={['MANAGER']}><ManagerHome /></Protected>}
           >
             <Route index element={<ManagerInboxPage />} />
             <Route path="inbox" element={<ManagerInboxPage />} />
-            <Route path="queue" element={<ManagerQueuePage />} />   {/* ⭐ 작업 큐 */}
+            <Route path="queue" element={<ManagerQueuePage />} />   {/* 작업 큐 */}
             <Route path="profile" element={<ManagerProfilePage />} />
           </Route>
 
           {/* 보호소 */}
           <Route
             path={PATHS.SHELTER_HOME}
-            element={
-              <Protected allow={['SHELTER']}>
-                <ShelterPage />
-              </Protected>
-            }
+            element={<Protected allow={['SHELTER']}><ShelterPage /></Protected>}
           />
           <Route
             path={PATHS.SHELTER_ANIMALS}
-            element={
-              <Protected allow={['SHELTER']}>
-                <ShelterAnimalsPage />
-              </Protected>
-            }
+            element={<Protected allow={['SHELTER']}><ShelterAnimalsPage /></Protected>}
           />
           <Route
             path={PATHS.SHELTER_ANIMAL_NEW}
-            element={
-              <Protected allow={['SHELTER']}>
-                <PetNewPage />
-              </Protected>
-            }
+            element={<Protected allow={['SHELTER']}><PetNewPage /></Protected>}
           />
           <Route
             path={PATHS.SHELTER_ANIMAL_APPS}
-            element={
-              <Protected allow={['SHELTER']}>
-                <ShelterApplicationsPage />
-              </Protected>
-            }
+            element={<Protected allow={['SHELTER']}><ShelterApplicationsPage /></Protected>}
           />
 
           {/* 공용(로그인 필요) */}
           <Route
             path={PATHS.PET_APPLY}
-            element={
-              <Protected allow={['SENIOR']}>
-                <ApplyPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR']}><ApplyPage /></Protected>}
           />
           <Route
             path={PATHS.PET_CONNECT}
-            element={
-              <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
-                <PetConnectPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR','SHELTER','MANAGER']}><PetConnectPage /></Protected>}
           />
           <Route
             path={PATHS.PET_CONNECT_LEGACY}
-            element={
-              <Protected allow={['SENIOR', 'SHELTER', 'MANAGER']}>
-                <PetConnectPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR','SHELTER','MANAGER']}><PetConnectPage /></Protected>}
           />
           <Route
             path={PATHS.PET_MANAGERS}
-            element={
-              <Protected allow={['SENIOR']}>
-                <PetManagerRecoPage />
-              </Protected>
-            }
+            element={<Protected allow={['SENIOR']}><PetManagerRecoPage /></Protected>}
           />
 
           {/* 기타 */}

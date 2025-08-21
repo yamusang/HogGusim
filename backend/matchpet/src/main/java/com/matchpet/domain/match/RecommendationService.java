@@ -19,29 +19,33 @@ public class RecommendationService {
     private final AnimalRepository animalRepo;
 
     /**
-     * 간단한 버전: 부산 보호중 후보 중 서비스 status=AVAILABLE 우선, 점수는 임시(정렬 가중치)
-     * mode: conservative/balanced/manager (노출 제한은 컨트롤러에서 page/filter로 처리)
+     * 간단 스코어: AVAILABLE +30, neuter=Y +5
+     * page 정렬은 최신 id DESC, 프론트에서 score로 재정렬 가능
      */
     public Page<RecoPetDto> recommendPets(Long seniorId, String mode, Pageable pageable) {
-        // 시니어 프로필 조회 (추후 선호도/시간대 가중치에 활용)
+        // senior 정보 필요 시 활용용 조회(가중치 확장 여지)
         seniorRepo.findById(seniorId).orElse(null);
 
-        // 기본 후보: 최근 등록순
         Page<Animal> base = animalRepo.findAll(
             PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "id"))
         );
 
-        // 점수 계산(아주 간단한 예시): AVAILABLE=+30, neuter=Y +5
-        List<RecoPetDto> scored = base.stream().map(a -> {
+        List<RecoPetDto> content = base.stream().map(a -> {
             double score = 0.0;
-            if (a.getStatus() == Animal.Status.AVAILABLE) score += 30;
+            boolean available =
+                a.getStatus() == Animal.Status.AVAILABLE ||
+                (a.getProcessState() != null && a.getProcessState().contains("보호"));
+
+            if (available) score += 30;
             if ("Y".equalsIgnoreCase(a.getNeuterYn())) score += 5;
-            String reason = "안전도 " + (a.getStatus()==Animal.Status.AVAILABLE?"+30":"0")
-                + " · 중성화" + ("Y".equalsIgnoreCase(a.getNeuterYn()) ? "+5" : "0");
+
+            String reason = "안전도 " + (available?"+30":"0") +
+                            " · 중성화" + ("Y".equalsIgnoreCase(a.getNeuterYn())?"+5":"0");
+
             return AnimalMapper.toReco(a, score, reason);
         }).toList();
 
-        return new PageImpl<>(scored, pageable, base.getTotalElements());
+        return new PageImpl<>(content, pageable, base.getTotalElements());
     }
 }

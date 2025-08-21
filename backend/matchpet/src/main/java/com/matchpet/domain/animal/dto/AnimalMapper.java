@@ -101,21 +101,64 @@ public final class AnimalMapper {
 
     /** 추천용 DTO 매핑 */
     public static RecoPetDto toReco(Animal a, double score, String reason) {
-        if (a == null) return null;
-        return RecoPetDto.builder()
-                .id(a.getId())
-                .desertionNo(a.getDesertionNo())
-                .name(nullSafeName(a)) // 대부분 null이지만 자리 유지
-                .breed(safe(a.getBreed()))
-                .age(safe(a.getAge()))
-                .photoUrl(safe(a.getPopfile()))
-                .thumbnail(thumbnailUrlOf(a))
-                .sex(sexLabelOf(a.getSexCd()))
-                .neuter(neuterLabelOf(a.getNeuterYn()))
-                .matchScore(score)
-                .reason(reason)
-                .build();
-    }
+    // kind/breed alias 처리
+    final String kindCd = a.getKindCd();
+    final String breed  = a.getBreed();   // @Transient -> kindCd 반환
+    final String kind   = kindCd;         // 별칭
+
+    // 성별/중성화 alias 처리(프론트에서 normalize 함수로 가공됨)
+    final String sex    = a.getSex();     // @Transient -> sexCd 반환
+    final String neuter = a.getNeuter();  // @Transient -> neuterYn 반환
+
+    // 이미지/보호소
+    final String photo  = a.getPopfile();
+    final String careNm = a.getCareNm();
+
+    return RecoPetDto.builder()
+        // 점수/사유
+        .score(score)
+        .reason(reason)
+
+        // id들
+        .id(a.getId())
+        .desertionNo(a.getDesertionNo())
+
+        // 이름 필드는 Animal에 없으므로 null 유지(필요시 별도 정책으로 채워도 됨)
+        .name(null)
+
+        // 품종/종류
+        .breed(breed)
+        .kind(kind)
+        .kindCd(kindCd)
+
+        // 프로필
+        .age(a.getAge())
+        .sex(sex)
+        .sexCd(a.getSexCd())
+        .neuter(neuter)
+        .neuterYn(a.getNeuterYn())
+        .processState(a.getProcessState())
+
+        // 보호소/주소
+        .careNm(careNm)
+        .careName(careNm)         // alias
+        .careAddr(a.getCareAddr())
+
+        // 이미지
+        .photoUrl(photo)          // 프론트 mapRecoPet가 우선 읽는 키
+        .popfile(photo)           // 원본도 함께
+        .thumbnail(null)          // 필요 시 썸네일 세팅
+
+        // 기타
+        .weight(a.getWeight())
+        .temperament(a.getTemperament() != null ? a.getTemperament().name() : null)
+        .specialMark(a.getSpecialMark())
+        .build();
+  }
+
+
+
+
 
     /* =========================
      *  기존: Create DTO -> Entity

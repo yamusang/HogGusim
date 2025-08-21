@@ -310,3 +310,5 @@ public final class AnimalMapper {
 
     private static String safe(String s) { return s == null ? null : s; }
 }
+
+// 

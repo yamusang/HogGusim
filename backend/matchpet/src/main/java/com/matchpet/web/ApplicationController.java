@@ -18,7 +18,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/applications")
@@ -70,8 +69,8 @@ public class ApplicationController {
 
     @PostMapping
     public ApplicationRow create(@RequestBody ApplicationCreateRequest req,
-            Authentication auth,
-            @RequestHeader(value = "X-MOCK-SENIOR-ID", required = false) Long mockSeniorId) {
+                                 Authentication auth,
+                                 @RequestHeader(value = "X-MOCK-SENIOR-ID", required = false) Long mockSeniorId) {
         Long seniorId = mockSeniorId != null ? mockSeniorId : parsePrincipalAsLong(auth);
         if (seniorId == null)
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No seniorId");
@@ -97,15 +96,39 @@ public class ApplicationController {
 
     @PostMapping("/{id}/select-pet")
     public ApplicationRow selectPet(@PathVariable Long id,
-            @RequestParam Long petId,
-            Authentication auth) {
+                                    @RequestParam Long petId,
+                                    Authentication auth) {
         // 본인 신청만 변경 가능 (또는 SHELTER/ADMIN 허용)
         Long me = parsePrincipalAsLong(auth);
-        service.assertOwnerOrRoles(id, me, Set.of("ROLE_SHELTER", "ROLE_ADMIN")); // ✅ Set.of 문법 수정
+        service.assertOwnerOrRoles(id, me, Set.of("ROLE_SHELTER", "ROLE_ADMIN"));
 
         Application updated = service.attachPetAndActivate(id, petId);
         return ApplicationMapper.row(updated);
     }
+
+    // -------------------- 2단계: 매니저 승인/거절 + 보호소 전달 --------------------
+
+    @PostMapping("/{id}/manager-approve")
+    public ApplicationRow managerApprove(@PathVariable Long id,
+                                         @RequestBody(required = false) java.util.Map<String,Object> body) {
+        Long managerId = null;
+        if (body != null && body.get("managerId") != null) {
+            managerId = ((Number) body.get("managerId")).longValue();
+        }
+        return ApplicationMapper.row(service.managerApprove(id, managerId));
+    }
+
+    @PostMapping("/{id}/manager-reject")
+    public ApplicationRow managerReject(@PathVariable Long id) {
+        return ApplicationMapper.row(service.managerReject(id));
+    }
+
+    @PostMapping("/{id}/forward-to-shelter")
+    public ApplicationRow forwardToShelter(@PathVariable Long id) {
+        return ApplicationMapper.row(service.forwardToShelter(id));
+    }
+
+    // ------------------------------------------------------------------------
 
     // ---- helpers
     private static Long parsePrincipalAsLong(Authentication auth) {

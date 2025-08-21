@@ -18,7 +18,7 @@ public class ApplicationService {
     private final ApplicationRepository repo;
 
     /**
-     * petId(null 허용): null이면 추천 대기 상태로 저장, 아니면 PENDING
+     * petId(null 허용): null이면 추천 대기 상태(AWAITING_MATCH)로 저장, 아니면 PENDING
      */
     @Transactional
     public Application create(Long seniorId, Long animalId, String note) {
@@ -31,8 +31,8 @@ public class ApplicationService {
                 .animalId(animalId) // DB 컬럼명이 animal_id 라면 그대로 사용
                 .note(note)
                 .status(animalId == null
-                        ? ApplicationStatus.PENDING /* 또는 AWAITING_MATCH 를 쓰고 싶으면 enum 추가 */
-                        : ApplicationStatus.PENDING)
+                        ? ApplicationStatus.AWAITING_MATCH   // ⭐️ 동물 미지정 → 추천 대기
+                        : ApplicationStatus.PENDING)         // 동물 선택 → 심사 대기(매니저)
                 .build();
 
         return repo.save(a);
@@ -72,6 +72,35 @@ public class ApplicationService {
         a.setStatus(ApplicationStatus.PENDING);
         return a;
     }
+
+    // -------------------- 2단계: 매니저 승인/거절 + 보호소 전달 --------------------
+
+    /** 매니저 승인(선택적으로 managerId 기록) */
+    @Transactional
+    public Application managerApprove(Long id, Long managerId) {
+        Application a = repo.findById(id).orElseThrow(() -> notFound(id));
+        if (managerId != null) a.setManagerId(managerId);
+        a.setStatus(ApplicationStatus.MANAGER_APPROVED);
+        return a;
+    }
+
+    /** 매니저 거절 */
+    @Transactional
+    public Application managerReject(Long id) {
+        Application a = repo.findById(id).orElseThrow(() -> notFound(id));
+        a.setStatus(ApplicationStatus.MANAGER_REJECTED);
+        return a;
+    }
+
+    /** 보호소로 전달 */
+    @Transactional
+    public Application forwardToShelter(Long id) {
+        Application a = repo.findById(id).orElseThrow(() -> notFound(id));
+        a.setStatus(ApplicationStatus.FORWARDED);
+        return a;
+    }
+
+    // ------------------------------------------------------------------------
 
     /**
      * 소유자(해당 신청의 seniorId) 또는 특정 권한이면 통과, 아니면 403

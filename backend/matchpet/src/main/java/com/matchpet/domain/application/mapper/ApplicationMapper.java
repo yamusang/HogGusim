@@ -25,6 +25,7 @@ public class ApplicationMapper {
 
                 .managerId(a.getManagerId())
                 .managerName(manager != null ? manager.getName() : null)
+                .managerPhone(manager != null ? manager.getPhoneNumber() : null)
                 .build();
     }
 }

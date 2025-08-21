@@ -19,4 +19,6 @@ public class ApplicationRow {
 
     private Long managerId;
     private String managerName;
+
+    private String managerPhone;
 }

@@ -17,7 +17,7 @@ import ApplyPage from './pages/senior/ApplyPage';
 
 // Manager (home + nested routes)
 import ManagerHome from './pages/manager/ManagerHome';
-import ManagerInboxPage from './pages/manager/ManagerInboxPage';
+import ManagerInbox from './pages/manager/ManagerInboxPage';
 import ManagerProfilePage from './pages/manager/ManagerProfilePage';
 import ManagerQueuePage from './pages/manager/ManagerQueuePage';
 
@@ -150,8 +150,7 @@ export default function App() {
             path={PATHS.MANAGER_HOME}
             element={<Protected allow={['MANAGER']}><ManagerHome /></Protected>}
           >
-            <Route index element={<ManagerInboxPage />} />
-            <Route path="inbox" element={<ManagerInboxPage />} />
+
             <Route path="queue" element={<ManagerQueuePage />} />
             <Route path="profile" element={<ManagerProfilePage />} />
           </Route>
@@ -170,8 +169,12 @@ export default function App() {
             element={<Protected allow={['SHELTER']}><PetNewPage /></Protected>}
           />
           <Route
-            path={PATHS.SHELTER_ANIMAL_APPS}
-            element={<Protected allow={['SHELTER']}><ShelterApplicationsPage /></Protected>}
+          path="/shelter/applications"
+            element={
+            <Protected allow={['SHELTER']}>
+           <ShelterApplicationsPage />
+          </Protected>
+          }
           />
 
           {/* 공용(로그인 필요) */}
@@ -191,7 +194,14 @@ export default function App() {
             path={PATHS.PET_MANAGERS}
             element={<Protected allow={['SENIOR']}><PetManagerRecoPage /></Protected>}
           />
-
+          <Route
+  path="/manager/inbox"
+  element={
+    <Protected allow={['MANAGER']}>
+      <ManagerInbox currentUser={/* useAuth 안이면 생략도 OK */ undefined} />
+    </Protected>
+  }
+/>
           {/* 기타 */}
           <Route path="*" element={<Navigate to={PATHS.ROOT} replace />} />
         </Routes>

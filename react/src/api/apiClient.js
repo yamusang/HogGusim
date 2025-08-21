@@ -1,4 +1,3 @@
-// src/api/apiClient.js
 import axios from 'axios';
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
@@ -9,13 +8,13 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ── (옵션) 리프레시 전용 클라이언트 ──
+
 const authClient = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
 });
 
-// ===== 토큰 유틸 =====
+
 const ACCESS_KEY = 'token';
 const REFRESH_KEY = 'refreshToken';
 const USER_KEY = 'user';
@@ -35,9 +34,9 @@ export const clearAuth = () => {
   localStorage.removeItem(USER_KEY);
 };
 
-// ===== 요청 인터셉터 =====
+
 api.interceptors.request.use((config = {}) => {
-  if (config.__noAuth) return config; // 공개 호출은 헤더 생략
+  if (config.__noAuth) return config; 
   const token = getAccessToken();
   if (token) {
     config.headers = config.headers || {};
@@ -48,7 +47,7 @@ api.interceptors.request.use((config = {}) => {
   return config;
 });
 
-// ===== 401 재발급 공통 처리 =====
+
 let isRefreshing = false;
 let refreshSubscribers = [];
 
@@ -94,12 +93,12 @@ api.interceptors.response.use(
     const originalRequest = error?.config || {};
     const status = error?.response?.status;
 
-    // 공개 호출은 리프레시/리다이렉트 금지
+
     if (status === 401 && originalRequest.__noAuth) {
       return Promise.reject(normalizeError(error));
     }
 
-    // 1차: 리프레시 시도
+ 
     if (status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -137,7 +136,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 2차: 여전히 401이면 강제 로그아웃
+
     if (status === 401) {
       const norm = normalizeError(error);
       try { clearAuth(); } catch {}
@@ -152,7 +151,7 @@ api.interceptors.response.use(
   }
 );
 
-// 업로드 헬퍼
+
 export const apiUpload = (url, formData, config = {}) => {
   const cfg = { ...config, headers: { ...(config.headers || {}) } };
   delete cfg.headers['Content-Type'];

@@ -1,7 +1,6 @@
-// src/api/applications.js
 import api, { logApiError } from './apiClient';
 
-/** 공통 페이지 변환 (Spring Data Page 호환) */
+
 const toPage = (data, { page = 0, size = 20 } = {}) => {
   const content = Array.isArray(data?.content) ? data.content : [];
   const total = Number.isFinite(data?.totalElements) ? data.totalElements : content.length;
@@ -13,7 +12,7 @@ const toPage = (data, { page = 0, size = 20 } = {}) => {
 
   return {
     content,
-    number,         // 0-based
+    number,             
     size: _size,
     totalElements: total,
     totalPages,
@@ -23,9 +22,7 @@ const toPage = (data, { page = 0, size = 20 } = {}) => {
   };
 };
 
-/* ───────────────────────
- * Senior(고령자)
- * ─────────────────────── */
+
 export const fetchMyApplications = async ({ seniorId, page = 0, size = 10, signal } = {}) => {
   const { data } = await api.get(`/applications/by-senior/${seniorId}`, {
     params: { page, size },
@@ -39,13 +36,72 @@ export const cancelApplication = async (applicationId, { signal } = {}) => {
   return data;
 };
 
-/* ───────────────────────
- * Shelter(보호소)
- * ─────────────────────── */
+export const createApplication = async (payload = {}, { signal } = {}) => {
+  try {
+    const body = {
+      petId: payload.petId ?? payload.animalId ?? null, 
+      note: payload.note ?? payload.memo ?? '',
+      agreeTerms: !!payload.agreeTerms,
+      agreeBodycam: !!payload.agreeBodycam,
+    };
+    const { data } = await api.post('/applications', body, { signal });
+    return data;
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
+};
+
+
+export const listApplications = async (params = {}, { signal } = {}) => {
+  try {
+
+    const { data } = await api.get('/applications', { params, signal });
+    return toPage(data, params);
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
+};
+
+export const managerApprove = async (applicationId, managerId, { signal } = {}) => {
+  try {
+    const { data } = await api.post(
+      `/applications/${applicationId}/manager-approve`,
+      { managerId },
+      { signal }
+    );
+    return data;
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
+};
+
+export const managerReject = async (applicationId, { signal } = {}) => {
+  try {
+    const { data } = await api.post(`/applications/${applicationId}/manager-reject`, null, { signal });
+    return data;
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
+};
+
+export const forwardToShelter = async (applicationId, { signal } = {}) => {
+  try {
+    const { data } = await api.post(`/applications/${applicationId}/forward-to-shelter`, null, { signal });
+    return data;
+  } catch (err) {
+    logApiError?.(err);
+    throw err;
+  }
+};
+
 export const listApplicationsByShelter = async ({ careNm, status, page = 0, size = 20, signal } = {}) => {
   const params = { page, size };
   if (careNm) params.careNm = careNm;
-  if (status) params.status = status; // PENDING | APPROVED | REJECTED
+  if (status) params.status = status; 
   const { data } = await api.get('/applications', { params, signal });
   return toPage(data, { page, size });
 };
@@ -60,7 +116,6 @@ export const rejectApplication = async (applicationId, { signal } = {}) => {
   return data;
 };
 
-/* ✅ 예약일/메모 등 부분 수정 */
 export const updateApplication = async (applicationId, payload = {}, { signal } = {}) => {
   try {
     const { data } = await api.patch(`/applications/${applicationId}`, payload, { signal });
@@ -71,31 +126,7 @@ export const updateApplication = async (applicationId, payload = {}, { signal } 
   }
 };
 
-/* ───────────────────────
- * Pet(동물) 단위
- * ─────────────────────── */
 export const listByPet = async (animalId, { page = 0, size = 20, signal } = {}) => {
   const { data } = await api.get(`/applications/by-pet/${animalId}`, { params: { page, size }, signal });
   return toPage(data, { page, size });
 };
-
-/* ───────────────────────
- * 공통: 신청 생성
- * ─────────────────────── */
-/* 신청 생성: 서버 규격 { petId?, note? } 로 변환해서 전송 */
-// src/api/applications.js
-export const createApplication = async (payload, { signal } = {}) => {
-  try {
-    const body = {
-      petId: payload.animalId ?? null,   // animalId → petId 변환
-      note: payload.memo || '',
-    };
-    const { data } = await api.post('/applications', body, { signal });
-    return data;
-  } catch (err) {
-    logApiError?.(err);
-    throw err;
-  }
-};
-
-

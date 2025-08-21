@@ -1,7 +1,10 @@
 // src/main/java/com/matchpet/auth/AuthController.java
 package com.matchpet.auth;
 
-import com.matchpet.auth.dto.*;
+import com.matchpet.auth.dto.IdResponse;
+import com.matchpet.auth.dto.LoginRequest;
+import com.matchpet.auth.dto.LoginResponse;
+import com.matchpet.auth.dto.SignupCommon;
 // import com.matchpet.domain.user.Role;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

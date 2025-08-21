@@ -41,29 +41,39 @@ public class SecurityConfig {
         .formLogin(f -> f.disable())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            // 프리플라이트
-            .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-            // 공개 엔드포인트
-            .requestMatchers(
-                "/error", "/favicon.ico",
-                "/api/animals/**", "/animals/**",
-                "/api/reco/**", "/reco/**",
-                "/api/auth/**", "/auth/**",
-                "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                "/actuator/**", "/uploads/**"
-            ).permitAll()
+    // public
+    .requestMatchers(
+        "/error", "/favicon.ico",
+        "/api/animals/**", "/animals/**",
+        "/api/reco/**", "/reco/**",
+        "/api/auth/**", "/auth/**",
+        "/api/shelters/**",
+        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
+        "/actuator/**", "/uploads/**"
+    ).permitAll()
 
-            // 보호소 신청 현황(읽기/승인/거절 등) : SHELTER/ADMIN
-            .requestMatchers(HttpMethod.GET, "/api/applications/**").hasAnyRole("SHELTER","ADMIN")
-            .requestMatchers(HttpMethod.POST, "/api/applications/**").hasAnyRole("SHELTER","ADMIN")
-            .requestMatchers(HttpMethod.PATCH, "/api/applications/**").hasAnyRole("SHELTER","ADMIN")
-            .requestMatchers(HttpMethod.PUT, "/api/applications/**").hasAnyRole("SHELTER","ADMIN")
-            .requestMatchers(HttpMethod.DELETE, "/api/applications/**").hasAnyRole("SHELTER","ADMIN")
+    // ----- ★ 구체 경로를 일반 규칙보다 먼저 배치 ★ -----
+    .requestMatchers(HttpMethod.GET, "/api/applications/by-senior/**").hasRole("SENIOR")
+    .requestMatchers(HttpMethod.GET, "/api/applications/by-shelter/**").hasAnyRole("SHELTER","ADMIN")
 
-            // 그 외는 인증 필요
-            .anyRequest().authenticated()
-        )
+    // 시니어 신청(생성) & 기본 목록
+    .requestMatchers(HttpMethod.POST, "/api/applications").hasRole("SENIOR")
+    .requestMatchers(HttpMethod.GET,  "/api/applications").authenticated()
+
+    // 보호소 관리 동작
+    .requestMatchers(HttpMethod.POST,   "/api/applications/*/approve").hasAnyRole("SHELTER","ADMIN")
+    .requestMatchers(HttpMethod.POST,   "/api/applications/*/reject").hasAnyRole("SHELTER","ADMIN")
+
+    // 나머지 applications 하위는 보호소/관리자
+    .requestMatchers("/api/applications/**").hasAnyRole("SHELTER","ADMIN")
+
+    // 내부 적재
+    .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
+
+    .anyRequest().authenticated()
+)
         .exceptionHandling(ex -> ex
             .accessDeniedHandler((req, res, ex2) -> {
               var a = SecurityContextHolder.getContext().getAuthentication();
@@ -85,9 +95,15 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(List.of("http://localhost:5173")); // 프론트 실제 포트
+    // 개발 편의: 패턴으로 127.0.0.1 포함
+    cfg.setAllowedOriginPatterns(List.of(
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ));
     cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-    cfg.setAllowedHeaders(List.of("Authorization","Content-Type","Accept","Origin"));
+    cfg.setAllowedHeaders(List.of(
+        "Authorization","Content-Type","Accept","Origin","X-Requested-With" // ✅ 보강
+    ));
     cfg.setExposedHeaders(List.of("Authorization","Location"));
     cfg.setAllowCredentials(true);
     cfg.setMaxAge(3600L);

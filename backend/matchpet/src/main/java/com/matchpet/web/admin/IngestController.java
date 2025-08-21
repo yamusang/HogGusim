@@ -15,6 +15,7 @@ import java.util.Map;
 public class IngestController {
 
     private static final DateTimeFormatter BASIC = DateTimeFormatter.BASIC_ISO_DATE;
+    
     private final AnimalIngestService ingestService;
 
     @PostMapping("/animals")
@@ -29,8 +30,7 @@ public class IngestController {
                 "status", "OK",
                 "total", c.getTotal(),
                 "inserted", c.getInserted(),
-                "updated", c.getUpdated(),
-                "skipped", c.getSkipped()
+                "updated", c.getUpdated()
         ));
     }
 

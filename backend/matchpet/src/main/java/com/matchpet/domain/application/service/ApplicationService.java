@@ -1,76 +1,43 @@
 package com.matchpet.domain.application.service;
 
-import com.matchpet.domain.animal.entity.Animal;
-import com.matchpet.domain.animal.repository.AnimalRepository;
-import com.matchpet.domain.application.entity.Application;
-import com.matchpet.domain.application.repository.ApplicationRepository;
-import com.matchpet.web.dto.ApplicationRow;
-import com.matchpet.web.dto.ApplicationUpdateReq;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.matchpet.domain.application.entity.Application;
+import com.matchpet.domain.application.enums.ApplicationStatus;
+import com.matchpet.domain.application.repository.ApplicationRepository;
 
 @Service
 @RequiredArgsConstructor
 public class ApplicationService {
 
-    private final ApplicationRepository appRepo;
-    private final AnimalRepository animalRepo;
-
-    public Page<ApplicationRow> findBySenior(Long seniorId, Pageable pageable) {
-        return appRepo.findBySeniorIdOrderByCreatedAtDesc(seniorId, pageable)
-            .map(this::toRow);
-    }
-
-    public Page<ApplicationRow> findByPet(Long animalId, Pageable pageable) {
-        return appRepo.findByAnimalIdOrderByCreatedAtDesc(animalId, pageable)
-            .map(this::toRow);
-    }
+    private final ApplicationRepository repo;
 
     @Transactional
-    public ApplicationRow update(Long id, ApplicationUpdateReq req) {
-        Application app = appRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("application not found"));
-
-        if (req.getReservedAt() != null) app.setReservedAt(req.getReservedAt());
-        if (req.getNote() != null) app.setNote(req.getNote());
-
-        return toRow(app);
+    public Application create(Long seniorId, Long animalId, String note) {
+        Application a = Application.builder()
+                .seniorId(seniorId)
+                .animalId(animalId)
+                .note(note)
+                .status(ApplicationStatus.PENDING)
+                .build();
+        return repo.save(a);
     }
 
-    @Transactional
-    public ApplicationRow approve(Long id) {
-        Application app = appRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("application not found"));
-        app.setStatus(Application.Status.APPROVED);
+    @Transactional public Application approve(Long id) { var a = repo.findById(id).orElseThrow(); a.setStatus(ApplicationStatus.APPROVED); return a; }
+    @Transactional public Application reject (Long id) { var a = repo.findById(id).orElseThrow(); a.setStatus(ApplicationStatus.REJECTED); return a; }
+    @Transactional public Application cancel (Long id) { var a = repo.findById(id).orElseThrow(); a.setStatus(ApplicationStatus.CANCELED); return a; }
 
-        // 보호소 동물 상태 갱신: MATCHING
-        Animal animal = animalRepo.findById(app.getAnimalId())
-            .orElseThrow(() -> new IllegalArgumentException("animal not found"));
-        animal.setStatus(Animal.Status.MATCHING);
-
-        return toRow(app);
+    public Page<Application> list(Long seniorId, Long animalId, Long shelterId,
+                                  ApplicationStatus status, Pageable pageable) {
+        if (seniorId != null) return repo.findBySeniorId(seniorId, pageable);
+        if (animalId != null) return repo.findByAnimalId(animalId, pageable);
+        if (shelterId != null || status != null)
+            return repo.findByShelterAndStatus(shelterId, status, pageable);
+        return repo.findAll(pageable);
     }
 
-    @Transactional
-    public ApplicationRow reject(Long id) {
-        Application app = appRepo.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("application not found"));
-        app.setStatus(Application.Status.REJECTED);
-        return toRow(app);
-    }
-
-    private ApplicationRow toRow(Application a) {
-        return ApplicationRow.builder()
-            .id(a.getId())
-            .animalId(a.getAnimalId())
-            .animalName(null)               // 필요 시 조인하여 채워도 됨
-            .status(a.getStatus().name())
-            .createdAt(a.getCreatedAt())
-            .reservedAt(a.getReservedAt())
-            .note(a.getNote())
-            .build();
-    }
+    public Application get(Long id) { return repo.findById(id).orElseThrow(); }
 }

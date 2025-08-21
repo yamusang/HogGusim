@@ -23,25 +23,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
   private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-  private final JwtTokenProvider jwt; // 토큰 파서
+  private final JwtTokenProvider jwt;
   private static final AntPathMatcher PM = new AntPathMatcher();
 
-  // 공개 경로(토큰 없어도 통과)
+  // 퍼블릭 경로 (필터 자체를 스킵)
   private static final String[] PUBLIC_PATTERNS = new String[]{
       "/actuator/**", "/error", "/uploads/**",
+      "/api/internal/ingest/**",
       "/api/auth/**",
       "/api/reco/**",
       "/api/animals/**",
-      "/api/shelters/**",
+      "/api/shelters/**",                // ✅ 퍼블릭
       "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
   };
 
   public JwtAuthFilter(JwtTokenProvider jwt) { this.jwt = jwt; }
 
-  private boolean isPublic(HttpServletRequest req) {
-    if ("OPTIONS".equalsIgnoreCase(req.getMethod())) return true;
-    String path = req.getRequestURI();
-    for (String p : PUBLIC_PATTERNS) if (PM.match(p, path)) return true;
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true; // CORS 프리플라이트 스킵
+    String path = request.getRequestURI();
+    for (String p : PUBLIC_PATTERNS) {
+      if (PM.match(p, path)) return true; // 퍼블릭은 아예 필터 스킵
+    }
     return false;
   }
 
@@ -58,7 +62,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         Long userId = Long.valueOf(claims.getSubject());
         String role = claims.get("role", String.class); // "SHELTER"/"SENIOR"/"MANAGER"/"ADMIN"
 
-        // 권한 부여 (ROLE_ 접두어 필수)
         List<GrantedAuthority> authorities =
             (role != null && !role.isBlank())
                 ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
@@ -67,21 +70,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         var authToken = new UsernamePasswordAuthenticationToken(userId, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        log.info("SECURITY AUTH: userId={}, authorities={}", userId, authorities);
-
-      } else if (!isPublic(req)) {
-        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing token");
-        return;
+        log.debug("SECURITY AUTH: userId={}, authorities={}", userId, authorities);
       }
+      // 토큰 없으면 그냥 통과 → 아래 Security 규칙이 처리(보호된 경로면 401)
+      chain.doFilter(req, res);
+
     } catch (Exception e) {
       SecurityContextHolder.clearContext();
-      if (!isPublic(req)) {
-        res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
-        return;
-      }
-      // 공개 경로는 통과
+      // 토큰이 있었는데 잘못된 경우에만 401 반환 (퍼블릭은 shouldNotFilter 로 이미 스킵됨)
+      res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
     }
-
-    chain.doFilter(req, res);
   }
 }

@@ -60,7 +60,7 @@ export const rejectApplication = async (applicationId, { signal } = {}) => {
   return data;
 };
 
-/* ✅ 업데이트: 예약일/메모 등 부분 수정 */
+/* ✅ 예약일/메모 등 부분 수정 */
 export const updateApplication = async (applicationId, payload = {}, { signal } = {}) => {
   try {
     const { data } = await api.patch(`/applications/${applicationId}`, payload, { signal });
@@ -83,6 +83,7 @@ export const listByPet = async (animalId, { page = 0, size = 20, signal } = {}) 
  * 공통: 신청 생성
  * ─────────────────────── */
 export const createApplication = async (payload, { signal } = {}) => {
+  // 기대 payload: { seniorId, animalId, type, memo, meta? }
   try {
     const { data } = await api.post('/applications', payload, { signal });
     return data;

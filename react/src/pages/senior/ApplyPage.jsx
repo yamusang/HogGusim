@@ -46,6 +46,15 @@ export default function ApplyPage() {
     }
   }, [petIdParam]);
 
+  // seniorId: user.seniorId > user.id > localStorage.seniorId
+  const seniorId = useMemo(() => {
+    const ls = localStorage.getItem('seniorId');
+    return user?.seniorId ?? user?.id ?? (ls ? Number(ls) : null);
+  }, [user]);
+
+  const [type, setType] = useState('ADOPTION'); // ADOPTION | EXPERIENCE
+  const [memo, setMemo] = useState('');
+
   const [form, setForm] = useState({
     userId: user?.id ?? null,
     name: user?.displayName || '',
@@ -116,6 +125,7 @@ export default function ApplyPage() {
   };
 
   const validate = () => {
+    if (!seniorId) return { msg: '로그인이 필요하거나 시니어 식별자가 없습니다.', key: 'name' };
     if (!form.name) return { msg: '필수값을 확인해 주세요. (이름)', key: 'name' };
     if (!form.address) return { msg: '필수값을 확인해 주세요. (주소)', key: 'address' };
     if (!form.birthDate) return { msg: '생년월일을 입력해 주세요.', key: 'birthDate' };
@@ -150,30 +160,32 @@ export default function ApplyPage() {
     setSubmitting(true);
 
     try {
+      // ✅ 백 계약 필수 필드만 본문에, 나머지는 meta로 전달(서버가 무시해도 OK)
       const payload = {
-        userId: Number(form.userId),
-        name: form.name.trim(),
-        phoneNumber: form.phoneNumber.trim(),
-        address: form.address.trim(),
-        birthDate: form.birthDate,
-        emergencyContact: form.emergencyContact.trim(),
-        welfareOfficerId: form.welfareOfficerId ? Number(form.welfareOfficerId) : null,
-
-        hasPetExperience: !!form.hasPetExperience,
-        preferredPetInfo: { ...form.preferredPetInfo },
-        careAvailability: {
-          days: form.careAvailability.days,
-          timeRange: { ...form.careAvailability.timeRange },
-          visitFreqPerWeek: Number(form.careAvailability.visitFreqPerWeek),
-          visitStyle: form.careAvailability.visitStyle,
+        seniorId: Number(seniorId),
+        animalId: petId ? Number(petId) : null,
+        type,               // "ADOPTION" | "EXPERIENCE"
+        memo: (memo || '').trim(),
+        meta: {
+          applicant: {
+            userId: Number(form.userId) || null,
+            name: form.name.trim(),
+            phoneNumber: (form.phoneNumber || '').trim(),
+            address: form.address.trim(),
+            birthDate: form.birthDate,
+            emergencyContact: form.emergencyContact.trim(),
+            welfareOfficerId: form.welfareOfficerId ? Number(form.welfareOfficerId) : null,
+          },
+          preferences: { ...form.preferredPetInfo },
+          availability: {
+            ...form.careAvailability,
+            visitFreqPerWeek: Number(form.careAvailability.visitFreqPerWeek),
+          },
+          hasPetExperience: !!form.hasPetExperience,
+          needManager: !!form.needManager,
+          agreements: { termsAgree: !!form.termsAgree, bodycamAgree: !!form.bodycamAgree },
         },
-
-        needManager: !!form.needManager,
-        termsAgree: !!form.termsAgree,
-        bodycamAgree: !!form.bodycamAgree,
       };
-
-      if (petId) payload.petId = Number(petId);
 
       await createApplication(payload);
 
@@ -181,6 +193,7 @@ export default function ApplyPage() {
       localStorage.setItem('afterApply', '1');
 
       alert('신청 완료! 보호소 검토 후 안내 드릴게요.');
+      // 맞춤 추천으로 이동
       navigate('/senior?mode=recommend', { replace: true });
     } catch (e2) {
       setErr(e2?.message || '신청에 실패했어요.');
@@ -368,6 +381,25 @@ export default function ApplyPage() {
           <input ref={refs.bodycamAgree} type="checkbox" checked={form.bodycamAgree} onChange={(e) => set('bodycamAgree', e.target.checked)} />
           방문 시 바디캠 촬영에 동의합니다.
         </label>
+
+        {/* 유형/메모 (백 계약에 맞춤) */}
+        <div className="form-grid">
+          <label>
+            신청 유형
+            <select value={type} onChange={(e)=>setType(e.target.value)}>
+              <option value="ADOPTION">입양</option>
+              <option value="EXPERIENCE">체험</option>
+            </select>
+          </label>
+          <label>
+            메모
+            <input
+              placeholder="특이사항/요청사항"
+              value={memo}
+              onChange={(e)=>setMemo(e.target.value)}
+            />
+          </label>
+        </div>
 
         {err && <div className="auth__error">{err}</div>}
 

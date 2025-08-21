@@ -1,8 +1,6 @@
 import api from './apiClient';
 
-/** ==============================
- * 절대 URL 보정
- * ============================== */
+
 export const toAbsoluteUrl = (url) => {
   if (!url) return '';
   if (/^https?:\/\//i.test(url)) return url;
@@ -11,9 +9,6 @@ export const toAbsoluteUrl = (url) => {
   return `${base}${rel}`;
 };
 
-/** ==============================
- * 🔁 백엔드 DTO(Item) → 앱 표준 모델
- * ============================== */
 export const normalizePet = (it = {}) => {
   const sc = (it.sexCd ?? it.sex_cd ?? it.sex ?? '').toString().toUpperCase();
   const gender = sc === 'M' ? '수컷' : sc === 'F' ? '암컷' : '미상';
@@ -61,9 +56,7 @@ export const normalizePet = (it = {}) => {
   };
 };
 
-/** ==============================
- * 오픈API/페이지 응답 파서
- * ============================== */
+
 const pickApiItems = (data) => data?.response?.body?.items?.item ?? [];
 const pickPageMeta = (data) => ({
   totalElements: data?.response?.body?.totalCount ?? data?.totalElements ?? 0,
@@ -80,16 +73,13 @@ const pickPageMeta = (data) => ({
                  : false,
 });
 
-/** ==============================
- * 목록 (정규화 포함)
- * ============================== */
+
 export const fetchAnimals = async (params = {}, axiosCfg = {}) => {
   const { page = 0, size = 20, careNm } = params;
 
   const query = { page, size };
   if (careNm && careNm.trim()) query.careNm = careNm.trim();
 
-  // __noAuth, headers, signal 등 외부 옵션 그대로 전달
   const { data } = await api.get('/animals', {
     params: query,
     ...(axiosCfg || {}),
@@ -104,13 +94,13 @@ export const fetchAnimals = async (params = {}, axiosCfg = {}) => {
   };
 };
 
-/** 보호소 기준 목록 */
+
 export const fetchAnimalsByShelter = async ({ careNm, page = 0, size = 100 } = {}, axiosCfg = {}) => {
   const { content } = await fetchAnimals({ careNm, page, size }, axiosCfg);
   return content;
 };
 
-/** 추천 목록 (임시: /animals 폴백) */
+
 export const fetchRecommendedAnimals = async (
   { page = 0, size = 20, careNm, ...rest } = {},
   axiosCfg = {}
@@ -124,7 +114,7 @@ export const fetchRecommendedAnimals = async (
 };
 export const fetchRecommendedPets = fetchRecommendedAnimals;
 
-/** 생성 / 업로드 */
+
 export const createAnimal = async (payload = {}) => {
   const { data } = await api.post('/animals', payload);
   return data;
@@ -139,9 +129,7 @@ export const uploadAnimalPhoto = async (animalId, file) => {
   return data;
 };
 
-/** ==============================
- * Slider용 유틸/API
- * ============================== */
+
 const isDog = (a) => {
   const s = (a.species || a._raw?.kindCd || '').toString().toLowerCase();
   return s.includes('개') || s.includes('dog');
@@ -157,7 +145,7 @@ const uniqById = (arr=[]) => {
   });
 };
 
-/** 메인 슬라이드 */
+
 export const fetchFeaturedDogs = async (
   { take = 18, page = 0, size = 120, status = 'AVAILABLE' } = {},
   axiosCfg = {}
@@ -175,7 +163,7 @@ export const fetchFeaturedDogs = async (
   return uniq.slice(0, take);
 };
 
-/** 최신 강아지 */
+
 export const fetchLatestDogs = async ({ take = 18 } = {}, axiosCfg = {}) => {
   const { content } = await fetchAnimals({ page: 0, size: 120 }, axiosCfg);
   return content.filter(isDog).filter(hasPhoto).slice(0, take);

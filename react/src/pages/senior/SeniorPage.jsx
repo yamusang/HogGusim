@@ -1,11 +1,13 @@
 // src/pages/senior/SeniorPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import { getPetsRecommended, RecoMode } from '../../api/recommendations';
+import api from '../../api/apiClient';
+import { createApplication } from '../../api/applications';
 import './senior.css';
 
 const MODES = [
@@ -16,19 +18,14 @@ const MODES = [
 
 export default function SeniorPage() {
   const nav = useNavigate();
+  const loc = useLocation();
   const { user } = useAuth();
   const seniorId = user?.seniorId || user?.id;
 
   // URL 쿼리 동기화
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialMode = useMemo(
-    () => (searchParams.get('mode') || RecoMode.BALANCED),
-    [] // 최초 1회
-  );
-  const initialPage = useMemo(
-    () => Math.max(0, Number(searchParams.get('page') || 0)),
-    [] // 최초 1회
-  );
+  const initialMode = useMemo(() => (searchParams.get('mode') || RecoMode.BALANCED), []);
+  const initialPage = useMemo(() => Math.max(0, Number(searchParams.get('page') || 0)), []);
 
   // UI 상태
   const [mode, setMode] = useState(initialMode);
@@ -41,12 +38,18 @@ export default function SeniorPage() {
   const [items, setItems] = useState([]);
   const [pageMeta, setPageMeta] = useState({ totalElements: 0, totalPages: 1, number: 0, size });
 
-  // URL 동기화 (mode/page 변경 시)
+  // 신청 모달 상태
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeBodycam, setAgreeBodycam] = useState(false);
+  const [pendingPet, setPendingPet] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // URL 동기화
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     next.set('mode', mode);
     next.set('page', String(page));
-    // 동일 값이면 replaceState만 일어나도록 체크
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
     }
@@ -74,26 +77,57 @@ export default function SeniorPage() {
   };
 
   useEffect(() => {
-    let alive = true;
     (async () => {
       await load();
-      // 페이지 바뀔 때 스크롤 상단
       window.scrollTo({ top: 0, behavior: 'smooth' });
     })();
-    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seniorId, mode, page, size]);
 
-  const onApply = (pet) => {
-    // 동의 모달/신청 API는 다음 단계에서 붙이고, 지금은 신청 페이지로 이동만
-    nav(`/pet/${pet.id}/apply`);
+  // 로그아웃
+  const onLogout = () => {
+    nav(`/logout?from=${encodeURIComponent(loc.pathname)}`, { replace: true });
+  };
+
+  // 신청 버튼 → 동의 모달
+  const onApplyClick = (pet) => {
+    setPendingPet(pet);
+    setAgreeTerms(false);
+    setAgreeBodycam(false);
+    setConsentOpen(true);
+  };
+
+  // 동의 확인
+  const onConfirmConsent = async () => {
+    if (!pendingPet) return;
+    setSubmitting(true);
+    try {
+      const app = await createApplication({
+        petId: null,
+        note: user?.address || '',
+        agreeTerms,
+        agreeBodycam,
+      });
+      await api.post(`/applications/${app.id}/select-pet`, null, {
+        params: { petId: pendingPet.id },
+      });
+      setConsentOpen(false);
+      setPendingPet(null);
+      nav('/senior/connect');
+    } catch (e) {
+      alert(e?.response?.data?.message || '신청 처리 실패');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="senior container" style={{ padding: 16 }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 12 }}>
-        <h1 style={{ margin: 0 }}>추천 유기동물</h1>
-        <div style={{ display:'flex', gap: 8 }}>
+      {/* 상단 바 */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+        <h1 style={{ margin: 0, flex: '0 0 auto' }}>추천 유기동물</h1>
+
+        <div style={{ display:'flex', gap: 8, flex: '0 0 auto' }}>
           {MODES.map(m => (
             <Button
               key={m.key}
@@ -103,6 +137,10 @@ export default function SeniorPage() {
               {m.label}
             </Button>
           ))}
+        </div>
+
+        <div style={{ marginLeft:'auto' }}>
+          <Button presetName="secondary" onClick={onLogout}>로그아웃</Button>
         </div>
       </div>
 
@@ -117,7 +155,7 @@ export default function SeniorPage() {
         </div>
       )}
 
-      {/* 로딩 스켈레톤 */}
+      {/* 로딩 */}
       {loading && (
         <div className="reco-grid">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -188,7 +226,7 @@ export default function SeniorPage() {
 
                   <button
                     className="reco-card__btn"
-                    onClick={() => onApply(it)}
+                    onClick={() => onApplyClick(it)}
                     style={{
                       margin: '10px 12px 12px',
                       padding: 10,
@@ -227,6 +265,31 @@ export default function SeniorPage() {
             </Button>
           </div>
         </>
+      )}
+
+      {/* 동의 모달 */}
+      {consentOpen && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>신청 동의</h2>
+            <label style={{ display:'block', marginBottom:8 }}>
+              <input type="checkbox" checked={agreeTerms} onChange={(e)=>setAgreeTerms(e.target.checked)} /> 이용약관에 동의합니다.
+            </label>
+            <label style={{ display:'block', marginBottom:8 }}>
+              <input type="checkbox" checked={agreeBodycam} onChange={(e)=>setAgreeBodycam(e.target.checked)} /> 보디캠 촬영에 동의합니다.
+            </label>
+            <div style={{ display:'flex', gap:8, marginTop:12 }}>
+              <Button presetName="secondary" onClick={()=>setConsentOpen(false)}>취소</Button>
+              <Button
+                presetName="primary"
+                disabled={!agreeTerms || !agreeBodycam || submitting}
+                onClick={onConfirmConsent}
+              >
+                확인
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

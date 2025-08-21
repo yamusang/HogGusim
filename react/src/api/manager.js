@@ -1,7 +1,5 @@
-// src/api/manager.js
 import api, { logApiError } from './apiClient';
 
-/** 유틸: 배열이면 Page로 감싸기 */
 const wrapPage = (arr, { page = 0, size = 20 } = {}) => ({
   content: Array.isArray(arr) ? arr : [],
   number: page,
@@ -13,15 +11,6 @@ const wrapPage = (arr, { page = 0, size = 20 } = {}) => ({
   empty: !arr || arr.length === 0,
 });
 
-/** ===============================
- *  큐(배정/대기 목록)
- *  =============================== */
-/**
- * 매니저 큐 조회
- * - 기본 엔드포인트: GET /manager/applications
- *   query: status(PENDING|IN_PROGRESS|FORWARDED|APPROVED|REJECTED|ALL), page, size, unassigned
- * - 구버전/대안: GET /applications/for-manager (status, page, size, unassigned)
- */
 export async function fetchManagerQueue({
   status = 'ALL',
   page = 0,
@@ -38,26 +27,18 @@ export async function fetchManagerQueue({
     if (Array.isArray(data)) return wrapPage(data, { page, size });
     return data;
   } catch (err) {
-    // 구버전/대안으로 한 번 더 시도
+
     try {
       const { data } = await api.get('/applications/for-manager', { params, signal });
       if (Array.isArray(data)) return wrapPage(data, { page, size });
       return data;
     } catch (e2) {
-      // 데모 폴백
       const demo = JSON.parse(localStorage.getItem('mgr_queue_demo') || '[]');
       return wrapPage(demo, { page, size });
     }
   }
 }
 
-/** ===============================
- *  배정/소유권(락) 액션
- *  =============================== */
-/**
- * 배정 수락(내가 가져오기)
- * 우선순위: /manager/applications/{id}/accept -> /manager/applications/{id}/take
- */
 export async function acceptAssignment(id, { signal } = {}) {
   try {
     const { data } = await api.post(`/manager/applications/${id}/accept`, null, { signal });
@@ -68,7 +49,7 @@ export async function acceptAssignment(id, { signal } = {}) {
       return data;
     } catch (err2) {
       logApiError?.(err2);
-      // 데모 폴백: 로컬 큐에서 제거
+
       const demo = JSON.parse(localStorage.getItem('mgr_queue_demo') || '[]').filter(x => x.id !== id);
       localStorage.setItem('mgr_queue_demo', JSON.stringify(demo));
       throw err2;

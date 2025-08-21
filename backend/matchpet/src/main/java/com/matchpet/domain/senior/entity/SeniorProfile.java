@@ -12,8 +12,8 @@ public class SeniorProfile {
   @Column(name = "user_id")
   private Long userId;
 
-  @Column(nullable = false)           private String name;
-  @Column(name = "gender")            private String gender;          // "M"/"F" 등
+  @Column                             private String name; // nullable 허용 (최소 업서트 정책)
+  @Column(name = "gender")            private String gender;          // "M"/"F"/"U"          
   @Column(name = "phone_number")      private String phoneNumber;
   @Column(nullable = false)           private String address;
   @Column(name = "birth_date")        private LocalDate birthDate;

@@ -15,9 +15,17 @@ export default function SignupPage() {
   const roleParam = (params.get('role') || sessionStorage.getItem('selectedRole') || 'SENIOR').toUpperCase();
   const [role] = useState(roleParam);
 
+  // 공통
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+
+  // SENIOR 전용
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [emergencyContact, setEmergencyContact] = useState('');
+
+  // SHELTER 전용
   const [affiliation, setAffiliation] = useState('');
   const [careList, setCareList] = useState([]);
   const [loadingCare, setLoadingCare] = useState(false);
@@ -27,12 +35,16 @@ export default function SignupPage() {
 
   const minLen = 8;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const phoneRegex = /^[0-9\-+()\s]{9,20}$/; // 간단 검증(하이픈/공백 허용)
 
   const isInvalidEmail = useMemo(() => !!email && !emailRegex.test(email), [email]);
   const isMismatch = useMemo(() => confirm.length > 0 && password !== confirm, [password, confirm]);
   const isWeak = useMemo(() => !!password && password.length < minLen, [password]);
+
+  const isSenior = role === 'SENIOR';
   const isAffiliationRequired = role === 'SHELTER';
 
+  // 보호소 목록 필요 시 로드
   useEffect(() => {
     if (!isAffiliationRequired) return;
     let alive = true;
@@ -52,6 +64,7 @@ export default function SignupPage() {
     return () => { alive = false; };
   }, [isAffiliationRequired]);
 
+  // 버튼 비활성 조건
   const disabled =
     loading ||
     !email ||
@@ -60,23 +73,40 @@ export default function SignupPage() {
     isInvalidEmail ||
     isMismatch ||
     isWeak ||
-    (isAffiliationRequired && !affiliation);
+    (isAffiliationRequired && !affiliation) ||
+    (isSenior && (!phoneNumber || !address || !emergencyContact));
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
     setError('');
 
+    // 공통 검증
     if (isInvalidEmail) return setError('올바른 이메일 형식을 입력하세요.');
     if (isWeak) return setError(`비밀번호는 ${minLen}자리 이상이어야 합니다.`);
     if (isMismatch) return setError('비밀번호가 일치하지 않습니다.');
-    if (isAffiliationRequired && !affiliation) return setError('보호소를 선택하세요.');
 
+    // 역할별 추가 검증
+    if (isAffiliationRequired && !affiliation) {
+      return setError('보호소를 선택하세요.');
+    }
+    if (isSenior) {
+      if (!phoneRegex.test(phoneNumber)) return setError('연락처 형식을 확인해 주세요. (예: 010-1234-5678)');
+      if (address.trim().length < 3) return setError('주소를 정확히 입력해 주세요.');
+      if (!phoneRegex.test(emergencyContact)) return setError('비상연락망(전화번호) 형식을 확인해 주세요.');
+    }
+
+    // 요청 payload
     const payload = {
       email: email.trim(),
       password,
       role,
       ...(isAffiliationRequired ? { affiliation } : {}),
+      ...(isSenior ? {
+        phoneNumber: phoneNumber.trim(),
+        address: address.trim(),
+        emergencyContact: emergencyContact.trim(),
+      } : {}),
     };
 
     setLoading(true);
@@ -117,6 +147,7 @@ export default function SignupPage() {
         {error && <div className="auth__error">{error}</div>}
 
         <form onSubmit={onSubmit} className="auth__form" noValidate>
+          {/* 공통 입력 */}
           <FormField
             label="이메일"
             type="email"
@@ -125,7 +156,6 @@ export default function SignupPage() {
             required
             error={isInvalidEmail ? '올바른 이메일 형식이 아닙니다.' : ''}
           />
-
           <FormField
             label="비밀번호"
             type="password"
@@ -135,7 +165,6 @@ export default function SignupPage() {
             hint={`※ 비밀번호는 ${minLen}자리 이상 입력하세요.`}
             error={isWeak ? `비밀번호는 ${minLen}자리 이상이어야 합니다.` : ''}
           />
-
           <FormField
             label="비밀번호 확인"
             type="password"
@@ -145,7 +174,38 @@ export default function SignupPage() {
             error={isMismatch ? '비밀번호가 일치하지 않습니다.' : ''}
           />
 
-          {role === 'SHELTER' && (
+          {/* SENIOR 전용 필드 */}
+          {isSenior && (
+            <>
+              <FormField
+                label="연락처"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                required
+                hint="예) 010-1234-5678"
+              />
+              <FormField
+                label="주소"
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                required
+                hint="예) 부산광역시 ○○구 ○○동 …"
+              />
+              <FormField
+                label="비상연락망"
+                type="tel"
+                value={emergencyContact}
+                onChange={(e) => setEmergencyContact(e.target.value)}
+                required
+                hint="예) 가족/지인 연락처"
+              />
+            </>
+          )}
+
+          {/* SHELTER 전용 필드 */}
+          {isAffiliationRequired && (
             <div className="form-field">
               <label className="form-field__label">보호소 선택</label>
               <div className="form-field__control">

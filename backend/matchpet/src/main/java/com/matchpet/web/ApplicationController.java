@@ -1,56 +1,114 @@
 package com.matchpet.web;
 
 import com.matchpet.domain.application.service.ApplicationService;
+import com.matchpet.domain.application.enums.ApplicationStatus;
+import com.matchpet.domain.application.entity.Application;
+import com.matchpet.domain.application.mapper.ApplicationMapper;
+import com.matchpet.web.dto.ApplicationCreateRequest;
 import com.matchpet.web.dto.ApplicationRow;
-import com.matchpet.web.dto.ApplicationUpdateReq;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
-import org.springframework.http.ResponseEntity;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
-@RequiredArgsConstructor
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/applications")
 public class ApplicationController {
 
     private final ApplicationService service;
 
-    // 보호소 화면: 동물 기준 신청 목록
-    @GetMapping("/by-pet/{animalId}")
-    public Page<ApplicationRow> listByPet(
-        @PathVariable Long animalId,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "12") int size
+    // ---- 기존 목록 (쿼리 파라미터 버전)
+    @GetMapping
+    public Page<ApplicationRow> list(
+            @RequestParam(required = false) Long seniorId,
+            @RequestParam(required = false) Long animalId,
+            @RequestParam(required = false) Long shelterId,
+            @RequestParam(required = false) ApplicationStatus status,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return service.findByPet(animalId, PageRequest.of(page, size));
+        return service.list(seniorId, animalId, shelterId, status, pageable)
+                .map(ApplicationMapper::row);
     }
 
-    // 시니어 화면: 본인 신청 목록
+    // ---- 경로 기반: /by-senior/{seniorId}
     @GetMapping("/by-senior/{seniorId}")
-    public Page<ApplicationRow> listBySenior(
-        @PathVariable Long seniorId,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "12") int size
+    public Page<ApplicationRow> bySenior(
+            @PathVariable Long seniorId,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication auth
     ) {
-        return service.findBySenior(seniorId, PageRequest.of(page, size));
+        // 내 것만 조회 허용 (또는 SHELTER/ADMIN)
+        if (!isSelfOrRoles(auth, seniorId, Set.of("ROLE_SHELTER","ROLE_ADMIN"))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
+        return service.list(seniorId, null, null, null, pageable)
+                .map(ApplicationMapper::row);
     }
 
-    // 예약일/메모 부분 수정
-    @PatchMapping("/{id}")
-    public ResponseEntity<ApplicationRow> update(
-        @PathVariable Long id,
-        @RequestBody ApplicationUpdateReq req
+    // ---- (선택) 보호소 경로도 쓰면 열어두기: /by-shelter/{shelterId}
+    @GetMapping("/by-shelter/{shelterId}")
+    public Page<ApplicationRow> byShelter(
+            @PathVariable Long shelterId,
+            @RequestParam(required = false) ApplicationStatus status,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return ResponseEntity.ok(service.update(id, req));
+        return service.list(null, null, shelterId, status, pageable)
+                .map(ApplicationMapper::row);
+    }
+
+    @GetMapping("/{id}")
+    public ApplicationRow getOne(@PathVariable Long id) {
+        Application a = service.get(id);
+        return ApplicationMapper.row(a);
+    }
+
+    @PostMapping
+    public ApplicationRow create(@RequestBody ApplicationCreateRequest req,
+                                 Authentication auth,
+                                 @RequestHeader(value = "X-MOCK-SENIOR-ID", required = false) Long mockSeniorId) {
+        Long seniorId = mockSeniorId != null ? mockSeniorId : parsePrincipalAsLong(auth);
+        if (seniorId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No seniorId");
+
+        Application saved = service.create(seniorId, req.getPetId(), req.getNote());
+        return ApplicationMapper.row(saved);
     }
 
     @PostMapping("/{id}/approve")
-    public ResponseEntity<ApplicationRow> approve(@PathVariable Long id) {
-        return ResponseEntity.ok(service.approve(id));
+    public ApplicationRow approve(@PathVariable Long id) {
+        return ApplicationMapper.row(service.approve(id));
     }
 
     @PostMapping("/{id}/reject")
-    public ResponseEntity<ApplicationRow> reject(@PathVariable Long id) {
-        return ResponseEntity.ok(service.reject(id));
+    public ApplicationRow reject(@PathVariable Long id) {
+        return ApplicationMapper.row(service.reject(id));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ApplicationRow cancel(@PathVariable Long id) {
+        return ApplicationMapper.row(service.cancel(id));
+    }
+
+    // ---- helpers
+    private static Long parsePrincipalAsLong(Authentication auth) {
+        if (auth == null || auth.getPrincipal() == null) return null;
+        try { return Long.valueOf(auth.getPrincipal().toString()); }
+        catch (Exception e) { return null; }
+    }
+
+    private static boolean isSelfOrRoles(Authentication auth, Long seniorId, Set<String> roles) {
+        Long me = parsePrincipalAsLong(auth);
+        if (me != null && me.equals(seniorId)) return true;
+        if (auth == null) return false;
+        var my = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
+        return my.stream().anyMatch(roles::contains);
     }
 }

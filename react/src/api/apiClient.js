@@ -1,3 +1,4 @@
+// src/api/apiClient.js
 import axios from 'axios';
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
@@ -8,12 +9,10 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-
 const authClient = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
 });
-
 
 const ACCESS_KEY = 'token';
 const REFRESH_KEY = 'refreshToken';
@@ -21,6 +20,16 @@ const USER_KEY = 'user';
 
 export const getAccessToken = () => localStorage.getItem(ACCESS_KEY);
 export const getRefreshToken = () => localStorage.getItem(REFRESH_KEY);
+
+/** 현재 사용자 객체(로컬스토리지) */
+export const getCurrentUser = () => {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
 
 export const setAuth = ({ accessToken, refreshToken, user } = {}) => {
   if (accessToken) localStorage.setItem(ACCESS_KEY, accessToken);
@@ -34,9 +43,11 @@ export const clearAuth = () => {
   localStorage.removeItem(USER_KEY);
 };
 
-
+// ====== 요청 인터셉터: Bearer + X-MOCK-SENIOR-ID ======
 api.interceptors.request.use((config = {}) => {
-  if (config.__noAuth) return config; 
+  if (config.__noAuth) return config;
+
+  // 1) 토큰
   const token = getAccessToken();
   if (token) {
     config.headers = config.headers || {};
@@ -44,9 +55,23 @@ api.interceptors.request.use((config = {}) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+
+  // 2) 개발용 seniorId 헤더 (백엔드 @RequestHeader("X-MOCK-SENIOR-ID") 훅)
+  //    필요 없으면 아래 블록을 지우거나 주석 처리하면 됨.
+  if (!config.__noMockHeader) {
+    const me = getCurrentUser();
+    const userId = me?.seniorId ?? me?.id ?? null;
+    if (userId != null) {
+      config.headers = config.headers || {};
+      // 중복 설정 방지
+      if (!config.headers['X-MOCK-SENIOR-ID']) {
+        config.headers['X-MOCK-SENIOR-ID'] = String(userId);
+      }
+    }
+  }
+
   return config;
 });
-
 
 let isRefreshing = false;
 let refreshSubscribers = [];
@@ -93,12 +118,12 @@ api.interceptors.response.use(
     const originalRequest = error?.config || {};
     const status = error?.response?.status;
 
-
+    // __noAuth 호출은 바로 에러 반환
     if (status === 401 && originalRequest.__noAuth) {
       return Promise.reject(normalizeError(error));
     }
 
- 
+    // 401: 토큰 갱신 시도
     if (status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -136,7 +161,7 @@ api.interceptors.response.use(
       }
     }
 
-
+    // 기타 401
     if (status === 401) {
       const norm = normalizeError(error);
       try { clearAuth(); } catch {}
@@ -151,7 +176,7 @@ api.interceptors.response.use(
   }
 );
 
-
+// 업로드 헬퍼
 export const apiUpload = (url, formData, config = {}) => {
   const cfg = { ...config, headers: { ...(config.headers || {}) } };
   delete cfg.headers['Content-Type'];
@@ -160,6 +185,7 @@ export const apiUpload = (url, formData, config = {}) => {
 
 export const logApiError = (err) => {
   if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
     console.error('API Error:', {
       status: err?.status,
       code: err?.code,

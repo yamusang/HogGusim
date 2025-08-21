@@ -1,328 +1,232 @@
 // src/pages/senior/SeniorPage.jsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
-import { getPetsRecommended } from '../../api/recommendations';
+import { getPetsRecommended, RecoMode } from '../../api/recommendations';
 import './senior.css';
-import api from '../../api/apiClient'; // ✅ select-pet 호출용
+
 const MODES = [
-  { key: 'conservative', label: '보수' },
-  { key: 'balanced',     label: '균형' },
-  { key: 'manager',      label: '매니저' },
+  { key: RecoMode.CONSERVATIVE, label: '보수' },
+  { key: RecoMode.BALANCED,     label: '균형' },
+  { key: RecoMode.MANAGER,      label: '매니저' },
 ];
 
 export default function SeniorPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const nav = useNavigate();
   const { user } = useAuth();
+  const seniorId = user?.seniorId || user?.id;
 
-  // seniorId 계산 (user.seniorId → user.id → localStorage.seniorId)
-  const seniorId =
-    user?.seniorId ??
-    user?.id ??
-    (localStorage.getItem('seniorId') ? Number(localStorage.getItem('seniorId')) : null);
+  // URL 쿼리 동기화
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialMode = useMemo(
+    () => (searchParams.get('mode') || RecoMode.BALANCED),
+    [] // 최초 1회
+  );
+  const initialPage = useMemo(
+    () => Math.max(0, Number(searchParams.get('page') || 0)),
+    [] // 최초 1회
+  );
 
-  // 신청 직후 or ?mode=recommend이면 추천부터
-  const initialRecommend = useMemo(() => {
-    const qs = new URLSearchParams(location.search);
-    if ((qs.get('mode') || '').toLowerCase() === 'recommend') return true;
-    return localStorage.getItem('afterApply') === '1';
-  }, [location.search]);
+  // UI 상태
+  const [mode, setMode] = useState(initialMode);
+  const [page, setPage] = useState(initialPage);
+  const [size] = useState(12);
 
-  // URL로 추천 모드 지정 가능: ?recoMode=balanced
-  const initialRecoMode = useMemo(() => {
-    const qs = new URLSearchParams(location.search);
-    const m = (qs.get('recoMode') || '').toLowerCase();
-    return ['conservative', 'balanced', 'manager'].includes(m) ? m : 'balanced';
-  }, [location.search]);
-
-  // 매니저 모드는 권한 있을 때만 노출
-  const canSeeManager = ['MANAGER', 'SHELTER', 'ADMIN'].includes((user?.role || '').toUpperCase());
-
-  const [isReco, setIsReco]   = useState(initialRecommend);
-  const [recoMode, setRecoMode] = useState(initialRecoMode);
+  // 데이터 상태
   const [loading, setLoading] = useState(false);
-  const [err, setErr]         = useState('');
-  const [errStatus, setErrStatus] = useState(0);
-  const [page1, setPage1]     = useState(1); // UI 1-based
+  const [error, setError] = useState('');
+  const [items, setItems] = useState([]);
+  const [pageMeta, setPageMeta] = useState({ totalElements: 0, totalPages: 1, number: 0, size });
 
-  const [data, setData] = useState({
-    content: [],
-    number: 0,
-    size: 12,
-    totalElements: 0,
-    totalPages: 0,
-    first: true,
-    last: true,
-    empty: true,
-  });
-
-  // 진행 중 요청 취소용
-  const abortRef = useRef(null);
-
-  // afterApply 1회성 제거
+  // URL 동기화 (mode/page 변경 시)
   useEffect(() => {
-    if (localStorage.getItem('afterApply') === '1') localStorage.removeItem('afterApply');
-  }, []);
+    const next = new URLSearchParams(searchParams);
+    next.set('mode', mode);
+    next.set('page', String(page));
+    // 동일 값이면 replaceState만 일어나도록 체크
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [mode, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // URL이 바뀌면 추천/모드 동기화
-  useEffect(() => {
-    const qs = new URLSearchParams(location.search);
-    const wantReco = (qs.get('mode') || '').toLowerCase() === 'recommend';
-    const m = (qs.get('recoMode') || '').toLowerCase();
-    setIsReco(wantReco);
-    if (['conservative', 'balanced', 'manager'].includes(m)) setRecoMode(m);
-    if (wantReco) setPage1(1);
-  }, [location.search]);
-
-  // 추천 로드 (요청 경합 방지 + 재시도 버튼 지원)
-  const loadRecommended = async () => {
+  // 데이터 로드
+  const load = async () => {
     if (!seniorId) return;
-    setLoading(true); setErr(''); setErrStatus(0);
-
-    // 이전 요청 취소
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
+    setLoading(true);
+    setError('');
     try {
-      const res = await getPetsRecommended(
-        seniorId,
-        { mode: recoMode, page: Math.max(0, page1 - 1), size: data.size || 12 },
-        { signal: ctrl.signal } // getPetsRecommended가 signal 받도록 구현된 경우에만 사용됨
-      );
-      if (ctrl.signal.aborted) return;
-
-      setData({
-        content: Array.isArray(res?.content) ? res.content : [],
-        number: res?.number ?? 0,
-        size: res?.size ?? (data.size || 12),
-        totalElements: res?.totalElements ?? 0,
-        totalPages: res?.totalPages ?? 0,
-        first: !!res?.first,
-        last: !!res?.last,
-        empty: !!res?.empty,
+      const data = await getPetsRecommended(seniorId, { mode, page, size });
+      setItems(data.content || []);
+      setPageMeta({
+        totalElements: data.totalElements ?? (data.content?.length || 0),
+        totalPages: data.totalPages ?? 1,
+        number: data.number ?? page,
+        size: data.size ?? size,
       });
     } catch (e) {
-      if (!ctrl.signal.aborted) {
-        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        setErr(offline ? '오프라인 상태예요. 네트워크를 확인해 주세요.' : (e?.message || '추천을 불러오지 못했습니다.'));
-        setErrStatus(e?.status || 0);
-      }
+      setError(e?.response?.data?.message || e.message || '추천 불러오기 실패');
     } finally {
-      if (!ctrl.signal.aborted) setLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isReco) loadRecommended();
-    return () => { abortRef.current?.abort(); };
-  }, [isReco, page1, recoMode, seniorId]);
+    let alive = true;
+    (async () => {
+      await load();
+      // 페이지 바뀔 때 스크롤 상단
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seniorId, mode, page, size]);
 
-  // 모드 전환 시 URL 동기화
-  const setModeAndSync = (m) => {
-    setRecoMode(m);
-    const qs = new URLSearchParams(location.search);
-    qs.set('mode', 'recommend');
-    qs.set('recoMode', m);
-    navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
-    setPage1(1);
+  const onApply = (pet) => {
+    // 동의 모달/신청 API는 다음 단계에서 붙이고, 지금은 신청 페이지로 이동만
+    nav(`/pet/${pet.id}/apply`);
   };
 
-  const onClickApply = async (pet) => {
-    const lastAppId = localStorage.getItem('lastApplicationId');
-    // 1) 최근 생성한 신청이 있으면 → select-pet API로 바로 연결
-    if (lastAppId) {
-      try {
-        await api.post(`/applications/${lastAppId}/select-pet`, null, {
-          params: { petId: pet.id },
-        });
-        alert('선택 완료! 보호소 검토 대기로 전환되었습니다.');
-        // 선택 끝났으니 보관 id 제거
-        localStorage.removeItem('lastApplicationId');
-        // 현황 페이지로 이동(원하면 다른 경로로 변경 OK)
-        navigate('/senior/connect');
-        return;
-      } catch (e) {
-        console.error(e);
-        alert(e?.message || '동물 선택에 실패했어요. 다시 시도해 주세요.');
-        return;
-      }
-    }
-    // 2) 최근 신청이 없으면 → 예전 플로우(동물 선택 후 신청 페이지)로 이동
-    localStorage.setItem('selectedPet', JSON.stringify({
-     id: pet.id,
-     breed: pet.breed ?? '',
-   photoUrl: pet.photoUrl ?? pet.thumbnail ?? '',
-     desertionNo: pet.desertionNo ?? null,
-   }));
-   navigate(`/pet/${pet.id}/apply`);
- };
-
-  const noPages = !data.totalPages || data.totalPages <= 0;
-
   return (
-    <div className="senior">
-      <div className="senior__header">
-        <h1>{isReco ? '맞춤 추천 동물' : '입양/체험 신청'}</h1>
-        <div style={{ display:'flex', gap:8 }}>
-          {isReco ? (
+    <div className="senior container" style={{ padding: 16 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 12 }}>
+        <h1 style={{ margin: 0 }}>추천 유기동물</h1>
+        <div style={{ display:'flex', gap: 8 }}>
+          {MODES.map(m => (
             <Button
-              presetName="ghost"
-              onClick={() => {
-                setIsReco(false);
-                setPage1(1);
-                const qs = new URLSearchParams(location.search);
-                qs.delete('mode'); qs.delete('recoMode');
-                navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
-              }}
+              key={m.key}
+              presetName={mode === m.key ? 'primary' : 'secondary'}
+              onClick={() => { setMode(m.key); setPage(0); }}
             >
-              신청 화면으로
+              {m.label}
             </Button>
-          ) : null}
-          <Button presetName="connectbtn" onClick={() => navigate('/senior/connect')}>
-            내 신청 현황
-          </Button>
-          <Button presetName="ghost" onClick={() => navigate('/logout')}>
-            로그아웃
-          </Button>
+          ))}
         </div>
       </div>
 
-      {/* 모드 스위치 (추천일 때만) */}
-      {isReco && (
-        <div className="seg" style={{ marginBottom: 8 }}>
-          {MODES
-            .filter(m => m.key !== 'manager' || canSeeManager)
-            .map(m => (
-              <button
-                key={m.key}
-                className={`seg__btn ${recoMode === m.key ? 'is-active' : ''}`}
-                onClick={() => setModeAndSync(m.key)}
-                aria-pressed={recoMode === m.key}
-              >
-                {m.label}
-              </button>
-            ))}
+      <p style={{ color:'#6b7280', marginTop: 0, marginBottom: 16 }}>
+        주소 근접도/안전도/중성화 등 기본 지표로 추천합니다. (모드는 가중치만 다르게 적용)
+      </p>
+
+      {error && (
+        <div style={{ color:'#b91c1c', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
+          <span>{error}</span>
+          <Button presetName="secondary" onClick={load}>재시도</Button>
         </div>
       )}
 
-      {/* 추천 모드 */}
-      {isReco ? (
-        <>
-          {loading && <p>불러오는 중…</p>}
-
-          {err && !loading && (
-            <div
-              className="auth__error"
-              role="alert"
-              style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}
-            >
-              <span>{err}</span>
-              <Button presetName="ghost" onClick={loadRecommended}>재시도</Button>
-              {errStatus === 500 && (
-                <Button onClick={() => navigate('/animals')}>보호소 동물 보러가기</Button>
-              )}
+      {/* 로딩 스켈레톤 */}
+      {loading && (
+        <div className="reco-grid">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="reco-card" style={{ border: '1px solid #e5e7eb', borderRadius: 12, overflow:'hidden', background:'#fff' }}>
+              <div style={{ width:'100%', aspectRatio:'4 / 3', background:'#f3f4f6' }} />
+              <div style={{ padding: '10px 12px' }}>
+                <div style={{ height: 14, background:'#f3f4f6', borderRadius:6, marginBottom:8, width:'60%' }} />
+                <div style={{ height: 12, background:'#f3f4f6', borderRadius:6, width:'40%' }} />
+              </div>
+              <div style={{ height:36, margin:'10px 12px 12px', background:'#f3f4f6', borderRadius:8 }} />
             </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          {!loading && !err && (
-            <div className="senior__grid">
-              {(data.content || []).map((it) => (
-                <Card
-                  key={it.id}
-                  variant="elevated"
-                  media={
-                    (it.photoUrl || it.thumbnail) ? (
+      {!loading && !error && (
+        <>
+          {items.length === 0 ? (
+            <div style={{ color:'#6b7280' }}>
+              조건에 맞는 동물이 없습니다.&nbsp;
+              <Button presetName="secondary" onClick={() => { setMode(RecoMode.CONSERVATIVE); setPage(0); }}>
+                보수 모드로 보기
+              </Button>
+            </div>
+          ) : (
+            <div className="reco-grid">
+              {items.map((it) => (
+                <Card key={it.id}>
+                  <div className="reco-card__img">
+                    {it.photoUrl ? (
                       <img
-                        src={it.photoUrl || it.thumbnail}
-                        alt={it.breed || it.name || `#${it.id}`}
-                        loading="lazy"
-                        onError={(e) => { e.currentTarget.src=''; e.currentTarget.style.opacity = 0.25; }}
+                        src={it.photoUrl}
+                        alt={it.breed || `#${it.id}`}
+                        onError={(e)=>{ e.currentTarget.src='/img/placeholder-dog.jpg'; }}
                       />
-                    ) : null
-                  }
-                  title={it.breed || '품종 미상'}
-                  subtitle={
-                    [it.sex || '-', it.neuter || '-', (it.age || '').trim() || null]
-                      .filter(Boolean)
-                      .join(' · ')
-                  }
-                  actions={
-                    typeof it.matchScore === 'number'
-                      ? <Badge>매칭점수 {Math.round(it.matchScore)}</Badge>
-                      : null
-                  }
-                  footer={
-                    <Button type="button" presetName="apply" onClick={() => onClickApply(it)}>
-                      신청하기
-                    </Button>
-                  }
-                >
-                  {/* 말줄임 처리용 클래스는 CSS에서 .reason로 스타일링 가능 */}
-                  {it.reason
-                    ? <span className="reason" title={it.reason}>{it.reason}</span>
-                    : <span className="muted">추천 이유 정보 없음</span>}
+                    ) : (
+                      <div className="noimg">NO IMAGE</div>
+                    )}
+                  </div>
+
+                  <div className="reco-card__meta" style={{ padding: '10px 12px' }}>
+                    <div className="reco-card__title" style={{ fontWeight: 600 }}>
+                      {it.name || it.breed || `#${it.id}`}
+                    </div>
+                    <div className="reco-card__sub" style={{ color:'#6b7280', fontSize:12 }}>
+                      {it.careName || '-'}
+                    </div>
+
+                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:8 }}>
+                      {it.sex && <Badge>{it.sex}</Badge>}
+                      {it.neuter && <Badge>중성화: {it.neuter}</Badge>}
+                      {it.age && <Badge>{it.age}</Badge>}
+                      {Number.isFinite(it.matchScore) && (
+                        <Badge variant="info">추천 {Math.round(it.matchScore)}</Badge>
+                      )}
+                    </div>
+
+                    {!!(it.reasonChips?.length) && (
+                      <div style={{ marginTop:8, display:'flex', gap:6, flexWrap:'wrap' }}>
+                        {it.reasonChips.slice(0, 3).map((chip, i) => (
+                          <Badge key={i} variant="secondary">
+                            {chip.label}{chip.delta != null ? ` ${chip.delta > 0 ? '+' : ''}${chip.delta}` : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    className="reco-card__btn"
+                    onClick={() => onApply(it)}
+                    style={{
+                      margin: '10px 12px 12px',
+                      padding: 10,
+                      border: 'none',
+                      borderRadius: 8,
+                      background: '#2563eb',
+                      color: '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    신청하기
+                  </button>
                 </Card>
               ))}
-
-              {(!data.content || data.content.length === 0) && (
-                <div className="card" style={{ maxWidth: 680 }}>
-                  <p>조건에 맞는 추천이 없어요.</p>
-                  <ul className="muted" style={{ marginTop: 6 }}>
-                    <li>부산 내 주소인지 확인해 주세요.</li>
-                    <li>약관/바디캠 동의가 완료되었는지 확인해 주세요.</li>
-                    <li>모드를 <em>보수 → 균형 → (권한 시) 매니저</em>로 바꿔 보세요.</li>
-                  </ul>
-                </div>
-              )}
             </div>
           )}
 
           {/* 페이지네이션 */}
-          <div className="senior__pagination">
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:16 }}>
             <Button
-              presetName="ghost"
-              disabled={noPages || page1 <= 1 || data.first}
-              onClick={() => setPage1((p) => Math.max(1, p - 1))}
+              presetName="secondary"
+              disabled={page <= 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
             >
               이전
             </Button>
-            <span>{noPages ? 0 : page1}</span>
+            <span style={{ fontSize:12, color:'#6b7280' }}>
+              {pageMeta.number + 1} / {pageMeta.totalPages || 1}
+            </span>
             <Button
-              presetName="ghost"
-              disabled={noPages || data.last || (page1 >= data.totalPages)}
-              onClick={() => setPage1((p) => p + 1)}
+              presetName="secondary"
+              disabled={pageMeta.number + 1 >= (pageMeta.totalPages || 1)}
+              onClick={() => setPage((p) => p + 1)}
             >
               다음
             </Button>
           </div>
         </>
-      ) : (
-        // 신청 유도 화면
-        <div className="card" style={{ maxWidth: 680 }}>
-          <h2 className="h6">입양/체험을 신청하시면 맞춤 추천을 보여드려요</h2>
-          <p className="muted">간단한 정보 입력 후, 알고리즘이 어르신께 맞는 동물을 추천해드립니다.</p>
-          <div style={{ display:'flex', gap:8, marginTop:12 }}>
-            <Button presetName="applibtn" onClick={() => navigate('/senior/apply')}>
-              신청하러 가기
-            </Button>
-            <Button
-              presetName="ghost"
-              onClick={() => {
-                setIsReco(true); setPage1(1);
-                const qs = new URLSearchParams(location.search);
-                qs.set('mode', 'recommend'); qs.set('recoMode', recoMode);
-                navigate({ pathname: location.pathname, search: qs.toString() }, { replace: true });
-              }}
-            >
-              (데모) 추천 먼저 보기
-            </Button>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
+// src/api/apiClient.js
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -35,17 +36,17 @@ export const clearAuth = () => {
 };
 
 // ===== 요청 인터셉터 =====
-// 공개 API 호출 시 { __noAuth: true }를 넘기면 토큰을 붙이지 않음
-const addAuthHeader = (config = {}) => {
-  if (config.__noAuth) return config;
+api.interceptors.request.use((config = {}) => {
+  if (config.__noAuth) return config; // 공개 호출은 헤더 생략
   const token = getAccessToken();
   if (token) {
     config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    if (!config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
-};
-api.interceptors.request.use(addAuthHeader);
+});
 
 // ===== 401 재발급 공통 처리 =====
 let isRefreshing = false;
@@ -61,7 +62,6 @@ const callRefreshToken = async () => {
   const refreshToken = getRefreshToken();
   if (!refreshToken) throw new Error('NO_REFRESH_TOKEN');
 
-  // authClient는 Authorization 헤더 주입 안 함(순수 리프레시 전용)
   const { data } = await authClient.post('/auth/refresh', { refreshToken });
   const newAccessToken = data?.token || data?.accessToken;
   const newRefreshToken = data?.refreshToken || refreshToken;
@@ -94,7 +94,7 @@ api.interceptors.response.use(
     const originalRequest = error?.config || {};
     const status = error?.response?.status;
 
-    // ✅ 공개 호출은 401이어도 리프레시/리다이렉트 금지
+    // 공개 호출은 리프레시/리다이렉트 금지
     if (status === 401 && originalRequest.__noAuth) {
       return Promise.reject(normalizeError(error));
     }
@@ -126,7 +126,6 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshErr) {
-        // 리프레시 실패 시: 즉시 로그아웃 + 로그인으로 이동
         isRefreshing = false;
         const norm = normalizeError(refreshErr);
         try { clearAuth(); } catch {}
@@ -138,7 +137,7 @@ api.interceptors.response.use(
       }
     }
 
-    // 2차: 여전히 401이면 강제 로그아웃 + 리다이렉트
+    // 2차: 여전히 401이면 강제 로그아웃
     if (status === 401) {
       const norm = normalizeError(error);
       try { clearAuth(); } catch {}

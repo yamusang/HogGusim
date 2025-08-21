@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
@@ -74,19 +74,33 @@ const routeForRole = (role) => {
   }
 };
 
-// Guards
-function Protected({ children, allow }) {
+/**
+ * 보호 라우트 가드
+ * - 로그인 안 되었으면: 메인(ROOT)으로 보냄 (요청하신 동작)
+ *   필요하면 RedirectToLogin=true 로 특정 라우트만 로그인 페이지로 보낼 수도 있음.
+ */
+function Protected({ children, allow, redirectToLogin = false }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
+
   if (loading) return null;
+
   if (!user) {
-    return <Navigate to={`${PATHS.LOGIN}?from=${encodeURIComponent(loc.pathname)}`} replace />;
+    // 로그인 페이지로 보내고 싶다면 redirectToLogin 사용
+    if (redirectToLogin) {
+      return <Navigate to={`${PATHS.LOGIN}?from=${encodeURIComponent(loc.pathname)}`} replace />;
+    }
+    // 기본: 메인으로
+    return <Navigate to={PATHS.ROOT} replace />;
   }
+
   if (allow && !allow.map(toUpper).includes(toUpper(user.role))) {
     return <Navigate to={routeForRole(user.role)} replace />;
   }
   return children;
 }
+
+/** 로그인/회원가입은 로그인 상태면 본인 홈으로 리다이렉트 */
 function RedirectIfAuthed({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -94,7 +108,6 @@ function RedirectIfAuthed({ children }) {
   return <Navigate to={routeForRole(user.role)} replace />;
 }
 
-// App
 export default function App() {
   return (
     <BrowserRouter>
@@ -139,7 +152,7 @@ export default function App() {
           >
             <Route index element={<ManagerInboxPage />} />
             <Route path="inbox" element={<ManagerInboxPage />} />
-            <Route path="queue" element={<ManagerQueuePage />} />   {/* 작업 큐 */}
+            <Route path="queue" element={<ManagerQueuePage />} />
             <Route path="profile" element={<ManagerProfilePage />} />
           </Route>
 

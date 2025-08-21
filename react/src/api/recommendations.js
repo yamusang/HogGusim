@@ -12,9 +12,14 @@ export const isValidMode = (m) =>
 
 export const toAbsoluteUrl = (url) => {
   if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url;
+  const s = String(url);
+  // 절대/프로토콜 상대/데이터 URL 그대로 통과
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^(data|blob):/i.test(s)) return s;
+  if (/^\/\//.test(s)) return s; // protocol-relative
   const base = (api.defaults?.baseURL || '').replace(/\/+$/, '');
-  const rel = (`/${String(url)}`).replace(/\/+/, '/');
+  if (s.startsWith('/')) return `${base}${s}`;
+  const rel = `/${s}`.replace(/\/{2,}/g, '/');
   return `${base}${rel}`;
 };
 
@@ -54,24 +59,28 @@ function normalizeNeuter(v) {
 /** 백 DTO → 카드용 표준 모델 */
 export function mapRecoPet(it = {}) {
   const photo = it.photoUrl ?? it.image ?? it.thumbnail ?? it.thumb ?? '';
+  const sexRaw = it.sex ?? it.gender ?? it.sexCd;
+  const neuterRaw = it.neuter ?? it.neutered ?? it.neuterYn;
   return {
-    id: it.id ?? it.desertionNo ?? null,
+    id: it.id ?? it.petId ?? it.animalId ?? it.desertionNo ?? it.seq ?? null,
     desertionNo: it.desertionNo ?? null,
     name: it.name ?? null,
-    breed: it.breed ?? it.kind ?? null,
+    breed: it.breed ?? it.kind ?? it.kindCd ?? null,
     age: it.age ?? null,
 
     photoUrl: photo ? toAbsoluteUrl(photo) : null,
     thumbnail: it.thumbnail ? toAbsoluteUrl(it.thumbnail) : null,
 
-    sex: normalizeSex(it.sex ?? it.gender),
-    neuter: normalizeNeuter(it.neuter ?? it.neutered),
+    sex: normalizeSex(sexRaw),
+    neuter: normalizeNeuter(neuterRaw),
 
     matchScore:
       typeof it.matchScore === 'number'
         ? it.matchScore
         : typeof it.score === 'number'
         ? it.score
+        : typeof it.match_score === 'number'
+        ? it.match_score
         : 0,
 
     reason: it.reason ?? '',

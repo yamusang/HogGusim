@@ -36,6 +36,7 @@ public class SecurityConfig {
         .formLogin(f -> f.disable())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
+<<<<<<< HEAD
             // Actuator (필요시 /actuator/health만 남겨도 됨)
             .requestMatchers("/actuator/**").permitAll()
 
@@ -71,6 +72,53 @@ public class SecurityConfig {
             // 그 외 전부 인증
             .anyRequest().authenticated())
         // 필터 순서: 블랙리스트 → JWT 인증
+=======
+    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+    // public
+    .requestMatchers(
+        "/error", "/favicon.ico",
+        "/api/animals/**", "/animals/**",
+        "/api/reco/**", "/reco/**",
+        "/api/auth/**", "/auth/**",
+        "/api/shelters/**",
+        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
+        "/actuator/**", "/uploads/**"
+    ).permitAll()
+
+    // ----- ★ 구체 경로를 일반 규칙보다 먼저 배치 ★ -----
+    .requestMatchers(HttpMethod.GET, "/api/applications/by-senior/**").hasRole("SENIOR")
+    .requestMatchers(HttpMethod.GET, "/api/applications/by-shelter/**").hasAnyRole("SHELTER","ADMIN")
+
+    // 시니어 신청(생성) & 기본 목록
+    .requestMatchers(HttpMethod.POST, "/api/applications").hasRole("SENIOR")
+    .requestMatchers(HttpMethod.GET,  "/api/applications").authenticated()
+
+    // 보호소 관리 동작
+    .requestMatchers(HttpMethod.POST,   "/api/applications/*/approve").hasAnyRole("SHELTER","ADMIN")
+    .requestMatchers(HttpMethod.POST,   "/api/applications/*/reject").hasAnyRole("SHELTER","ADMIN")
+
+    // 나머지 applications 하위는 보호소/관리자
+    .requestMatchers("/api/applications/**").hasAnyRole("SHELTER","ADMIN")
+
+    // 내부 적재
+    .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
+
+    .anyRequest().authenticated()
+)
+        .exceptionHandling(ex -> ex
+            .accessDeniedHandler((req, res, ex2) -> {
+              var a = SecurityContextHolder.getContext().getAuthentication();
+              log.warn("ACCESS DENIED path={} principal={} authorities={}",
+                  req.getRequestURI(), a==null?null:a.getPrincipal(), a==null?null:a.getAuthorities());
+              res.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden");
+            })
+            .authenticationEntryPoint((req, res, ex3) -> {
+              log.warn("UNAUTHORIZED path={} msg={}", req.getRequestURI(), ex3.getMessage());
+              res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+            })
+        )
+>>>>>>> e50b54cc444e98f70c759e3045fd1759fdb1a92b
         .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -80,6 +128,7 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
+<<<<<<< HEAD
 
     // credentials=true를 쓰는 경우 wildcard 대신 origin "패턴" 사용 권장
     cfg.setAllowedOriginPatterns(List.of(
@@ -88,6 +137,18 @@ public class SecurityConfig {
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
     cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
     cfg.setExposedHeaders(List.of("Authorization", "Location"));
+=======
+    // 개발 편의: 패턴으로 127.0.0.1 포함
+    cfg.setAllowedOriginPatterns(List.of(
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ));
+    cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+    cfg.setAllowedHeaders(List.of(
+        "Authorization","Content-Type","Accept","Origin","X-Requested-With" // ✅ 보강
+    ));
+    cfg.setExposedHeaders(List.of("Authorization","Location"));
+>>>>>>> e50b54cc444e98f70c759e3045fd1759fdb1a92b
     cfg.setAllowCredentials(true);
     cfg.setMaxAge(3600L);
 

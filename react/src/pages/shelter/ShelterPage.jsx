@@ -1,246 +1,236 @@
-// src/pages/shelter/ShelterPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
-import { fetchAnimals } from '../../api/animals';
-import { listApplicationsByShelter, approveApplication, rejectApplication } from '../../api/applications';
+import Card from '../../components/common/Card';
+import Badge from '../../components/common/Badge';
+import useAuth from '../../hooks/useAuth';
+import {
+  fetchAnimals,
+  createAnimal,
+  uploadAnimalPhoto,
+} from '../../api/animals';
+import {
+  listApplicationsByShelter,
+  approveApplication,
+  rejectApplication,
+} from '../../api/applications';
+import './shelter.css';
 
-const fmtDate = (d) => (!d ? '' : String(d).slice(0, 16).replace('T', ' ').replaceAll('-', '.'));
-
-async function loadAllAnimals(params) {
-  const pageSize = 100;
-  let page = 0, all = [];
-  while (true) {
-    const { content, totalPages } = await fetchAnimals({ ...params, page, size: pageSize, sort: 'id,DESC' });
-    all = all.concat(content || []);
-    page += 1;
-    if (page >= (totalPages || 1)) break;
-  }
-  return all;
-}
+const statusLabel = (s) => {
+  const t = String(s || '').toUpperCase();
+  if (t.includes('ADOPT')) return '매칭완료';
+  if (t.includes('PENDING') || t.includes('REVIEW')) return '대기중';
+  if (t.includes('MATCH') || t.includes('RESERVED')) return '매칭중';
+  if (t.includes('RETURN')) return '복귀';
+  if (t.includes('AVAIL') || t.includes('PROTECT')) return '보호중';
+  return s || '보호중';
+};
 
 export default function ShelterPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const careNm = useMemo(
+    () => user?.careNm || user?.affiliation || sessionStorage.getItem('affiliation') || localStorage.getItem('selectedCareNm') || '',
+    [user]
+  );
 
-  const [shelterName, setShelterName] = useState('');
-  const [metaLoading, setMetaLoading] = useState(true);
-
+  const [tab, setTab] = useState('ANIMALS'); // ANIMALS | APPS
   const [animals, setAnimals] = useState([]);
-  const [animalsLoading, setAnimalsLoading] = useState(true);
-  const [animalsError, setAnimalsError] = useState('');
+  const [appsPage, setAppsPage] = useState({ content: [], number: 0, size: 20, totalElements: 0 });
+  const [appsStatusFilter, setAppsStatusFilter] = useState('PENDING'); // PENDING/APPROVED/REJECTED/ALL
+  const [loading, setLoading] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    breed: '',
+    sex: 'M',
+    neuter: 'N',
+    status: 'AVAILABLE',
+    photo: null,
+  });
 
-  const [apps, setApps] = useState([]);
-  const [appsLoading, setAppsLoading] = useState(true);
-  const [appsError, setAppsError] = useState('');
-  const [appsFilter, setAppsFilter] = useState('ALL'); // ALL | PENDING | APPROVED | REJECTED
-  const [appsActingId, setAppsActingId] = useState(null);
-
-  const displayEmail = user?.email || '';
-  const careNm = useMemo(() => (
-    (user?.affiliation ||
-     sessionStorage.getItem('affiliation') ||
-     localStorage.getItem('selectedCareNm') || '')
-  ).trim(), [user]);
-
-  useEffect(() => {
-    setMetaLoading(true);
-    setShelterName(careNm || '보호소');
-    setMetaLoading(false);
-  }, [careNm]);
-
-  useEffect(() => {
-    let ignore = false;
-    const load = async () => {
-      if (!careNm) {
-        setAnimals([]); setAnimalsLoading(false); setAnimalsError('로그인 정보에 보호소명이 없습니다.'); return;
-      }
-      setAnimalsLoading(true); setAnimalsError('');
-      try {
-        let list = await loadAllAnimals({ careNm });
-        if (list.length === 0) { try { list = await loadAllAnimals({ carenm: careNm }); } catch {} }
-        if (!ignore) setAnimals(list);
-      } catch (e) {
-        if (ignore) return;
-        const status = e?.response?.status || e?.status;
-        if (status === 401 || status === 403) setAnimalsError('권한이 없습니다. 다시 로그인해주세요.');
-        else setAnimalsError(e?.response?.data?.message || e?.message || '보호 중인 동물을 불러오지 못했어요.');
-      } finally {
-        if (!ignore) setAnimalsLoading(false);
-      }
-    };
-    load();
-    return () => { ignore = true; };
-  }, [careNm, navigate]);
-
-  const reloadApps = async () => {
-    if (!careNm) { setApps([]); setAppsLoading(false); setAppsError('보호소 정보가 없습니다.'); return; }
-    setAppsLoading(true); setAppsError('');
+  const loadAnimals = async () => {
+    setLoading(true);
     try {
-      const apiStatus = appsFilter === 'ALL' ? undefined : appsFilter;
-      const res = await listApplicationsByShelter({ careNm, status: apiStatus, page: 0, size: 20 });
-      setApps(res.content || []);
-    } catch (e) {
-      setAppsError(e?.response?.data?.message || e.message || '신청 현황을 불러오지 못했습니다.');
+      const page = await fetchAnimals({ page: 0, size: 60, careNm });
+      setAnimals((page?.content || []).map(a => ({ ...a, _labelStatus: statusLabel(a.status) })));
     } finally {
-      setAppsLoading(false);
+      setLoading(false);
     }
   };
-  useEffect(() => { reloadApps(); /* eslint-disable-next-line */ }, [careNm, appsFilter]);
 
-  const onApprove = async (id) => {
-    if (!window.confirm('이 신청을 승인할까요?')) return;
-    try { setAppsActingId(id); await approveApplication(id); await reloadApps(); }
-    catch (e) { alert(e?.response?.data?.message || e.message || '승인 실패'); }
-    finally { setAppsActingId(null); }
-  };
-  const onReject = async (id) => {
-    if (!window.confirm('이 신청을 거절할까요?')) return;
-    try { setAppsActingId(id); await rejectApplication(id); await reloadApps(); }
-    catch (e) { alert(e?.response?.data?.message || e.message || '거절 실패'); }
-    finally { setAppsActingId(null); }
+  const loadApps = async ({ number = 0, size = 20 } = {}) => {
+    setLoading(true);
+    try {
+      const status = appsStatusFilter === 'ALL' ? undefined : appsStatusFilter;
+      const page = await listApplicationsByShelter({ careNm, status, page: number, size });
+      setAppsPage(page);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const goNewPet  = () => navigate('/shelter/animals/new');
-  const goAllPets = () => navigate('/shelter/animals');
-  const goLogout  = () => navigate('/logout');
+  useEffect(() => { loadAnimals(); }, [careNm]);
+  useEffect(() => { if (tab === 'APPS') loadApps({ number: 0 }); }, [tab, appsStatusFilter, careNm]);
 
-  const count = animals?.length || 0;
+  const submitCreate = async (e) => {
+    e.preventDefault();
+    if (creating) return;
+    setCreating(true);
+    try {
+      // 1) 동물 등록
+      const payload = {
+        name: form.name,
+        breed: form.breed,
+        sex: form.sex,            // 'M'|'F'
+        neuter: form.neuter,      // 'Y'|'N'
+        status: form.status,      // 'AVAILABLE' 등
+        careNm,                   // 백에서 필요 없으면 지워도 됨
+      };
+      const created = await createAnimal(payload);
+
+      // 2) 사진 업로드(선택)
+      if (form.photo) {
+        await uploadAnimalPhoto(created?.id || created?.animalId || created, form.photo);
+      }
+
+      setCreateOpen(false);
+      setForm({ name:'', breed:'', sex:'M', neuter:'N', status:'AVAILABLE', photo:null });
+      await loadAnimals();
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const onApprove = async (id) => { await approveApplication(id); await loadApps({ number: appsPage.number }); };
+  const onReject  = async (id) => { await rejectApplication(id);  await loadApps({ number: appsPage.number }); };
 
   return (
     <div className="shelter">
-      <header className="shelter__header">
-        <div className="shelter__titlebox">
-          <h1 className="shelter__title">{metaLoading ? '보호소 불러오는 중…' : (shelterName || '보호소')}</h1>
-          <p className="shelter__subtitle">관리자: {displayEmail || '이메일 확인 불가'}</p>
+      <div className="shelter__header">
+        <div>
+          <h1>보호소 대시보드</h1>
+          <div className="shelter__sub">소속: <strong>{careNm || '미지정'}</strong></div>
         </div>
-        <div className="shelter__actions">
-          <Button presetName="primary" onClick={goNewPet}>보호 동물 등록</Button>
-          <Button presetName="ghost" onClick={goAllPets}>전체 목록 보기</Button>
-          <Button presetName="danger" onClick={goLogout}>로그아웃</Button>
+        <div className="shelter__tabs">
+          <button className={tab==='ANIMALS'?'on':''} onClick={()=>setTab('ANIMALS')}>등록 동물</button>
+          <button className={tab==='APPS'?'on':''} onClick={()=>setTab('APPS')}>신청 처리</button>
         </div>
-      </header>
+      </div>
 
-      <section className="card">
-        <div className="card__head">
-          <h2 className="card__title">신청 현황</h2>
-          <div style={{display:'flex', gap:8, alignItems:'center', marginLeft:'auto'}}>
-            <select value={appsFilter} onChange={(e)=>setAppsFilter(e.target.value)}>
-              <option value="ALL">전체</option>
-              <option value="PENDING">대기</option>
-              <option value="APPROVED">승인</option>
-              <option value="REJECTED">거절</option>
-            </select>
+      {tab === 'ANIMALS' && (
+        <>
+          <div className="bar">
+            <Button onClick={loadAnimals} disabled={loading}>{loading ? '불러오는 중…' : '새로고침'}</Button>
+            <Button onClick={()=>setCreateOpen(true)}>동물 등록</Button>
           </div>
-        </div>
 
-        {appsLoading && <div className="card__body">불러오는 중…</div>}
-        {appsError && !appsLoading && <div className="card__error" style={{color:'crimson'}}>{appsError}</div>}
-        {!appsLoading && !appsError && apps.length === 0 && (
-          <div className="list__empty">신청 내역이 없습니다.</div>
-        )}
-
-        {!appsLoading && !appsError && apps.length > 0 && (
-          <div className="shelter__apps">
-            {apps.map((it) => (
-              <div key={it.id} className="shelter__app-row">
-                <div className="shelter__app-main">
-                  <div className="title">
-                    신청자: {it.seniorName || `Senior#${it.seniorId}`}
-                    {' · '}
-                    동물: {it.animalName || `Animal#${it.animalId}`}
-                  </div>
-                  <div className="sub">
-                    상태: <b>{it.status}</b>
-                    {it.createdAt && <> · 신청일: {fmtDate(it.createdAt)}</>}
-                    {it.managerName && <> · 매니저: {it.managerName}</>}
-                  </div>
-                </div>
-                <div className="shelter__app-actions">
-                  <Button disabled={appsActingId === it.id} onClick={() => onApprove(it.id)}>
-                    {appsActingId === it.id ? '승인 중…' : '승인'}
-                  </Button>
-                  <Button presetName="ghost" disabled={appsActingId === it.id} onClick={() => onReject(it.id)}>
-                    {appsActingId === it.id ? '거절 중…' : '거절'}
-                  </Button>
-                </div>
+          {createOpen && (
+            <form className="create" onSubmit={submitCreate}>
+              <div className="grid-3">
+                <label>이름<input value={form.name} onChange={e=>setForm(f=>({ ...f, name:e.target.value }))} required/></label>
+                <label>품종<input value={form.breed} onChange={e=>setForm(f=>({ ...f, breed:e.target.value }))} required/></label>
+                <label>성별
+                  <select value={form.sex} onChange={e=>setForm(f=>({ ...f, sex:e.target.value }))}>
+                    <option value="M">수컷</option><option value="F">암컷</option>
+                  </select>
+                </label>
+                <label>중성화
+                  <select value={form.neuter} onChange={e=>setForm(f=>({ ...f, neuter:e.target.value }))}>
+                    <option value="Y">예</option><option value="N">아니오</option>
+                  </select>
+                </label>
+                <label>상태
+                  <select value={form.status} onChange={e=>setForm(f=>({ ...f, status:e.target.value }))}>
+                    <option value="AVAILABLE">보호중</option>
+                    <option value="MATCHING">매칭중</option>
+                    <option value="ADOPTED">매칭완료</option>
+                    <option value="RETURNED">복귀</option>
+                  </select>
+                </label>
+                <label>사진
+                  <input type="file" accept="image/*"
+                    onChange={e=>setForm(f=>({ ...f, photo:e.target.files?.[0] || null }))}/>
+                </label>
               </div>
+              <div className="create__actions">
+                <Button type="button" variant="ghost" onClick={()=>setCreateOpen(false)}>취소</Button>
+                <Button type="submit" disabled={creating}>{creating ? '등록 중…' : '등록하기'}</Button>
+              </div>
+            </form>
+          )}
+
+          <div className="shelter__grid">
+            {animals.map(a => (
+              <Card key={a.id}>
+                <div className="pet-card">
+                  <img src={a.photoUrl || a._raw?.popfile || '/placeholder-dog.png'} alt={a.name || '유기동물'} />
+                  <div className="pet-card__body">
+                    <div className="pet-card__head">
+                      <strong>{a.name || '(이름없음)'}</strong>
+                      <Badge>{a._labelStatus}</Badge>
+                    </div>
+                    <div className="pet-card__meta" style={{flexWrap:'wrap'}}>
+                      <span>{a.breed || a.species || '-'}</span>
+                      <span>{(a.gender || a.sex || '-').toString()}</span>
+                      <span>{String(a.neuter||a.neuterYn).toUpperCase()==='Y' ? '중성화' : '미중성화'}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
             ))}
           </div>
-        )}
-      </section>
+        </>
+      )}
 
-      <main className="shelter__content">
-        <section className="card">
-          <div className="card__head">
-            <h2 className="card__title">보호 중인 동물</h2>
-            <span className="card__meta" style={{fontSize:12, color:'#6b7280'}}>총 {count}마리</span>
-            <Link to="/shelter/animals" className="card__link">더 보기</Link>
+      {tab === 'APPS' && (
+        <>
+          <div className="bar">
+            <div className="filters">
+              <select value={appsStatusFilter} onChange={e=>setAppsStatusFilter(e.target.value)}>
+                <option value="PENDING">대기중</option>
+                <option value="APPROVED">승인</option>
+                <option value="REJECTED">거절</option>
+                <option value="ALL">전체</option>
+              </select>
+            </div>
+            <Button onClick={()=>loadApps({ number: appsPage.number })} disabled={loading}>
+              {loading ? '불러오는 중…' : '새로고침'}
+            </Button>
           </div>
 
-          {animalsLoading && <div className="card__body">목록을 불러오는 중…</div>}
-          {animalsError && !animalsLoading && <div className="card__error">{animalsError}</div>}
-          {!animalsLoading && !animalsError && count === 0 && (
-            <div className="card__body">등록된 보호 동물이 없습니다. 먼저 등록해 보세요.</div>
+          <ul className="apps">
+            {(appsPage.content || []).map(it => (
+              <li key={it.id} className="app-item">
+                <div className="left">
+                  <img src={it.pet?.photoUrl || it.pet?.popfile || '/placeholder-dog.png'} alt="" />
+                  <div>
+                    <div className="title">{it.pet?.name || '(이름없음)'}</div>
+                    <div className="sub">
+                      {(it.pet?.breed || it.pet?.species || '-')}&nbsp;·&nbsp;
+                      {(it.pet?.gender || it.pet?.sex || '-').toString()}&nbsp;·&nbsp;
+                      {(String(it.pet?.neuter||'').toUpperCase()==='Y') ? '중성화':'미중성화'}
+                    </div>
+                    <div className="note">{it.note || '-'}</div>
+                  </div>
+                </div>
+                <div className="right">
+                  <Badge>{statusLabel(it.status)}</Badge>
+                  {it.status === 'PENDING' && (
+                    <div className="row">
+                      <Button onClick={()=>onApprove(it.id)}>승인</Button>
+                      <Button variant="ghost" onClick={()=>onReject(it.id)}>거절</Button>
+                    </div>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {(!loading && (appsPage.content||[]).length === 0) && (
+            <div className="empty">현재 조건의 신청이 없습니다.</div>
           )}
-
-          {!animalsLoading && !animalsError && count > 0 && (
-            <ul className="list">
-              {animals.map((a, i) => {
-                const title = a.name || a.species || a.breed || a.color || '이름/품종 미상';
-                const metaParts = [a.gender || a.sex, a.age, a.weight].filter(Boolean);
-                if (metaParts.length === 0 && a.color) metaParts.push(a.color);
-                const neuterLabel = a.neuter === 'Y' ? '중성화 O' : a.neuter === 'N' ? '중성화 X' : '중성화 미상';
-                const statusUpper = String(a.status || '').toUpperCase();
-                const statusLabel =
-                    statusUpper === 'AVAILABLE' || a.status === '보호중' ? '보호중'
-                  : statusUpper === 'ADOPTED'   || a.status === '입양완료' ? '입양완료'
-                  : a.status || '상태 미상';
-
-                return (
-                  <li key={a.id ?? `${a.careNm}-${i}`} className="list__item" style={{
-                    display:'flex', gap:12, alignItems:'center',
-                    padding:'12px 14px', border:'1px solid #e5e7eb',
-                    borderRadius:12, marginBottom:10, background:'#fff'
-                  }}>
-                    <div style={{
-                      width:64, height:64, borderRadius:10, overflow:'hidden',
-                      background:'#f3f4f6', flex:'0 0 auto', display:'flex', alignItems:'center', justifyContent:'center'
-                    }}>
-                      {a.photoUrl
-                        ? <img src={a.photoUrl} alt={title} loading="lazy"
-                               style={{width:'100%', height:'100%', objectFit:'cover'}}
-                               onError={(e)=>{e.currentTarget.style.display='none';}}/>
-                        : <span style={{fontSize:12, color:'#9ca3af'}}>no image</span>}
-                    </div>
-                    <div style={{flex:'1 1 auto', minWidth:0}}>
-                      <div style={{fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{title}</div>
-                      <div style={{fontSize:13, color:'#6b7280', marginTop:2}}>{metaParts.join(' · ')}</div>
-                      <div style={{fontSize:12, color:'#9ca3af', marginTop:4, display:'flex', gap:8, flexWrap:'wrap'}}>
-                        <span>{a.careNm || shelterName}</span>
-                      </div>
-                    </div>
-                    <div style={{display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end'}}>
-                      <span style={{fontSize:12, padding:'2px 8px', borderRadius:999, background:'#eef2ff', color:'#4338ca'}}>{statusLabel}</span>
-                      <span style={{fontSize:12, padding:'2px 8px', borderRadius:999, background:'#f1f5f9', color:'#334155'}}>{neuterLabel}</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="card">
-          <div className="card__head"><h2 className="card__title">빠른 작업</h2></div>
-          <div className="quickgrid">
-            <button className="quick" onClick={goNewPet}>신규 보호 동물 등록</button>
-            <button className="quick" onClick={goAllPets}>전체 목록 보기</button>
-            <button className="quick" onClick={() => navigate('/shelter')}>대시보드 새로고침</button>
-          </div>
-        </section>
-      </main>
+        </>
+      )}
     </div>
   );
 }

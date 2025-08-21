@@ -1,302 +1,176 @@
-// src/pages/senior/SeniorPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Button from '../../components/ui/Button';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
-import { getPetsRecommended, RecoMode } from '../../api/recommendations';
-import api from '../../api/apiClient';
-import { createApplication } from '../../api/applications';
+import { fetchAnimals, toAbsoluteUrl } from '../../api/animals';
+import { mockTemperament, fakeMatchScore } from '../../utils/tempermock';
 import './senior.css';
 
-const MODES = [
-  { key: RecoMode.CONSERVATIVE, label: '보수' },
-  { key: RecoMode.BALANCED,     label: '균형' },
-  { key: RecoMode.MANAGER,      label: '매니저' },
-];
+// 시연 고정 보호소
+const CARE_NM = '동부동물보호협회';
+const CARE_ADDR = '부산광역시 해운대구 송정2로13번길 46 (송정동)';
+
+const normalizeYN = (v) => String(v ?? '').toUpperCase();
+const isProtected = (st='') => {
+  const s = String(st).toUpperCase();
+  return s.includes('보호') || s.includes('PROTECT') || s.includes('AVAILABLE') || s.includes('SHELTER');
+};
+
+function PetImg({ pet }) {
+  const [ok, setOk] = useState(true);
+  const candidates = [
+    pet?.photoUrl,
+    pet?._raw?.popfile,
+    pet?._raw?.filename,
+    pet?.popfile,
+  ].filter(Boolean);
+
+  let src = '';
+  for (const c of candidates) {
+    const abs = toAbsoluteUrl(c);
+    if (abs) { src = abs; break; }
+  }
+
+  const isMixedBlocked = (() => {
+    try { return window.location.protocol === 'https:' && /^http:\/\//i.test(src); }
+    catch { return false; }
+  })();
+
+  const finalSrc = ok && src ? src : '/placeholder-dog.png';
+
+  return (
+    <div style={{ position:'relative' }}>
+      <img
+        src={finalSrc}
+        alt={pet?.name || '유기동물'}
+        loading="lazy"
+        onError={() => setOk(false)}
+        style={{ width:'100%', height:'auto', display:'block' }}
+      />
+      {isMixedBlocked && (
+        <span
+          style={{
+            position:'absolute', left:8, top:8, fontSize:12,
+            color:'#ef4444', textShadow:'0 0 3px #fff', fontWeight:700
+          }}
+          title="https 페이지에서 http 이미지는 브라우저가 차단할 수 있어요"
+        >
+          http 이미지 차단됨
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function SeniorPage() {
-  const nav = useNavigate();
-  const loc = useLocation();
-  const { user } = useAuth();
-  const seniorId = user?.seniorId || user?.id;
+  const navigate = useNavigate();
+  const { user, logout } = useAuth?.() || {};
 
-  // URL 쿼리 동기화
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialMode = useMemo(() => (searchParams.get('mode') || RecoMode.BALANCED), []);
-  const initialPage = useMemo(() => Math.max(0, Number(searchParams.get('page') || 0)), []);
+  const senior = useMemo(() => ({
+    id: user?.seniorId || user?.id,
+    name: user?.name,
+    address: user?.address || user?.city || '부산',
+  }), [user]);
 
-  // UI 상태
-  const [mode, setMode] = useState(initialMode);
-  const [page, setPage] = useState(initialPage);
-  const [size] = useState(12);
-
-  // 데이터 상태
+  const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [items, setItems] = useState([]);
-  const [pageMeta, setPageMeta] = useState({ totalElements: 0, totalPages: 1, number: 0, size });
 
-  // 신청 모달 상태
-  const [consentOpen, setConsentOpen] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [agreeBodycam, setAgreeBodycam] = useState(false);
-  const [pendingPet, setPendingPet] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  // URL 동기화
   useEffect(() => {
-    const next = new URLSearchParams(searchParams);
-    next.set('mode', mode);
-    next.set('page', String(page));
-    if (next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true });
-    }
-  }, [mode, page]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 데이터 로드
-  const load = async () => {
-    if (!seniorId) return;
+    let off = false;
     setLoading(true);
-    setError('');
-    try {
-      const data = await getPetsRecommended(seniorId, { mode, page, size });
-      setItems(data.content || []);
-      setPageMeta({
-        totalElements: data.totalElements ?? (data.content?.length || 0),
-        totalPages: data.totalPages ?? 1,
-        number: data.number ?? page,
-        size: data.size ?? size,
-      });
-    } catch (e) {
-      setError(e?.response?.data?.message || e.message || '추천 불러오기 실패');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
     (async () => {
-      await load();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      try {
+        const page = await fetchAnimals({ page: 0, size: 60, careNm: CARE_NM });
+        const items = (page?.content || []).filter(p => isProtected(p?.status || '보호중'));
+        const enriched = items.map(p => ({
+          ...p,
+          careAddr: p.careAddr || CARE_ADDR,
+          matchScore: fakeMatchScore({ senior, pet: p }),
+          temperament: mockTemperament(p),
+        })).sort((a,b)=> (b.matchScore ?? 0) - (a.matchScore ?? 0));
+        if (!off) setPets(enriched);
+      } finally {
+        !off && setLoading(false);
+      }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seniorId, mode, page, size]);
+    return ()=>{ off = true; };
+  }, [senior]);
 
-  // 로그아웃
+  const onApply = (pet) => {
+    localStorage.setItem('selectedPet', JSON.stringify(pet));
+    navigate(`/pet/${pet.id}/apply`);
+  };
+
   const onLogout = () => {
-    nav(`/logout?from=${encodeURIComponent(loc.pathname)}`, { replace: true });
-  };
-
-  // 신청 버튼 → 동의 모달
-  const onApplyClick = (pet) => {
-    setPendingPet(pet);
-    setAgreeTerms(false);
-    setAgreeBodycam(false);
-    setConsentOpen(true);
-  };
-
-  // 동의 확인
-  const onConfirmConsent = async () => {
-    if (!pendingPet) return;
-    setSubmitting(true);
-    try {
-      const app = await createApplication({
-        petId: null,
-        note: user?.address || '',
-        agreeTerms,
-        agreeBodycam,
-      });
-      await api.post(`/applications/${app.id}/select-pet`, null, {
-        params: { petId: pendingPet.id },
-      });
-      setConsentOpen(false);
-      setPendingPet(null);
-      nav('/senior/connect');
-    } catch (e) {
-       const msg =
-    e?.response?.data?.message ||
-    e?.response?.data?.error ||
-     `${e?.response?.status || ''} ${e?.response?.statusText || ''}`.trim() ||
-   e.message ||
-   '신청 처리 실패';
-  alert(msg);
-    } finally {
-      setSubmitting(false);
-    }
+    if (typeof logout === 'function') logout();
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('selectedRole');
+    navigate('/', { replace: true }); // ← 메인으로 이동
   };
 
   return (
-    <div className="senior container" style={{ padding: 16 }}>
-      {/* 상단 바 */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-        <h1 style={{ margin: 0, flex: '0 0 auto' }}>추천 유기동물</h1>
-
-        <div style={{ display:'flex', gap: 8, flex: '0 0 auto' }}>
-          {MODES.map(m => (
-            <Button
-              key={m.key}
-              presetName={mode === m.key ? 'primary' : 'secondary'}
-              onClick={() => { setMode(m.key); setPage(0); }}
-            >
-              {m.label}
-            </Button>
-          ))}
+    <div className="senior">
+      <div className="senior__header">
+        <div>
+          <h1>추천 유기동물</h1>
+          <div style={{color:'#667085', fontSize:14, marginTop:4}}>
+            보호소: <strong>{CARE_NM}</strong> · {CARE_ADDR}
+          </div>
         </div>
-
-        <div style={{ marginLeft:'auto' }}>
-          <Button presetName="secondary" onClick={onLogout}>로그아웃</Button>
+        <div className="senior__actions">
+          <Button onClick={()=>window.location.reload()}>새로고침</Button>
+          <Button variant="ghost" onClick={onLogout}>로그아웃</Button>
         </div>
       </div>
 
-      <p style={{ color:'#6b7280', marginTop: 0, marginBottom: 16 }}>
-        주소 근접도/안전도/중성화 등 기본 지표로 추천합니다. (모드는 가중치만 다르게 적용)
-      </p>
+      {loading && <p>불러오는 중…</p>}
 
-      {error && (
-        <div style={{ color:'#b91c1c', marginBottom:12, display:'flex', alignItems:'center', gap:8 }}>
-          <span>{error}</span>
-          <Button presetName="secondary" onClick={load}>재시도</Button>
-        </div>
-      )}
-
-      {/* 로딩 */}
-      {loading && (
-        <div className="reco-grid">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="reco-card" style={{ border: '1px solid #e5e7eb', borderRadius: 12, overflow:'hidden', background:'#fff' }}>
-              <div style={{ width:'100%', aspectRatio:'4 / 3', background:'#f3f4f6' }} />
-              <div style={{ padding: '10px 12px' }}>
-                <div style={{ height: 14, background:'#f3f4f6', borderRadius:6, marginBottom:8, width:'60%' }} />
-                <div style={{ height: 12, background:'#f3f4f6', borderRadius:6, width:'40%' }} />
-              </div>
-              <div style={{ height:36, margin:'10px 12px 12px', background:'#f3f4f6', borderRadius:8 }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!loading && !error && (
-        <>
-          {items.length === 0 ? (
-            <div style={{ color:'#6b7280' }}>
-              조건에 맞는 동물이 없습니다.&nbsp;
-              <Button presetName="secondary" onClick={() => { setMode(RecoMode.CONSERVATIVE); setPage(0); }}>
-                보수 모드로 보기
-              </Button>
-            </div>
-          ) : (
-            <div className="reco-grid">
-              {items.map((it) => (
-                <Card key={it.id}>
-                  <div className="reco-card__img">
-                    {it.photoUrl ? (
-                      <img
-                        src={it.photoUrl}
-                        alt={it.breed || `#${it.id}`}
-                        onError={(e)=>{ e.currentTarget.src='/img/placeholder-dog.jpg'; }}
-                      />
-                    ) : (
-                      <div className="noimg">NO IMAGE</div>
-                    )}
-                  </div>
-
-                  <div className="reco-card__meta" style={{ padding: '10px 12px' }}>
-                    <div className="reco-card__title" style={{ fontWeight: 600 }}>
-                      {it.name || it.breed || `#${it.id}`}
-                    </div>
-                    <div className="reco-card__sub" style={{ color:'#6b7280', fontSize:12 }}>
-                      {it.careName || '-'}
-                    </div>
-
-                    <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:8 }}>
-                      {it.sex && <Badge>{it.sex}</Badge>}
-                      {it.neuter && <Badge>중성화: {it.neuter}</Badge>}
-                      {it.age && <Badge>{it.age}</Badge>}
-                      {Number.isFinite(it.matchScore) && (
-                        <Badge variant="info">추천 {Math.round(it.matchScore)}</Badge>
-                      )}
-                    </div>
-
-                    {!!(it.reasonChips?.length) && (
-                      <div style={{ marginTop:8, display:'flex', gap:6, flexWrap:'wrap' }}>
-                        {it.reasonChips.slice(0, 3).map((chip, i) => (
-                          <Badge key={i} variant="secondary">
-                            {chip.label}{chip.delta != null ? ` ${chip.delta > 0 ? '+' : ''}${chip.delta}` : ''}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    className="reco-card__btn"
-                    onClick={() => onApplyClick(it)}
-                    style={{
-                      margin: '10px 12px 12px',
-                      padding: 10,
-                      border: 'none',
-                      borderRadius: 8,
-                      background: '#2563eb',
-                      color: '#fff',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    신청하기
-                  </button>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* 페이지네이션 */}
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:16 }}>
-            <Button
-              presetName="secondary"
-              disabled={page <= 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              이전
-            </Button>
-            <span style={{ fontSize:12, color:'#6b7280' }}>
-              {pageMeta.number + 1} / {pageMeta.totalPages || 1}
-            </span>
-            <Button
-              presetName="secondary"
-              disabled={pageMeta.number + 1 >= (pageMeta.totalPages || 1)}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              다음
-            </Button>
-          </div>
-        </>
-      )}
-
-      {/* 동의 모달 */}
-      {consentOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>신청 동의</h2>
-            <label style={{ display:'block', marginBottom:8 }}>
-              <input type="checkbox" checked={agreeTerms} onChange={(e)=>setAgreeTerms(e.target.checked)} /> 이용약관에 동의합니다.
-            </label>
-            <label style={{ display:'block', marginBottom:8 }}>
-              <input type="checkbox" checked={agreeBodycam} onChange={(e)=>setAgreeBodycam(e.target.checked)} /> 보디캠 촬영에 동의합니다.
-            </label>
-            <div style={{ display:'flex', gap:8, marginTop:12 }}>
-              <Button presetName="secondary" onClick={()=>setConsentOpen(false)}>취소</Button>
-              <Button
-                presetName="primary"
-                disabled={!agreeTerms || !agreeBodycam || submitting}
-                onClick={onConfirmConsent}
+      <div className="senior__grid">
+        {pets.map((pet) => {
+          const neutered = normalizeYN(pet.neuter) === 'Y';
+          const sex = (pet.gender || pet.sex || '').toString() || '-';
+          const kind = pet.breed || pet.species || '-';
+          return (
+            <Card key={pet.id}>
+              <div
+                className="pet-card"
+                role="button"
+                tabIndex={0}
+                onClick={()=>onApply(pet)}
+                onKeyDown={(e)=> (e.key==='Enter' || e.key===' ') && onApply(pet)}
+                style={{ cursor:'pointer' }}
               >
-                확인
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+                <PetImg pet={pet} />
+                <div className="pet-card__body">
+                  <div className="pet-card__head">
+                    <strong>{pet.name || '(이름없음)'}</strong>
+                    <Badge color="green">점수 {pet.matchScore}</Badge>
+                  </div>
+                  <div className="pet-card__meta" style={{flexWrap:'wrap'}}>
+                    <span>{kind}</span>
+                    <span>{sex}</span>
+                    <span>{neutered ? '중성화' : '미중성화'}</span>
+                    <span>상태: {pet.status || '보호중'}</span>
+                  </div>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:6, margin:'6px 0 10px'}}>
+                    {(pet.temperament || []).map((t,i)=>(
+                      <span key={`${t}-${i}`} style={{
+                        fontSize:12, padding:'4px 8px', borderRadius:999,
+                        background:'#f3f4f6', color:'#374151'
+                      }}>{t}</span>
+                    ))}
+                  </div>
+                  <Button className="applibtn" onClick={(e)=>{ e.stopPropagation(); onApply(pet); }}>
+                    신청하기
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

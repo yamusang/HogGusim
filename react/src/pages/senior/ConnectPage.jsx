@@ -1,239 +1,157 @@
-// src/pages/senior/ConnectPage.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { fetchMyApplications, cancelApplication } from '../../api/applications';
 import Button from '../../components/ui/Button';
 import './senior.css';
 
-const fmtDateTime = (iso) => {
-  try {
-    if (!iso) return '-';
-    const d = new Date(iso);
-    return d.toLocaleString('ko-KR');
-  } catch {
-    return iso ?? '-';
-  }
-};
-
-const StatusChip = ({ status }) => {
-  const s = String(status || 'PENDING').toUpperCase();
-  const map = {
-    PENDING:   { label: '대기',   cls: 'chip chip--pending'  },
-    APPROVED:  { label: '승인',   cls: 'chip chip--approved' },
-    REJECTED:  { label: '거절',   cls: 'chip chip--rejected' },
-    IN_PROGRESS: { label: '진행중', cls: 'chip chip--approved' },
-    FORWARDED: { label: '전달',   cls: 'chip chip--approved' },
-  };
-  const meta = map[s] || map.PENDING;
-  return <span className={meta.cls}>{meta.label}</span>;
+const fmt = (iso) => { try { return new Date(iso).toLocaleString('ko-KR'); } catch { return iso ?? '-'; } };
+const StatusChip = ({ s }) => {
+  const map = { PENDING:'대기', FORWARDED:'보호소 검토중', APPROVED:'승인', REJECTED:'거절' };
+  const label = map[s] || s || '대기';
+  const cls = s === 'APPROVED' ? 'chip chip--approved'
+           : s === 'REJECTED' ? 'chip chip--rejected'
+           : 'chip chip--pending';
+  return <span className={cls}>{label}</span>;
 };
 
 export default function ConnectPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const seniorId = useMemo(() => user?.seniorId || user?.id, [user]);
 
-  // seniorId: user.seniorId -> user.id -> localStorage.seniorId
-  const seniorId = useMemo(() => {
-    const ls = localStorage.getItem('seniorId');
-    return user?.seniorId ?? user?.id ?? (ls ? Number(ls) : null);
-  }, [user]);
-
-  // pagination & data
-  const [page, setPage] = useState(0);      // 0-based (서버 기준)
-  const [size, setSize] = useState(10);
-  const [data, setData] = useState({
-    content: [],
-    number: 0,
-    size,
-    totalElements: 0,
-    totalPages: 0,
-    first: true,
-    last: true,
-    empty: true,
-  });
-
+  const [page, setPage] = useState({ number: 0, size: 10, totalElements: 0, content: [] });
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
-  const [actingId, setActingId] = useState(null);
-  const abortRef = useRef(null);
+  const [autoOn, setAutoOn] = useState(true); // 자동 새로고침 on/off
+  const [tick, setTick] = useState(0);        // 실시간 라벨 깜빡임용
+  const [toast, setToast] = useState({ show:false, kind:'success', text:'' });
 
-  const load = async () => {
+  const timerRef = useRef(null);
+  const blinkRef = useRef(null);
+  const approvedRef = useRef(new Set()); // 이전에 승인된 app id 추적
+  const rejectedRef = useRef(new Set()); // 이전에 거절된 app id 추적
+
+  const load = ({ number = 0, size = page.size } = {}) => {
     if (!seniorId) return;
     setLoading(true);
-    setErr('');
+    fetchMyApplications({ seniorId, page: number, size })
+      .then((res) => {
+        // 상태 변화 감지 → 토스트
+        const nextApproved = new Set();
+        const nextRejected = new Set();
+        (res.content || []).forEach(it => {
+          if (it.status === 'APPROVED') nextApproved.add(it.id);
+          if (it.status === 'REJECTED') nextRejected.add(it.id);
+        });
 
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    try {
-      const res = await fetchMyApplications({
-        seniorId,
-        page,
-        size,
-        signal: ctrl.signal,
-      });
-      if (ctrl.signal.aborted) return;
-
-      setData(
-        res || {
-          content: [],
-          number: page,
-          size,
-          totalElements: 0,
-          totalPages: 0,
-          first: true,
-          last: true,
-          empty: true,
+        // 새로 승인된 항목 (기존에 없던 승인 id)
+        for (const id of nextApproved) {
+          if (!approvedRef.current.has(id)) {
+            showToast('success', '매칭 승인 완료! 보호소와 일정을 조율해 주세요.');
+            break;
+          }
         }
-      );
-    } catch (e) {
-      if (!ctrl.signal.aborted) setErr(e?.message || '신청 내역을 불러오지 못했습니다.');
-    } finally {
-      if (!ctrl.signal.aborted) setLoading(false);
-    }
+        // 새로 거절된 항목
+        for (const id of nextRejected) {
+          if (!rejectedRef.current.has(id)) {
+            showToast('error', '아쉽지만 이번 매칭은 거절되었어요. 다른 친구들에게도 신청해보세요.');
+            break;
+          }
+        }
+
+        approvedRef.current = nextApproved;
+        rejectedRef.current = nextRejected;
+        setPage(res);
+      })
+      .finally(()=>setLoading(false));
   };
 
+  const showToast = (kind, text) => {
+    setToast({ show:true, kind, text });
+    // 4.5초 후 자동 숨김
+    window.clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => setToast(t => ({ ...t, show:false })), 4500);
+  };
+
+  // 최초 로드
+  useEffect(()=>{ load({ number: 0 }); }, [seniorId]);
+
+  // 3초 폴링 + 탭 비활성화 시 일시정지
   useEffect(() => {
-    load();
-    return () => abortRef.current?.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seniorId, page, size]);
+    const start = () => {
+      if (timerRef.current || !autoOn) return;
+      timerRef.current = setInterval(() => {
+        if (document.visibilityState === 'visible') load({ number: page.number });
+      }, 3000);
+    };
+    const stop = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
 
-  const rows = Array.isArray(data.content) ? data.content : [];
-  const totalPages = data?.totalPages || Math.max(0, Math.ceil((data?.totalElements || 0) / (data?.size || size)));
-  const uiPage = (data?.number ?? page) + 1;
-  const noPages = !totalPages || totalPages <= 0;
+    if (autoOn) start();
+    const onVis = () => { if (document.visibilityState === 'visible') start(); else stop(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
+  }, [autoOn, page.number, seniorId]);
 
-  const onCancel = async (id) => {
-    if (!window.confirm('이 신청을 취소할까요?')) return;
-    try {
-      setActingId(id);
-      await cancelApplication(id);
-      await load();
-      alert('취소되었습니다.');
-    } catch (e) {
-      alert(e?.message || '취소 실패');
-    } finally {
-      setActingId(null);
-    }
-  };
+  // 실시간 라벨 깜빡임(점 애니메이션)
+  useEffect(() => {
+    if (!autoOn) { setTick(0); window.clearInterval(blinkRef.current); return; }
+    blinkRef.current = window.setInterval(() => setTick(t => (t+1)%4), 600);
+    return () => window.clearInterval(blinkRef.current);
+  }, [autoOn]);
 
   return (
-    <div className="senior">
-      <header className="senior__header">
-        <h1>내 신청 현황</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button presetName="ghost" onClick={() => navigate('/senior?mode=recommend')}>추천 보기</Button>
-          <Button presetName="applibtn" onClick={() => navigate('/senior/apply')}>새 신청</Button>
+    <div className="senior connect">
+      {/* 토스트 배너 */}
+      {toast.show && (
+        <div className={`toast ${toast.kind === 'success' ? 'toast--green' : 'toast--red'}`}>
+          {toast.text}
         </div>
-      </header>
+      )}
 
-      <section className="card">
-        <div className="card__head">
-          <h2 className="card__title">신청 목록</h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
-            <select
-              value={size}
-              onChange={(e) => {
-                setPage(0);
-                setSize(Number(e.target.value));
-              }}
-            >
-              <option value={10}>10개</option>
-              <option value={20}>20개</option>
-              <option value={50}>50개</option>
-            </select>
-            <Button presetName="ghost" onClick={load}>새로고침</Button>
-          </div>
+      <div className="senior__header">
+        <h1>매칭 현황</h1>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <Button onClick={()=>load({ number: page.number })}>
+            {loading ? '새로고침 중…' : '새로고침'}
+          </Button>
+
+          <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:14, color:'#667085' }}>
+            <input type="checkbox" checked={autoOn} onChange={e=>setAutoOn(e.target.checked)} />
+            {autoOn ? `실시간 업데이트 중${'.'.repeat(tick)}` : '자동 새로고침 꺼짐'}
+          </label>
         </div>
+      </div>
 
-        {loading && <div className="card__body">불러오는 중…</div>}
-        {err && !loading && <div className="card__error" style={{ color: 'crimson' }}>{err}</div>}
+      {loading && <p>불러오는 중…</p>}
 
-        {!loading && !err && rows.length === 0 && (
-          <div className="list__empty">
-            아직 신청이 없습니다. <Button presetName="ghost" onClick={() => navigate('/senior/apply')}>신청하러 가기</Button>
-          </div>
-        )}
+      <ul className="connect__list">
+        {(page.content || []).map(it => (
+          <li key={it.id} className="connect__item">
+            <div className="left">
+              <img src={it.pet?.photoUrl || it.pet?.popfile || '/placeholder-dog.png'} alt="" />
+              <div>
+                <div className="title">{it.pet?.name || '(이름없음)'}</div>
+                <div className="sub">
+                  {(it.pet?.breed || it.pet?.species || '-')}&nbsp;·&nbsp;
+                  {(it.pet?.gender || it.pet?.sex || '-').toString()}&nbsp;·&nbsp;
+                  {(String(it.pet?.neuter||'').toUpperCase()==='Y') ? '중성화':'미중성화'}
+                </div>
+                <div className="time">신청일 {fmt(it.createdAt)}</div>
+              </div>
+            </div>
+            <div className="right">
+              <StatusChip s={it.status} />
+              {it.status === 'PENDING' && (
+                <Button variant="ghost" onClick={()=>cancelApplication(it.id).then(()=>load({ number: page.number }))}>
+                  취소
+                </Button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
 
-        {!loading && !err && rows.length > 0 && (
-          <ul className="list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {rows.map((app) => {
-              const status = String(app.status || 'PENDING').toUpperCase();
-              const pending = status === 'PENDING';
-              const animalLabel = app.animal?.name || app.petName || app.breed || `Animal#${app.animalId ?? ''}`;
-              const shelterName = app.shelter?.name || app.careNm || app.careName || '';
-              const memo = app.memo || app.note || '';
-
-              return (
-                <li
-                  key={app.id}
-                  className="list__item"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto',
-                    gap: 12,
-                    alignItems: 'center',
-                    border: '1px solid #eee',
-                    borderRadius: 12,
-                    padding: 12,
-                    background: '#fff',
-                  }}
-                >
-                  <div>
-                    <div className="list__name" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <b>{animalLabel}</b> <StatusChip status={status} />
-                    </div>
-                    <div className="list__meta" style={{ fontSize: 12, color: '#6b7280' }}>
-                      신청일: {fmtDateTime(app.createdAt)}
-                      {app.reservedAt ? ` · 예약: ${fmtDateTime(app.reservedAt)}` : ''}
-                      {shelterName ? ` · 보호소: ${shelterName}` : ''}
-                      {memo ? ` · 메모: ${memo}` : ''}
-                    </div>
-                  </div>
-
-                  <div className="mgr__actions" style={{ display: 'flex', gap: 8 }}>
-                    {pending && (
-                      <Button
-                        presetName="ghost"
-                        disabled={actingId === app.id}
-                        onClick={() => onCancel(app.id)}
-                      >
-                        {actingId === app.id ? '취소 중…' : '신청 취소'}
-                      </Button>
-                    )}
-                    <Button onClick={() => navigate(`/pet/${app.animalId ?? app.petId ?? app.id}/connect`)}>
-                      상세
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {!loading && totalPages > 1 && (
-          <div className="senior__pagination">
-            <Button
-              presetName="ghost"
-              disabled={noPages || page <= 0 || data.first}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              이전
-            </Button>
-            <span>{noPages ? 0 : uiPage} / {noPages ? 0 : totalPages}</span>
-            <Button
-              presetName="ghost"
-              disabled={noPages || data.last || uiPage >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              다음
-            </Button>
-          </div>
-        )}
-      </section>
+      {(!loading && (page.content||[]).length === 0) && (
+        <div className="empty">아직 신청한 매칭이 없어요. 시니어 페이지에서 동물을 선택해 신청해보세요!</div>
+      )}
     </div>
   );
 }

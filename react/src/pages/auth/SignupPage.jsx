@@ -1,10 +1,10 @@
 // src/pages/auth/SignupPage.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/apiClient';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/common/FormField';
-import { fetchCareNames } from '../../api/shelters';
+import CareNmDropdown from '../../components/shelter/CareNmDropdown';
 import './auth.css';
 
 export default function SignupPage() {
@@ -27,15 +27,13 @@ export default function SignupPage() {
 
   // SHELTER 전용
   const [affiliation, setAffiliation] = useState('');
-  const [careList, setCareList] = useState([]);
-  const [loadingCare, setLoadingCare] = useState(false);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const minLen = 8;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const phoneRegex = /^[0-9\-+()\s]{9,20}$/; // 간단 검증(하이픈/공백 허용)
+  const phoneRegex = /^[0-9\-+()\s]{9,20}$/; // 간단 검증
 
   const isInvalidEmail = useMemo(() => !!email && !emailRegex.test(email), [email]);
   const isMismatch = useMemo(() => confirm.length > 0 && password !== confirm, [password, confirm]);
@@ -43,26 +41,6 @@ export default function SignupPage() {
 
   const isSenior = role === 'SENIOR';
   const isAffiliationRequired = role === 'SHELTER';
-
-  // 보호소 목록 필요 시 로드
-  useEffect(() => {
-    if (!isAffiliationRequired) return;
-    let alive = true;
-    (async () => {
-      setLoadingCare(true);
-      try {
-        const names = await fetchCareNames();
-        const list = (names || []).filter(Boolean);
-        if (!alive) return;
-        setCareList(list);
-        const saved = localStorage.getItem('selectedCareNm');
-        if (saved && list.includes(saved)) setAffiliation(saved);
-      } finally {
-        if (alive) setLoadingCare(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [isAffiliationRequired]);
 
   // 버튼 비활성 조건
   const disabled =
@@ -87,9 +65,7 @@ export default function SignupPage() {
     if (isMismatch) return setError('비밀번호가 일치하지 않습니다.');
 
     // 역할별 추가 검증
-    if (isAffiliationRequired && !affiliation) {
-      return setError('보호소를 선택하세요.');
-    }
+    if (isAffiliationRequired && !affiliation) return setError('보호소를 선택하세요.');
     if (isSenior) {
       if (!phoneRegex.test(phoneNumber)) return setError('연락처 형식을 확인해 주세요. (예: 010-1234-5678)');
       if (address.trim().length < 3) return setError('주소를 정확히 입력해 주세요.');
@@ -204,24 +180,16 @@ export default function SignupPage() {
             </>
           )}
 
-          {/* SHELTER 전용 필드 */}
+          {/* SHELTER 전용 필드 (드롭다운) */}
           {isAffiliationRequired && (
             <div className="form-field">
-              <label className="form-field__label">보호소 선택</label>
-              <div className="form-field__control">
-                <select
-                  value={affiliation}
-                  onChange={(e) => setAffiliation(e.target.value)}
-                  disabled={loadingCare}
-                  required
-                >
-                  <option value="">선택하세요</option>
-                  {careList.map((nm) => (
-                    <option key={nm} value={nm}>{nm}</option>
-                  ))}
-                </select>
-                {loadingCare && <div className="hint">보호소 목록을 불러오는 중…</div>}
-              </div>
+              <CareNmDropdown
+                value={affiliation}
+                onChange={setAffiliation}
+                required
+                allowFreeInput={true}   // 필요 시 false로
+                placeholder="보호소명 검색"
+              />
             </div>
           )}
 

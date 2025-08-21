@@ -160,41 +160,20 @@ export default function ApplyPage() {
     setSubmitting(true);
 
     try {
-      // ✅ 백 계약 필수 필드만 본문에, 나머지는 meta로 전달(서버가 무시해도 OK)
-      const payload = {
-        seniorId: Number(seniorId),
-        animalId: petId ? Number(petId) : null,
-        type,               // "ADOPTION" | "EXPERIENCE"
-        memo: (memo || '').trim(),
-        meta: {
-          applicant: {
-            userId: Number(form.userId) || null,
-            name: form.name.trim(),
-            phoneNumber: (form.phoneNumber || '').trim(),
-            address: form.address.trim(),
-            birthDate: form.birthDate,
-            emergencyContact: form.emergencyContact.trim(),
-            welfareOfficerId: form.welfareOfficerId ? Number(form.welfareOfficerId) : null,
-          },
-          preferences: { ...form.preferredPetInfo },
-          availability: {
-            ...form.careAvailability,
-            visitFreqPerWeek: Number(form.careAvailability.visitFreqPerWeek),
-          },
-          hasPetExperience: !!form.hasPetExperience,
-          needManager: !!form.needManager,
-          agreements: { termsAgree: !!form.termsAgree, bodycamAgree: !!form.bodycamAgree },
-        },
-      };
-
-      await createApplication(payload);
+      const payload = { note: (memo || '').trim() };
+   const created = await createApplication(payload);
+     // 생성된 신청 id 저장 → 추천 페이지에서 select-pet에 사용
+     if (created?.id) {
+       localStorage.setItem('lastApplicationId', String(created.id));
+     }
 
       localStorage.removeItem('selectedPet');
       localStorage.setItem('afterApply', '1');
 
-      alert('신청 완료! 보호소 검토 후 안내 드릴게요.');
-      // 맞춤 추천으로 이동
+            alert('신청 완료! 맞춤 추천을 보여드릴게요.');
+    // 맞춤 추천으로 이동 (recommend 모드)
       navigate('/senior?mode=recommend', { replace: true });
+
     } catch (e2) {
       setErr(e2?.message || '신청에 실패했어요.');
     } finally {

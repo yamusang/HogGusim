@@ -9,7 +9,6 @@ import com.matchpet.web.dto.ApplicationRow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -18,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Set;
 import java.util.stream.Collectors;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -33,8 +33,7 @@ public class ApplicationController {
             @RequestParam(required = false) Long animalId,
             @RequestParam(required = false) Long shelterId,
             @RequestParam(required = false) ApplicationStatus status,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return service.list(seniorId, animalId, shelterId, status, pageable)
                 .map(ApplicationMapper::row);
     }
@@ -44,10 +43,9 @@ public class ApplicationController {
     public Page<ApplicationRow> bySenior(
             @PathVariable Long seniorId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            Authentication auth
-    ) {
+            Authentication auth) {
         // 내 것만 조회 허용 (또는 SHELTER/ADMIN)
-        if (!isSelfOrRoles(auth, seniorId, Set.of("ROLE_SHELTER","ROLE_ADMIN"))) {
+        if (!isSelfOrRoles(auth, seniorId, Set.of("ROLE_SHELTER", "ROLE_ADMIN"))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
         return service.list(seniorId, null, null, null, pageable)
@@ -59,8 +57,7 @@ public class ApplicationController {
     public Page<ApplicationRow> byShelter(
             @PathVariable Long shelterId,
             @RequestParam(required = false) ApplicationStatus status,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return service.list(null, null, shelterId, status, pageable)
                 .map(ApplicationMapper::row);
     }
@@ -73,10 +70,11 @@ public class ApplicationController {
 
     @PostMapping
     public ApplicationRow create(@RequestBody ApplicationCreateRequest req,
-                                 Authentication auth,
-                                 @RequestHeader(value = "X-MOCK-SENIOR-ID", required = false) Long mockSeniorId) {
+            Authentication auth,
+            @RequestHeader(value = "X-MOCK-SENIOR-ID", required = false) Long mockSeniorId) {
         Long seniorId = mockSeniorId != null ? mockSeniorId : parsePrincipalAsLong(auth);
-        if (seniorId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No seniorId");
+        if (seniorId == null)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No seniorId");
 
         Application saved = service.create(seniorId, req.getPetId(), req.getNote());
         return ApplicationMapper.row(saved);
@@ -97,17 +95,35 @@ public class ApplicationController {
         return ApplicationMapper.row(service.cancel(id));
     }
 
+    @PostMapping("/{id}/select-pet")
+    public ApplicationRow selectPet(@PathVariable Long id,
+            @RequestParam Long petId,
+            Authentication auth) {
+        // 본인 신청만 변경 가능 (또는 SHELTER/ADMIN 허용)
+        Long me = parsePrincipalAsLong(auth);
+        service.assertOwnerOrRoles(id, me, Set.of("ROLE_SHELTER", "ROLE_ADMIN")); // ✅ Set.of 문법 수정
+
+        Application updated = service.attachPetAndActivate(id, petId);
+        return ApplicationMapper.row(updated);
+    }
+
     // ---- helpers
     private static Long parsePrincipalAsLong(Authentication auth) {
-        if (auth == null || auth.getPrincipal() == null) return null;
-        try { return Long.valueOf(auth.getPrincipal().toString()); }
-        catch (Exception e) { return null; }
+        if (auth == null || auth.getPrincipal() == null)
+            return null;
+        try {
+            return Long.valueOf(auth.getPrincipal().toString());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static boolean isSelfOrRoles(Authentication auth, Long seniorId, Set<String> roles) {
         Long me = parsePrincipalAsLong(auth);
-        if (me != null && me.equals(seniorId)) return true;
-        if (auth == null) return false;
+        if (me != null && me.equals(seniorId))
+            return true;
+        if (auth == null)
+            return false;
         var my = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
         return my.stream().anyMatch(roles::contains);
     }

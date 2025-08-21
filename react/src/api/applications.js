@@ -82,13 +82,20 @@ export const listByPet = async (animalId, { page = 0, size = 20, signal } = {}) 
 /* ───────────────────────
  * 공통: 신청 생성
  * ─────────────────────── */
+/* 신청 생성: 서버 규격 { petId?, note? } 로 변환해서 전송 */
+// src/api/applications.js
 export const createApplication = async (payload, { signal } = {}) => {
-  // 기대 payload: { seniorId, animalId, type, memo, meta? }
   try {
-    const { data } = await api.post('/applications', payload, { signal });
+    const body = {
+      petId: payload.animalId ?? null,   // animalId → petId 변환
+      note: payload.memo || '',
+    };
+    const { data } = await api.post('/applications', body, { signal });
     return data;
   } catch (err) {
     logApiError?.(err);
     throw err;
   }
 };
+
+

@@ -16,7 +16,10 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -27,25 +30,28 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   private static final AntPathMatcher PM = new AntPathMatcher();
 
   // 퍼블릭 경로 (필터 자체를 스킵)
-  private static final String[] PUBLIC_PATTERNS = new String[]{
+  private static final String[] PUBLIC_PATTERNS = new String[] {
       "/actuator/**", "/error", "/uploads/**",
       "/api/internal/ingest/**",
       "/api/auth/**",
       "/api/reco/**",
       "/api/animals/**",
-      "/api/shelters/**",                // ✅ 퍼블릭
+      "/api/shelters/**", // ✅ 퍼블릭
       "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"
   };
 
-  public JwtAuthFilter(JwtTokenProvider jwt) { this.jwt = jwt; }
+  public JwtAuthFilter(JwtTokenProvider jwt) {
+    this.jwt = jwt;
+  }
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true; // CORS 프리플라이트 스킵
+    if ("OPTIONS".equalsIgnoreCase(request.getMethod()))
+      return true; // CORS 프리플라이트
     String path = request.getRequestURI();
-    for (String p : PUBLIC_PATTERNS) {
-      if (PM.match(p, path)) return true; // 퍼블릭은 아예 필터 스킵
-    }
+    for (String p : PUBLIC_PATTERNS)
+      if (PM.match(p, path))
+        return true;
     return false;
   }
 
@@ -60,24 +66,42 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       if (token != null) {
         Claims claims = jwt.parse(token); // 유효하지 않으면 예외
         Long userId = Long.valueOf(claims.getSubject());
-        String role = claims.get("role", String.class); // "SHELTER"/"SENIOR"/"MANAGER"/"ADMIN"
 
-        List<GrantedAuthority> authorities =
-            (role != null && !role.isBlank())
-                ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                : List.of();
+        // role | roles | authorities 모두 지원
+        Object rawRole = claims.get("role"); // "SENIOR"
+        Object rawRoles = claims.get("roles"); // ["SENIOR", ...]
+        Object rawAuths = claims.get("authorities"); // ["SENIOR", "ROLE_ADMIN", ...]
+
+        List<String> roleStrings = new ArrayList<>();
+        if (rawRole instanceof String r && !r.isBlank())
+          roleStrings.add(r.trim());
+        if (rawRoles instanceof Collection<?> c1)
+          for (Object o : c1)
+            if (o != null)
+              roleStrings.add(o.toString().trim());
+        if (rawAuths instanceof Collection<?> c2)
+          for (Object o : c2)
+            if (o != null)
+              roleStrings.add(o.toString().trim());
+
+        List<GrantedAuthority> authorities = roleStrings.stream()
+            .filter(s -> !s.isEmpty())
+            .map(s -> s.startsWith("ROLE_") ? s : "ROLE_" + s) // ✅ 접두사 보장
+            .distinct()
+            .map(SimpleGrantedAuthority::new)
+            .collect(Collectors.toList()); // ✅ JDK 8/11
 
         var authToken = new UsernamePasswordAuthenticationToken(userId, null, authorities);
         SecurityContextHolder.getContext().setAuthentication(authToken);
 
-        log.debug("SECURITY AUTH: userId={}, authorities={}", userId, authorities);
+        if (log.isDebugEnabled())
+          log.debug("SECURITY AUTH: userId={}, authorities={}", userId, authorities);
       }
-      // 토큰 없으면 그냥 통과 → 아래 Security 규칙이 처리(보호된 경로면 401)
+
       chain.doFilter(req, res);
 
     } catch (Exception e) {
       SecurityContextHolder.clearContext();
-      // 토큰이 있었는데 잘못된 경우에만 401 반환 (퍼블릭은 shouldNotFilter 로 이미 스킵됨)
       res.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
     }
   }

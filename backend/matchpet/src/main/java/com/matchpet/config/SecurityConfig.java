@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -54,20 +53,25 @@ public class SecurityConfig {
                 "/actuator/**", "/uploads/**")
             .permitAll()
 
-            // ----- ★ 구체 경로를 일반 규칙보다 먼저 배치 ★ -----
+            // ===== 구체 경로 먼저 =====
+            // 시니어 본인 목록/조회
             .requestMatchers(HttpMethod.GET, "/api/applications/by-senior/**").hasRole("SENIOR")
+            // 보호소 목록/조회
             .requestMatchers(HttpMethod.GET, "/api/applications/by-shelter/**").hasAnyRole("SHELTER", "ADMIN")
 
-            // 시니어 신청(생성) & 기본 목록
+            // 시니어 신청 '생성' (루트만)
             .requestMatchers(HttpMethod.POST, "/api/applications").hasRole("SENIOR")
+            // (선택) 루트 GET은 인증만 필요
             .requestMatchers(HttpMethod.GET, "/api/applications").authenticated()
 
             // 보호소 관리 동작
             .requestMatchers(HttpMethod.POST, "/api/applications/*/approve").hasAnyRole("SHELTER", "ADMIN")
             .requestMatchers(HttpMethod.POST, "/api/applications/*/reject").hasAnyRole("SHELTER", "ADMIN")
+            // 시니어가 자기 신청 취소
+            .requestMatchers(HttpMethod.POST, "/api/applications/*/cancel").hasRole("SENIOR")
 
-            // 나머지 applications 하위는 보호소/관리자
-            .requestMatchers("/api/applications/**").hasAnyRole("SHELTER", "ADMIN")
+            // ✅ catch‑all 축소: 하위 경로만 보호소/관리자
+            .requestMatchers("/api/applications/*/**").hasAnyRole("SHELTER", "ADMIN")
 
             // 내부 적재
             .requestMatchers(HttpMethod.POST, "/api/internal/ingest/**").permitAll()
@@ -93,14 +97,9 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration cfg = new CorsConfiguration();
-    // 개발 편의: 패턴으로 127.0.0.1 포함
-    cfg.setAllowedOriginPatterns(List.of(
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"));
+    cfg.setAllowedOriginPatterns(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    cfg.setAllowedHeaders(List.of(
-        "Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With" // ✅ 보강
-    ));
+    cfg.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
     cfg.setExposedHeaders(List.of("Authorization", "Location"));
     cfg.setAllowCredentials(true);
     cfg.setMaxAge(3600L);

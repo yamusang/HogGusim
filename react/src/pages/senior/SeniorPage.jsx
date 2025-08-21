@@ -7,7 +7,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import { getPetsRecommended } from '../../api/recommendations';
 import './senior.css';
-
+import api from '../../api/apiClient'; // ✅ select-pet 호출용
 const MODES = [
   { key: 'conservative', label: '보수' },
   { key: 'balanced',     label: '균형' },
@@ -132,15 +132,35 @@ export default function SeniorPage() {
     setPage1(1);
   };
 
-  const onClickApply = (pet) => {
+  const onClickApply = async (pet) => {
+    const lastAppId = localStorage.getItem('lastApplicationId');
+    // 1) 최근 생성한 신청이 있으면 → select-pet API로 바로 연결
+    if (lastAppId) {
+      try {
+        await api.post(`/applications/${lastAppId}/select-pet`, null, {
+          params: { petId: pet.id },
+        });
+        alert('선택 완료! 보호소 검토 대기로 전환되었습니다.');
+        // 선택 끝났으니 보관 id 제거
+        localStorage.removeItem('lastApplicationId');
+        // 현황 페이지로 이동(원하면 다른 경로로 변경 OK)
+        navigate('/senior/connect');
+        return;
+      } catch (e) {
+        console.error(e);
+        alert(e?.message || '동물 선택에 실패했어요. 다시 시도해 주세요.');
+        return;
+      }
+    }
+    // 2) 최근 신청이 없으면 → 예전 플로우(동물 선택 후 신청 페이지)로 이동
     localStorage.setItem('selectedPet', JSON.stringify({
-      id: pet.id,
-      breed: pet.breed ?? '',
-      photoUrl: pet.photoUrl ?? pet.thumbnail ?? '',
-      desertionNo: pet.desertionNo ?? null,
-    }));
-    navigate(`/pet/${pet.id}/apply`);
-  };
+     id: pet.id,
+     breed: pet.breed ?? '',
+   photoUrl: pet.photoUrl ?? pet.thumbnail ?? '',
+     desertionNo: pet.desertionNo ?? null,
+   }));
+   navigate(`/pet/${pet.id}/apply`);
+ };
 
   const noPages = !data.totalPages || data.totalPages <= 0;
 

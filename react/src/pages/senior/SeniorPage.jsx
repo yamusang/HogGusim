@@ -115,7 +115,13 @@ export default function SeniorPage() {
       setPendingPet(null);
       nav('/senior/connect');
     } catch (e) {
-      alert(e?.response?.data?.message || '신청 처리 실패');
+       const msg =
+    e?.response?.data?.message ||
+    e?.response?.data?.error ||
+     `${e?.response?.status || ''} ${e?.response?.statusText || ''}`.trim() ||
+   e.message ||
+   '신청 처리 실패';
+  alert(msg);
     } finally {
       setSubmitting(false);
     }

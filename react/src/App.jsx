@@ -1,5 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import AuthProvider from './contexts/AuthContext';
 import useAuth from './hooks/useAuth';
 
@@ -37,6 +40,19 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace/>} />
         </Routes>
+
+        {/* ✅ 전역 토스트 컨테이너 (페이지 전환에도 유지) */}
+        <ToastContainer
+          position="top-center"
+          autoClose={4000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          draggable={false}
+          theme="light"
+          limit={1}
+        />
       </BrowserRouter>
     </AuthProvider>
   );

@@ -85,9 +85,9 @@ img{ display:block; max-width:100% }
 }
 .hero__roles-vertical .role-btn{
   width:100%;
-  min-height:140px;
+  min-height:170px;
   display:grid; grid-template-columns: 1fr 92px; align-items:center; gap:16px;
-  padding:18px 30px;
+  padding:40px 30px;
   background: rgba(255,255,255,.70);
   backdrop-filter: blur(6px);
   border:1px solid rgba(0,0,0,.06);
@@ -98,8 +98,8 @@ img{ display:block; max-width:100% }
 .hero__roles-vertical .role-btn:hover{ transform:translateY(-3px); box-shadow:0 16px 32px rgba(0,0,0,.16); filter:brightness(.98); }
 .role-btn:focus-visible{ outline:3px solid var(--amber); outline-offset:3px }
 .role-text{ align-self:flex-start; justify-self:start; text-align:left; word-break:keep-all; text-wrap:balance; }
-.role-title { display:block; font-weight:800; font-size:1.6rem; line-height:1.2; margin-bottom:15px; }
-.role-sub   { display:block; font-size:1.15rem; opacity:.92; font-weight:bold; line-height:1.3; }
+.role-title { display:block; font-weight:800; font-size:1.7rem; line-height:1.2; margin-bottom:15px; }
+.role-sub   { display:block; font-size:1.3rem; opacity:.92; font-weight:bold; line-height:1.3; }
 .icon-wrap{ justify-self:end; align-self:center; width:92px; height:92px; display:grid; place-items:center; }
 .hero__roles-vertical .role-btn img{ width:78px; height:78px; filter:none; }
 

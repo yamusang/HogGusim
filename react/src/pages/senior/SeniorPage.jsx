@@ -23,7 +23,7 @@ export default function SeniorPage() {
   const nav = useNavigate();
   const location = useLocation();
 
-  // 하얀 배경 + 아이콘 제거 토스트
+  // 흰배경 + 아이콘 없는 토스트 (신청 완료 안내)
   useEffect(() => {
     const t = location.state?.toast;
     if (t?.msg) {
@@ -34,10 +34,9 @@ export default function SeniorPage() {
         closeOnClick: true,
         pauseOnHover: true,
         draggable: false,
-        icon: false,                // ✅ 이모지/아이콘 제거
-        theme: 'light'              // ✅ 흰 배경
+        icon: false,
+        theme: 'light',
       });
-      // 중복 방지
       nav(location.pathname, { replace: true, state: {} });
     }
   }, [location, nav]);
@@ -67,9 +66,9 @@ export default function SeniorPage() {
           <div className="senior__sub">가까운 보호소와 안전도·동물친화 등을 반영해 보여드려요.</div>
         </div>
         <div className="senior__actions">
-          <Button presetName="secondary" onClick={() => window.location.reload()}>새로고침</Button>
-          <Button presetName="secondary" onClick={() => nav('/senior/connect')}>신청 내역 보기</Button>
-          <Button presetName="secondary" onClick={() => nav('/logout?to=/')}>로그아웃</Button>
+          <Button presetName="secondary" className="btn-lg" onClick={() => window.location.reload()}>새로고침</Button>
+          <Button presetName="secondary" className="btn-lg" onClick={() => nav('/senior/connect')}>신청 내역 보기</Button>
+          <Button presetName="secondary" className="btn-lg" onClick={() => nav('/logout?to=/')}>로그아웃</Button>
         </div>
       </div>
 
@@ -77,8 +76,7 @@ export default function SeniorPage() {
         {pets.map((it) => (
           <Card key={it.id} className="pet-card">
             <div className="pet-card__media">
-              <img src={it.photoUrl} alt={it.name || it.breed || `#${it.id}`}
-                   onError={(e)=>{e.currentTarget.src = dog1;}} />
+              <img src={it.photoUrl} alt={it.name || it.breed || `#${it.id}`} onError={(e)=>{e.currentTarget.src = dog1;}} />
             </div>
 
             <div className="pet-card__body">
@@ -87,9 +85,7 @@ export default function SeniorPage() {
                 <div className="pet-card__care">{it.careName || '-'}</div>
               </div>
 
-              <div className="pet-card__meta">
-                {it.breed || '-'} · {it.sex || '-'} · {it.age || '-'}
-              </div>
+              <div className="pet-card__meta">{it.breed || '-'} · {it.sex || '-'} · {it.age || '-'}</div>
 
               {it.note && <div className="pet-card__note">{it.note}</div>}
 
@@ -105,8 +101,8 @@ export default function SeniorPage() {
               )}
 
               <div className="card-actions">
-                <button className="btn-soft" onClick={() => setQuick(it)}>자세히 보기</button>
-                <button className="btn-primary" onClick={() => onApply(it)}>신청하기</button>
+                <button className="btn-soft btn-wide" onClick={() => setQuick(it)}><span className="btn-text">자세히 보기</span></button>
+                <button className="btn-primary btn-wide" onClick={() => onApply(it)}><span className="btn-text">신청하기</span></button>
               </div>
             </div>
           </Card>
@@ -115,7 +111,7 @@ export default function SeniorPage() {
 
       {quick && (
         <div className="modal" onClick={() => setQuick(null)}>
-          <div className="modal__panel" onClick={(e) => e.stopPropagation()}>
+          <div className="modal__panel modal__panel--wide" onClick={(e) => e.stopPropagation()}>
             <div className="modal__header">
               <h3 className="modal__title">{quick.name || '(이름 미정)'}</h3>
               <button className="modal__close" aria-label="닫기" onClick={() => setQuick(null)}>×</button>
@@ -124,30 +120,18 @@ export default function SeniorPage() {
             <div className="modal__body">
               <div className="detail">
                 <div className="detail__media">
-                  <img src={quick.photoUrl} alt={quick.name || '동물 사진'}
-                       onError={(e)=>{e.currentTarget.src = dog1;}} />
+                  <img src={quick.photoUrl} alt={quick.name || '동물 사진'} onError={(e)=>{e.currentTarget.src = dog1;}} />
                 </div>
 
                 <div className="detail__info">
-                  <div className="detail__row">
-                    <div className="detail__label">보호소</div>
-                    <div className="detail__value">{quick.careName || '-'}</div>
-                  </div>
-                  <div className="detail__row">
-                    <div className="detail__label">기본 정보</div>
-                    <div className="detail__value">{(quick.breed || '종 미상')} · {quick.sex || '-'} · {quick.age || '나이 미상'}</div>
-                  </div>
-                  <div className="detail__row">
-                    <div className="detail__label">중성화</div>
-                    <div className="detail__value">{quick.neuter || '-'}</div>
-                  </div>
+                  <div className="detail__row"><div className="detail__label">보호소</div><div className="detail__value">{quick.careName || '-'}</div></div>
+                  <div className="detail__row"><div className="detail__label">기본 정보</div><div className="detail__value">{(quick.breed || '종 미상')} · {quick.sex || '-'} · {quick.age || '나이 미상'}</div></div>
+                  <div className="detail__row"><div className="detail__label">중성화</div><div className="detail__value">{quick.neuter || '-'}</div></div>
 
                   {!!(quick.temperament?.length) && (
                     <div>
                       <div className="detail__label" style={{ marginBottom: 6 }}>성격/특징</div>
-                      <div className="detail__chips">
-                        {quick.temperament.map((t, i) => <span key={i} className="tag">{t}</span>)}
-                      </div>
+                      <div className="detail__chips">{quick.temperament.map((t, i) => <span key={i} className="tag">{t}</span>)}</div>
                     </div>
                   )}
 
@@ -156,15 +140,14 @@ export default function SeniorPage() {
               </div>
             </div>
 
-            <div className="modal__footer">
-              <button className="btn-soft" onClick={() => setQuick(null)}>닫기</button>
-              <button className="btn-primary" onClick={() => { setQuick(null); onApply(quick); }}>신청하기</button>
+            <div className="modal__footer modal__footer--spread">
+              <button className="btn-soft btn-lg" onClick={() => setQuick(null)}>닫기</button>
+              <button className="btn-primary btn-lg" onClick={() => { setQuick(null); onApply(quick); }}>신청하기</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ✅ 흰배경/아이콘 없는 토스트 컨테이너 */}
       <ToastContainer />
     </div>
   );

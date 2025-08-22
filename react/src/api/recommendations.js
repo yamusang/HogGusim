@@ -96,7 +96,7 @@ export const mergePage = (prev, next) => {
 
 export const getPetsRecommended = async (
   seniorId,
-  { mode = RecoMode.BALANCED, page = 0, size = 12 } = {},
+  { mode = RecoMode.BALANCED, page = 0, size = 7 } = {},
   axiosConfig = {}
 ) => {
   if (!seniorId) throw new Error('INVALID_SENIOR_ID');

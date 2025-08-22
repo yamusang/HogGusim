@@ -41,7 +41,9 @@ export default function MainPage() {
               <div className="hero__copy">
                 <img className="hero__logo fade-up d0" src={logo} alt="다녀올개 로고" />
                 <h1 className="hero__title fade-up d1">따뜻한 연결, 가벼운 시작</h1>
-                <p className="hero__desc fade-up d2">유기동물과 사람을 안전하게 잇는 우리 동네 플랫폼</p>
+                <p className="hero__desc fade-up d2">한 걸음의 산책이 노인의 삶,</p>
+                <p className="hero__desc fade-up d2">청년의 미래,</p>
+                <p className="hero__desc fade-up d2">동물의 운명을 바꿉니다.</p>
               </div>
 
               <aside className="hero__panel" role="region" aria-label="역할 빠른 선택">

@@ -1,176 +1,171 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import Button from '../../components/ui/Button';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
-import { fetchAnimals, toAbsoluteUrl } from '../../api/animals';
-import { mockTemperament, fakeMatchScore } from '../../utils/tempermock';
 import './senior.css';
 
-// 시연 고정 보호소
+import dog1 from '../../assets/dogs/dog1.png';
+import dog2 from '../../assets/dogs/dog2.png';
+import dog3 from '../../assets/dogs/dog3.png';
+import dog4 from '../../assets/dogs/dog4.png';
+import dog5 from '../../assets/dogs/dog5.png';
+import dog6 from '../../assets/dogs/dog6.png';
+import dog7 from '../../assets/dogs/dog7.png';
+
 const CARE_NM = '동부동물보호협회';
 const CARE_ADDR = '부산광역시 해운대구 송정2로13번길 46 (송정동)';
 
-const normalizeYN = (v) => String(v ?? '').toUpperCase();
-const isProtected = (st='') => {
-  const s = String(st).toUpperCase();
-  return s.includes('보호') || s.includes('PROTECT') || s.includes('AVAILABLE') || s.includes('SHELTER');
-};
-
-function PetImg({ pet }) {
-  const [ok, setOk] = useState(true);
-  const candidates = [
-    pet?.photoUrl,
-    pet?._raw?.popfile,
-    pet?._raw?.filename,
-    pet?.popfile,
-  ].filter(Boolean);
-
-  let src = '';
-  for (const c of candidates) {
-    const abs = toAbsoluteUrl(c);
-    if (abs) { src = abs; break; }
-  }
-
-  const isMixedBlocked = (() => {
-    try { return window.location.protocol === 'https:' && /^http:\/\//i.test(src); }
-    catch { return false; }
-  })();
-
-  const finalSrc = ok && src ? src : '/placeholder-dog.png';
-
-  return (
-    <div style={{ position:'relative' }}>
-      <img
-        src={finalSrc}
-        alt={pet?.name || '유기동물'}
-        loading="lazy"
-        onError={() => setOk(false)}
-        style={{ width:'100%', height:'auto', display:'block' }}
-      />
-      {isMixedBlocked && (
-        <span
-          style={{
-            position:'absolute', left:8, top:8, fontSize:12,
-            color:'#ef4444', textShadow:'0 0 3px #fff', fontWeight:700
-          }}
-          title="https 페이지에서 http 이미지는 브라우저가 차단할 수 있어요"
-        >
-          http 이미지 차단됨
-        </span>
-      )}
-    </div>
-  );
-}
-
 export default function SeniorPage() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth?.() || {};
+  const nav = useNavigate();
+  const location = useLocation();
 
-  const senior = useMemo(() => ({
-    id: user?.seniorId || user?.id,
-    name: user?.name,
-    address: user?.address || user?.city || '부산',
-  }), [user]);
-
-  const [pets, setPets] = useState([]);
-  const [loading, setLoading] = useState(false);
-
+  // 하얀 배경 + 아이콘 제거 토스트
   useEffect(() => {
-    let off = false;
-    setLoading(true);
-    (async () => {
-      try {
-        const page = await fetchAnimals({ page: 0, size: 60, careNm: CARE_NM });
-        const items = (page?.content || []).filter(p => isProtected(p?.status || '보호중'));
-        const enriched = items.map(p => ({
-          ...p,
-          careAddr: p.careAddr || CARE_ADDR,
-          matchScore: fakeMatchScore({ senior, pet: p }),
-          temperament: mockTemperament(p),
-        })).sort((a,b)=> (b.matchScore ?? 0) - (a.matchScore ?? 0));
-        if (!off) setPets(enriched);
-      } finally {
-        !off && setLoading(false);
-      }
-    })();
-    return ()=>{ off = true; };
-  }, [senior]);
+    const t = location.state?.toast;
+    if (t?.msg) {
+      toast[t.type === 'error' ? 'error' : 'success'](t.msg, {
+        position: 'top-center',
+        autoClose: 3500,
+        hideProgressBar: true,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: false,
+        icon: false,                // ✅ 이모지/아이콘 제거
+        theme: 'light'              // ✅ 흰 배경
+      });
+      // 중복 방지
+      nav(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, nav]);
+
+  const pets = useMemo(() => ([
+    { id:'p1', name:'(이름 미정)', breed:'아메리칸 숏헤어', sex:'수컷', age:'2살', neuter:'예', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['친화적'], photoUrl:dog1, note:'사람을 잘 따르고, 손길을 좋아함' },
+    { id:'p2', name:'(이름 미정)', breed:'웰시코기 믹스',   sex:'암컷', age:'3살', neuter:'아니오', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['물지 않음','차분함'], photoUrl:dog2, note:'조용하고 낯가림이 덜함.' },
+    { id:'p3', name:'(이름 미정)', breed:'믹스',           sex:'수컷', age:'1살', neuter:'예', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['활발','산책 좋아함'], photoUrl:dog3, note:'활발하고 사람을 좋아함.' },
+    { id:'p4', name:'(이름 미정)', breed:'치와와',         sex:'암컷', age:'4살', neuter:'예', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['조용함','소형'], photoUrl:dog4, note:'작고 조용해서 실내 체험에 적합.' },
+    { id:'p5', name:'(이름 미정)', breed:'시바',           sex:'수컷', age:'2살', neuter:'예', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['산책 선호','활발'], photoUrl:dog5, note:'활발함, 외향적임' },
+    { id:'p6', name:'(이름 미정)', breed:'믹스',           sex:'수컷', age:'5살', neuter:'아니오', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['순함','온순'], photoUrl:dog6, note:'순하고 온순함, 배변훈련 잘 되어있음' },
+    { id:'p7', name:'(이름 미정)', breed:'푸들',           sex:'암컷', age:'3살', neuter:'예', status:'보호중', careName:CARE_NM, careAddr:CARE_ADDR, temperament:['털 빠짐 적음','산책 OK'], photoUrl:dog7, note:'털빠짐이 적음, 산책 좋아함' },
+  ]), []);
+
+  const [quick, setQuick] = useState(null);
 
   const onApply = (pet) => {
-    localStorage.setItem('selectedPet', JSON.stringify(pet));
-    navigate(`/pet/${pet.id}/apply`);
-  };
-
-  const onLogout = () => {
-    if (typeof logout === 'function') logout();
-    localStorage.removeItem('token');
-    sessionStorage.removeItem('selectedRole');
-    navigate('/', { replace: true }); // ← 메인으로 이동
+    try { localStorage.setItem('selectedPet', JSON.stringify(pet)); } catch {}
+    nav(`/pet/${pet.id}/apply`, { state: { pet } });
   };
 
   return (
     <div className="senior">
       <div className="senior__header">
         <div>
-          <h1>추천 유기동물</h1>
-          <div style={{color:'#667085', fontSize:14, marginTop:4}}>
-            보호소: <strong>{CARE_NM}</strong> · {CARE_ADDR}
-          </div>
+          <h1 style={{ margin: 0 }}>추천 유기동물</h1>
+          <div className="senior__sub">가까운 보호소와 안전도·동물친화 등을 반영해 보여드려요.</div>
         </div>
         <div className="senior__actions">
-          <Button onClick={()=>window.location.reload()}>새로고침</Button>
-          <Button variant="ghost" onClick={onLogout}>로그아웃</Button>
+          <Button presetName="secondary" onClick={() => window.location.reload()}>새로고침</Button>
+          <Button presetName="secondary" onClick={() => nav('/senior/connect')}>신청 내역 보기</Button>
+          <Button presetName="secondary" onClick={() => nav('/logout?to=/')}>로그아웃</Button>
         </div>
       </div>
 
-      {loading && <p>불러오는 중…</p>}
-
       <div className="senior__grid">
-        {pets.map((pet) => {
-          const neutered = normalizeYN(pet.neuter) === 'Y';
-          const sex = (pet.gender || pet.sex || '').toString() || '-';
-          const kind = pet.breed || pet.species || '-';
-          return (
-            <Card key={pet.id}>
-              <div
-                className="pet-card"
-                role="button"
-                tabIndex={0}
-                onClick={()=>onApply(pet)}
-                onKeyDown={(e)=> (e.key==='Enter' || e.key===' ') && onApply(pet)}
-                style={{ cursor:'pointer' }}
-              >
-                <PetImg pet={pet} />
-                <div className="pet-card__body">
-                  <div className="pet-card__head">
-                    <strong>{pet.name || '(이름없음)'}</strong>
-                    <Badge color="green">점수 {pet.matchScore}</Badge>
+        {pets.map((it) => (
+          <Card key={it.id} className="pet-card">
+            <div className="pet-card__media">
+              <img src={it.photoUrl} alt={it.name || it.breed || `#${it.id}`}
+                   onError={(e)=>{e.currentTarget.src = dog1;}} />
+            </div>
+
+            <div className="pet-card__body">
+              <div className="pet-card__head">
+                <div className="pet-card__title">{it.name || '(이름 미정)'}</div>
+                <div className="pet-card__care">{it.careName || '-'}</div>
+              </div>
+
+              <div className="pet-card__meta">
+                {it.breed || '-'} · {it.sex || '-'} · {it.age || '-'}
+              </div>
+
+              {it.note && <div className="pet-card__note">{it.note}</div>}
+
+              <div className="pet-card__tags">
+                <Badge>{it.status || '보호중'}</Badge>
+                {it.neuter && <Badge>중성화: {it.neuter}</Badge>}
+              </div>
+
+              {!!(it.temperament?.length) && (
+                <div className="pet-card__tags">
+                  {it.temperament.slice(0, 3).map((t, i) => <span key={i} className="tag">{t}</span>)}
+                </div>
+              )}
+
+              <div className="card-actions">
+                <button className="btn-soft" onClick={() => setQuick(it)}>자세히 보기</button>
+                <button className="btn-primary" onClick={() => onApply(it)}>신청하기</button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {quick && (
+        <div className="modal" onClick={() => setQuick(null)}>
+          <div className="modal__panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal__header">
+              <h3 className="modal__title">{quick.name || '(이름 미정)'}</h3>
+              <button className="modal__close" aria-label="닫기" onClick={() => setQuick(null)}>×</button>
+            </div>
+
+            <div className="modal__body">
+              <div className="detail">
+                <div className="detail__media">
+                  <img src={quick.photoUrl} alt={quick.name || '동물 사진'}
+                       onError={(e)=>{e.currentTarget.src = dog1;}} />
+                </div>
+
+                <div className="detail__info">
+                  <div className="detail__row">
+                    <div className="detail__label">보호소</div>
+                    <div className="detail__value">{quick.careName || '-'}</div>
                   </div>
-                  <div className="pet-card__meta" style={{flexWrap:'wrap'}}>
-                    <span>{kind}</span>
-                    <span>{sex}</span>
-                    <span>{neutered ? '중성화' : '미중성화'}</span>
-                    <span>상태: {pet.status || '보호중'}</span>
+                  <div className="detail__row">
+                    <div className="detail__label">기본 정보</div>
+                    <div className="detail__value">{(quick.breed || '종 미상')} · {quick.sex || '-'} · {quick.age || '나이 미상'}</div>
                   </div>
-                  <div style={{display:'flex', flexWrap:'wrap', gap:6, margin:'6px 0 10px'}}>
-                    {(pet.temperament || []).map((t,i)=>(
-                      <span key={`${t}-${i}`} style={{
-                        fontSize:12, padding:'4px 8px', borderRadius:999,
-                        background:'#f3f4f6', color:'#374151'
-                      }}>{t}</span>
-                    ))}
+                  <div className="detail__row">
+                    <div className="detail__label">중성화</div>
+                    <div className="detail__value">{quick.neuter || '-'}</div>
                   </div>
-                  <Button className="applibtn" onClick={(e)=>{ e.stopPropagation(); onApply(pet); }}>
-                    신청하기
-                  </Button>
+
+                  {!!(quick.temperament?.length) && (
+                    <div>
+                      <div className="detail__label" style={{ marginBottom: 6 }}>성격/특징</div>
+                      <div className="detail__chips">
+                        {quick.temperament.map((t, i) => <span key={i} className="tag">{t}</span>)}
+                      </div>
+                    </div>
+                  )}
+
+                  {quick.note && <div className="detail__note">{quick.note}</div>}
                 </div>
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            </div>
+
+            <div className="modal__footer">
+              <button className="btn-soft" onClick={() => setQuick(null)}>닫기</button>
+              <button className="btn-primary" onClick={() => { setQuick(null); onApply(quick); }}>신청하기</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ 흰배경/아이콘 없는 토스트 컨테이너 */}
+      <ToastContainer />
     </div>
   );
 }

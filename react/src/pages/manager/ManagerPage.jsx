@@ -1,77 +1,104 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import useAuth from '../../hooks/useAuth'
-import Card from '../../components/common/Card'
-import Badge from '../../components/common/Badge'
-import Button from '../../components/ui/Button'
-import './manager.css'
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Button from '../../components/ui/Button';
+import './manager.css';
 
-export default function ManagerPage() {
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const managerId = user?.id || user?.managerId;
+/* storage */
+const getApps = () => { try { return JSON.parse(localStorage.getItem('applications')||'[]'); } catch { return []; } };
+const setApps = (arr) => { try { localStorage.setItem('applications', JSON.stringify(arr)); } catch {} };
 
-  const [page, setPage] = useState(1)
-  const [data, setData] = useState({ content: [], total: 0, size: 10 })
-  const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState('')
+const getManagerProfile = () => { try { return JSON.parse(localStorage.getItem('managerProfile')||'{}'); } catch { return {}; } };
+const setManagerProfile = (p) => { try { localStorage.setItem('managerProfile', JSON.stringify(p)); } catch {} };
 
-  const load = async () => {
-    if (!managerId) return
-    setLoading(true)
-    setErr('')
-    try {
-      const res = await fetchRecommendedSeniors({ managerId, page, size: 10 });
-      setData(res)
-    } catch (e) {
-      setErr(e.message || '추천을 불러오지 못했습니다.')
-    } finally {
-      setLoading(false)
-    }
+const StatusChip = ({ s }) => {
+  const map = { PENDING:'대기', FORWARDED:'보호소 검토중', APPROVED:'승인', REJECTED:'거절' };
+  const label = map[s] || s || '대기';
+  const cls = s === 'APPROVED' ? 'chip chip--approved'
+           : s === 'REJECTED' ? 'chip chip--rejected'
+           : 'chip chip--pending';
+  return <span className={cls}>{label}</span>;
+};
+
+export default function ManagerPage(){
+  const nav = useNavigate();
+  const [apps, setAppsState] = useState(getApps());
+  const [profile, setProfile] = useState(() => getManagerProfile());
+
+  useEffect(() => {
+    const onStorage = () => setAppsState(getApps());
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const approve = (id) => {
+    const next = apps.map(a => a.id===id ? { ...a, status:'APPROVED' } : a);
+    setApps(next); setAppsState(next);
+  };
+  const reject = (id) => {
+    const next = apps.map(a => a.id===id ? { ...a, status:'REJECTED' } : a);
+    setApps(next); setAppsState(next);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [page, managerId]);
-
-  const selectSenior = (senior) => {
-    localStorage.setItem('selectedSenior', JSON.stringify(senior))
-    navigate(`/manager/connect?seniorId=${senior.id}`)
+  const saveProfile = (e) => {
+    e.preventDefault();
+    setManagerProfile(profile);
+    alert('매니저 프로필이 저장되었습니다.');
   };
 
   return (
     <div className="manager">
-       <Button onClick={() => navigate('/logout')}>
-      로그아웃
-    </Button>
-      <h1>추천 고령자</h1>
-      {err && <div className="auth__error">{err}</div>}
-      {loading ? <p>불러오는 중…</p> : (
-        <div className="manager__grid">
-          {data.content.map((senior) => (
-            <Card
-              key={senior.id}
-              variant="elevated"
-              title={senior.name}
-              subtitle={`${senior.age}세 · ${senior.address}`}
-              actions={<Badge variant="available">{senior.hasPet ? '반려 중' : '미보유'}</Badge>}
-              footer={
-                <Button presetName="connect" onClick={() => selectSenior(senior)}>
-                  선택하기
-                </Button>
-              }
-            >
-              활동 가능 요일: {senior.availableDays?.join(', ') || '-'}<br />
-              시간대: {senior.availableTime || '-'}
-            </Card>
-          ))}
-          {data.content.length === 0 && <p>추천 결과가 없습니다.</p>}
+      <div className="manager__header">
+        <h1>매니저 대시보드</h1>
+        <div style={{display:'flex', gap:8}}>
+          <Button presetName="secondary" onClick={()=>window.location.reload()}>새로고침</Button>
+          <Button presetName="secondary" onClick={()=>nav('/logout?to=/')}>로그아웃</Button> {/* ✅ 로그아웃 */}
         </div>
-      )}
-
-      <div className="manager__pagination">
-        <Button presetName="ghost" disabled={page<=1} onClick={()=>setPage(p=>p-1)}>이전</Button>
-        <span>{page}</span>
-        <Button presetName="ghost" disabled={(page*data.size)>=data.total} onClick={()=>setPage(p=>p+1)}>다음</Button>
       </div>
+
+      {/* 매니저 프로필 */}
+      <section className="panel">
+        <h2 className="panel__title">내 프로필</h2>
+        <form className="profileform" onSubmit={saveProfile}>
+          <label>이름<input value={profile.name||''} onChange={e=>setProfile(p=>({...p, name:e.target.value}))} /></label>
+          <label>연락처<input value={profile.phone||''} onChange={e=>setProfile(p=>({...p, phone:e.target.value}))} /></label>
+          <label>경력<textarea rows={2} value={profile.career||''} onChange={e=>setProfile(p=>({...p, career:e.target.value}))}/></label>
+          <div className="right"><Button type="submit">저장</Button></div>
+        </form>
+      </section>
+
+      {/* 신청 목록 */}
+      <section className="panel">
+        <h2 className="panel__title">신청 목록</h2>
+        <ul className="app__list">
+          {apps.map(a => (
+            <li key={a.id} className="app__item">
+              <div className="left">
+                <img src={a.photoUrl || '/placeholder-dog.png'} alt="" />
+                <div>
+                  <div className="title">{a.petName} <span className="muted">({a.petBreed})</span></div>
+                  <div className="sub">
+                    {a.mode} · {a.days?.join(', ')} · {a.slot}
+                  </div>
+                  <div className="sub">
+                    <b>시니어</b> {a.userName} / 나이 {a.userAge || '-'} / {a.userPhone}
+                  </div>
+                  <div className="sub">
+                    <b>주소</b> {a.address}
+                  </div>
+                </div>
+              </div>
+              <div className="right">
+                <StatusChip s={a.status} />
+                <div className="rowbtn">
+                  <Button disabled={a.status==='APPROVED'} onClick={()=>approve(a.id)}>승인</Button>
+                  <Button presetName="secondary" disabled={a.status==='REJECTED'} onClick={()=>reject(a.id)}>거절</Button>
+                </div>
+              </div>
+            </li>
+          ))}
+          {apps.length === 0 && <li className="empty">접수된 신청이 없습니다.</li>}
+        </ul>
+      </section>
     </div>
   );
 }

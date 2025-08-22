@@ -1,85 +1,68 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
-import { fetchMyApplications, cancelApplication } from '../../api/applications';
 import Button from '../../components/ui/Button';
 import './senior.css';
 
-const fmt = (iso) => { try { return new Date(iso).toLocaleString('ko-KR'); } catch { return iso ?? '-'; } };
+import dog1 from '../../assets/dogs/dog1.png';
+
+const fmt = (tsOrIso) => {
+  try {
+    const d = typeof tsOrIso === 'number' ? new Date(tsOrIso) : new Date(tsOrIso);
+    return d.toLocaleString('ko-KR');
+  } catch { return tsOrIso ?? '-'; }
+};
+
 const StatusChip = ({ s }) => {
-  const map = { PENDING:'대기', FORWARDED:'보호소 검토중', APPROVED:'승인', REJECTED:'거절' };
-  const label = map[s] || s || '대기';
+  const map = { PENDING:'승인 대기', FORWARDED:'보호소 검토중', APPROVED:'승인', REJECTED:'거절' };
+  const label = map[s] || '승인 대기';
   const cls = s === 'APPROVED' ? 'chip chip--approved'
            : s === 'REJECTED' ? 'chip chip--rejected'
+           : s === 'FORWARDED' ? 'chip chip--forwarded'
            : 'chip chip--pending';
   return <span className={cls}>{label}</span>;
 };
 
+// localStorage helpers
+const getApps = () => { try { return JSON.parse(localStorage.getItem('applications')||'[]'); } catch { return []; } };
+// 매니저가 승인(실제로는 보호소 검토중으로 넘김)하면서 저장한 담당자 정보
+const getManagerByApp = (appId) => {
+  try {
+    const m = JSON.parse(localStorage.getItem('manager_by_app')||'{}');
+    return m[appId] || null;
+  } catch { return null; }
+};
+
 export default function ConnectPage() {
+  const nav = useNavigate();
   const { user } = useAuth();
   const seniorId = useMemo(() => user?.seniorId || user?.id, [user]);
 
-  const [page, setPage] = useState({ number: 0, size: 10, totalElements: 0, content: [] });
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [autoOn, setAutoOn] = useState(true); // 자동 새로고침 on/off
-  const [tick, setTick] = useState(0);        // 실시간 라벨 깜빡임용
-  const [toast, setToast] = useState({ show:false, kind:'success', text:'' });
+  const [autoOn, setAutoOn] = useState(true);
+  const [tick, setTick] = useState(0);
 
   const timerRef = useRef(null);
   const blinkRef = useRef(null);
-  const approvedRef = useRef(new Set()); // 이전에 승인된 app id 추적
-  const rejectedRef = useRef(new Set()); // 이전에 거절된 app id 추적
 
-  const load = ({ number = 0, size = page.size } = {}) => {
-    if (!seniorId) return;
+  const load = () => {
     setLoading(true);
-    fetchMyApplications({ seniorId, page: number, size })
-      .then((res) => {
-        // 상태 변화 감지 → 토스트
-        const nextApproved = new Set();
-        const nextRejected = new Set();
-        (res.content || []).forEach(it => {
-          if (it.status === 'APPROVED') nextApproved.add(it.id);
-          if (it.status === 'REJECTED') nextRejected.add(it.id);
-        });
-
-        // 새로 승인된 항목 (기존에 없던 승인 id)
-        for (const id of nextApproved) {
-          if (!approvedRef.current.has(id)) {
-            showToast('success', '매칭 승인 완료! 보호소와 일정을 조율해 주세요.');
-            break;
-          }
-        }
-        // 새로 거절된 항목
-        for (const id of nextRejected) {
-          if (!rejectedRef.current.has(id)) {
-            showToast('error', '아쉽지만 이번 매칭은 거절되었어요. 다른 친구들에게도 신청해보세요.');
-            break;
-          }
-        }
-
-        approvedRef.current = nextApproved;
-        rejectedRef.current = nextRejected;
-        setPage(res);
-      })
-      .finally(()=>setLoading(false));
+    const list = getApps()
+      .slice()
+      .sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+    setItems(list);
+    setLoading(false);
   };
 
-  const showToast = (kind, text) => {
-    setToast({ show:true, kind, text });
-    // 4.5초 후 자동 숨김
-    window.clearTimeout(showToast.timer);
-    showToast.timer = window.setTimeout(() => setToast(t => ({ ...t, show:false })), 4500);
-  };
+  useEffect(() => { load(); }, [seniorId]);
 
-  // 최초 로드
-  useEffect(()=>{ load({ number: 0 }); }, [seniorId]);
-
-  // 3초 폴링 + 탭 비활성화 시 일시정지
+  // 3초 폴링(보이는 탭에서만)
   useEffect(() => {
     const start = () => {
       if (timerRef.current || !autoOn) return;
       timerRef.current = setInterval(() => {
-        if (document.visibilityState === 'visible') load({ number: page.number });
+        if (document.visibilityState === 'visible') load();
       }, 3000);
     };
     const stop = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
@@ -88,9 +71,8 @@ export default function ConnectPage() {
     const onVis = () => { if (document.visibilityState === 'visible') start(); else stop(); };
     document.addEventListener('visibilitychange', onVis);
     return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
-  }, [autoOn, page.number, seniorId]);
+  }, [autoOn]);
 
-  // 실시간 라벨 깜빡임(점 애니메이션)
   useEffect(() => {
     if (!autoOn) { setTick(0); window.clearInterval(blinkRef.current); return; }
     blinkRef.current = window.setInterval(() => setTick(t => (t+1)%4), 600);
@@ -99,20 +81,18 @@ export default function ConnectPage() {
 
   return (
     <div className="senior connect">
-      {/* 토스트 배너 */}
-      {toast.show && (
-        <div className={`toast ${toast.kind === 'success' ? 'toast--green' : 'toast--red'}`}>
-          {toast.text}
+      {/* 상단: 뒤로가기 */}
+      <div className="connect__topbar">
+        <button className="btn-ghost" onClick={()=>nav(-1)}>← 뒤로가기</button>
+      </div>
+
+      <div className="senior__header" style={{marginBottom:8}}>
+        <div>
+          <h1 style={{margin:0}}>매칭 현황</h1>
+          <div className="senior__sub">최근 신청 순으로 보여드려요.</div>
         </div>
-      )}
-
-      <div className="senior__header">
-        <h1>매칭 현황</h1>
         <div style={{display:'flex', gap:8, alignItems:'center'}}>
-          <Button onClick={()=>load({ number: page.number })}>
-            {loading ? '새로고침 중…' : '새로고침'}
-          </Button>
-
+          <Button onClick={load}>{loading ? '새로고침 중…' : '새로고침'}</Button>
           <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:14, color:'#667085' }}>
             <input type="checkbox" checked={autoOn} onChange={e=>setAutoOn(e.target.checked)} />
             {autoOn ? `실시간 업데이트 중${'.'.repeat(tick)}` : '자동 새로고침 꺼짐'}
@@ -120,36 +100,55 @@ export default function ConnectPage() {
         </div>
       </div>
 
-      {loading && <p>불러오는 중…</p>}
-
-      <ul className="connect__list">
-        {(page.content || []).map(it => (
-          <li key={it.id} className="connect__item">
-            <div className="left">
-              <img src={it.pet?.photoUrl || it.pet?.popfile || '/placeholder-dog.png'} alt="" />
-              <div>
-                <div className="title">{it.pet?.name || '(이름없음)'}</div>
-                <div className="sub">
-                  {(it.pet?.breed || it.pet?.species || '-')}&nbsp;·&nbsp;
-                  {(it.pet?.gender || it.pet?.sex || '-').toString()}&nbsp;·&nbsp;
-                  {(String(it.pet?.neuter||'').toUpperCase()==='Y') ? '중성화':'미중성화'}
+      <div className="connect__list-cards">
+        {items.map(app => {
+          const m = (app.status === 'FORWARDED' || app.status === 'APPROVED') ? getManagerByApp(app.id) : null;
+          const imgSrc = app.pet?.photoUrl || app.pet?.popfile || dog1;
+          return (
+            <div className="connect-card" key={app.id}>
+              <div className="connect-card__left">
+                <div className="thumb">
+                  <img
+                    src={imgSrc}
+                    alt="동물"
+                    onError={(e)=>{ e.currentTarget.src = dog1; }}
+                  />
                 </div>
-                <div className="time">신청일 {fmt(it.createdAt)}</div>
+                <div className="meta">
+                  <div className="title">
+                    {app.pet?.name || '(이름 미정)'} {app.pet?.breed ? `(${app.pet.breed})` : ''}
+                  </div>
+                  <div className="rows">
+                    <div className="row"><span>체험</span><b>{app.mode} · {app.days?.join(', ') || '-'}, {app.slot || '-'}</b></div>
+                    <div className="row"><span>신청일</span><b>{fmt(app.createdAt)}</b></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="connect-card__right">
+                <StatusChip s={app.status} />
+
+                {/* 매니저 정보는 현황 페이지에서만 노출 */}
+                {m && (
+                  <div className="manager">
+                    <div className="manager__title">담당 매니저</div>
+                    <div className="manager__row"><span>이름</span><b>{m.name || '-'}</b></div>
+                    <div className="manager__row"><span>연락처</span><b>{m.phone || '-'}</b></div>
+                    <div className="manager__row"><span>경력</span><b>{m.career ? `${m.career}년` : '-'}</b></div>
+                    {m.bio && <div className="manager__bio">{m.bio}</div>}
+                  </div>
+                )}
+
+                <div className="connect-card__actions">
+                  <Button onClick={()=>nav('/senior')}>일정 확정하기</Button>
+                </div>
               </div>
             </div>
-            <div className="right">
-              <StatusChip s={it.status} />
-              {it.status === 'PENDING' && (
-                <Button variant="ghost" onClick={()=>cancelApplication(it.id).then(()=>load({ number: page.number }))}>
-                  취소
-                </Button>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
 
-      {(!loading && (page.content||[]).length === 0) && (
+      {!loading && items.length === 0 && (
         <div className="empty">아직 신청한 매칭이 없어요. 시니어 페이지에서 동물을 선택해 신청해보세요!</div>
       )}
     </div>

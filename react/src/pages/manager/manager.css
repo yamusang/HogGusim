@@ -1,40 +1,23 @@
-.manager{
-  max-width:1100px;
-  margin:0 auto;
-  padding:28px 20px 72px;
-}
-.manager__header{
-  display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;
-}
-.panel{
-  border:1px solid #e5e7eb; border-radius:12px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04);
-  padding:12px; margin-bottom:16px;
-}
+.manager{ max-width:1180px; margin:0 auto; padding:28px 20px 72px; }
+.manager__header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.panel{ border:1px solid #e5e7eb; border-radius:12px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04); padding:12px; margin-bottom:16px; }
 .panel__title{ margin:0 0 8px; font-size:18px; font-weight:800; }
 .profileform{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
 .profileform label{ display:flex; flex-direction:column; gap:6px; font-size:14px; color:#475569; }
-.profileform input, .profileform textarea{
-  border:1px solid #e5e7eb; border-radius:8px; padding:10px; font-size:14px;
-}
+.profileform input, .profileform textarea{ border:1px solid #e5e7eb; border-radius:8px; padding:10px; font-size:14px; }
 .profileform .right{ grid-column: 1 / -1; display:flex; justify-content:flex-end; }
 
 .app__list{ display:flex; flex-direction:column; gap:10px; list-style:none; padding:0; margin:0; }
-.app__item{
-  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-  border:1px solid #eef1f5; border-radius:12px; padding:10px; background:#fff;
-}
-.app__item .left{ display:flex; gap:10px; }
-.app__item img{ width:96px; height:72px; object-fit:cover; border-radius:8px; background:#f3f4f6; }
+.app__item{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; border:1px solid #eef1f5; border-radius:12px; padding:12px; background:#fff; }
+.app__item .left{ display:flex; gap:12px; }
+.app__item img{ width:108px; height:80px; object-fit:cover; border-radius:8px; background:#f3f4f6; }
 .app__item .title{ font-weight:800; }
 .app__item .sub{ color:#475569; font-size:14px; margin-top:2px; }
 .app__item .muted{ color:#94a3b8; }
-.app__item .right{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:180px; }
+.app__item .right{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; min-width:190px; }
 .rowbtn{ display:flex; gap:8px; }
 
-/* 재사용 칩 */
-.chip{
-  padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid #e5e7eb; background:#fff;
-}
+.chip{ padding:6px 10px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid #e5e7eb; background:#fff; }
 .chip--approved{ color:#166534; background:#ecfdf5; border-color:#bbf7d0; }
 .chip--rejected{ color:#991b1b; background:#fef2f2; border-color:#fecaca; }
 .chip--pending{ color:#92400e; background:#fffbeb; border-color:#fde68a; }

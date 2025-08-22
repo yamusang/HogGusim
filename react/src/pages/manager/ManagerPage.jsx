@@ -1,103 +1,77 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Button from '../../components/ui/Button';
+// src/pages/manager/ManagerPage.jsx
+import React, { useEffect, useState } from 'react';
 import './manager.css';
-
-/* storage */
-const getApps = () => { try { return JSON.parse(localStorage.getItem('applications')||'[]'); } catch { return []; } };
-const setApps = (arr) => { try { localStorage.setItem('applications', JSON.stringify(arr)); } catch {} };
-
-const getManagerProfile = () => { try { return JSON.parse(localStorage.getItem('managerProfile')||'{}'); } catch { return {}; } };
-const setManagerProfile = (p) => { try { localStorage.setItem('managerProfile', JSON.stringify(p)); } catch {} };
-
-const StatusChip = ({ s }) => {
-  const map = { PENDING:'대기', FORWARDED:'보호소 검토중', APPROVED:'승인', REJECTED:'거절' };
-  const label = map[s] || s || '대기';
-  const cls = s === 'APPROVED' ? 'chip chip--approved'
-           : s === 'REJECTED' ? 'chip chip--rejected'
-           : 'chip chip--pending';
-  return <span className={cls}>{label}</span>;
-};
+import Button from '../../components/ui/Button';
+import {
+  getApps, setApps, updateApp,
+  getManagerProfile, setManagerProfile,
+  setManagerByApp
+} from '../../utils/storage';
+import dog1 from '../../assets/dogs/dog1.png';
 
 export default function ManagerPage(){
-  const nav = useNavigate();
-  const [apps, setAppsState] = useState(getApps());
-  const [profile, setProfile] = useState(() => getManagerProfile());
+  const [profile, setProfile] = useState({ name:'', phone:'', career:'', bio:'' });
+  const [apps, setAppsState] = useState([]);
 
-  useEffect(() => {
-    const onStorage = () => setAppsState(getApps());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+  const load = () => { setProfile(getManagerProfile()); setAppsState(getApps()); };
+  useEffect(() => { load(); }, []);
+
+  const saveProfile = () => { setManagerProfile(profile); load(); };
 
   const approve = (id) => {
-    const next = apps.map(a => a.id===id ? { ...a, status:'APPROVED' } : a);
-    setApps(next); setAppsState(next);
+    setApps(getApps().map(a => a.id === id ? ({ ...a, status:'FORWARDED' }) : a));
+    setManagerByApp(id, profile); // 신청별 매니저 연결
+    load();
   };
-  const reject = (id) => {
-    const next = apps.map(a => a.id===id ? { ...a, status:'REJECTED' } : a);
-    setApps(next); setAppsState(next);
-  };
-
-  const saveProfile = (e) => {
-    e.preventDefault();
-    setManagerProfile(profile);
-    alert('매니저 프로필이 저장되었습니다.');
-  };
+  const reject = (id) => { setApps(getApps().map(a => a.id === id ? ({ ...a, status:'REJECTED' }) : a)); load(); };
 
   return (
-    <div className="manager">
-      <div className="manager__header">
+    <div className="manager-page">
+      <div className="manager-page__header">
         <h1>매니저 대시보드</h1>
-        <div style={{display:'flex', gap:8}}>
-          <Button presetName="secondary" onClick={()=>window.location.reload()}>새로고침</Button>
-          <Button presetName="secondary" onClick={()=>nav('/logout?to=/')}>로그아웃</Button> {/* ✅ 로그아웃 */}
+        <div className="manager-page__actions">
+          <Button onClick={load}>새로고침</Button>
+          <Button onClick={()=>window.location.assign('/logout?to=/')}>로그아웃</Button>
         </div>
       </div>
 
-      {/* 매니저 프로필 */}
-      <section className="panel">
-        <h2 className="panel__title">내 프로필</h2>
-        <form className="profileform" onSubmit={saveProfile}>
-          <label>이름<input value={profile.name||''} onChange={e=>setProfile(p=>({...p, name:e.target.value}))} /></label>
-          <label>연락처<input value={profile.phone||''} onChange={e=>setProfile(p=>({...p, phone:e.target.value}))} /></label>
-          <label>경력<textarea rows={2} value={profile.career||''} onChange={e=>setProfile(p=>({...p, career:e.target.value}))}/></label>
-          <div className="right"><Button type="submit">저장</Button></div>
-        </form>
+      <section className="mgr-profile">
+        <div className="mgr-profile__row">
+          <label>이름</label><input value={profile.name||''} onChange={e=>setProfile(p=>({...p, name:e.target.value}))} placeholder="예) 김OO"/>
+          <label>연락처</label><input value={profile.phone||''} onChange={e=>setProfile(p=>({...p, phone:e.target.value}))} placeholder="010-0000-0000"/>
+          <label>경력(년)</label><input value={profile.career||''} onChange={e=>setProfile(p=>({...p, career:e.target.value}))} placeholder="예) 4"/>
+        </div>
+        <textarea className="mgr-profile__bio" value={profile.bio||''} onChange={e=>setProfile(p=>({...p, bio:e.target.value}))} placeholder="간단 소개/특이사항"/>
+        <div style={{textAlign:'right', marginTop:8}}><Button onClick={saveProfile}>저장</Button></div>
       </section>
 
-      {/* 신청 목록 */}
-      <section className="panel">
-        <h2 className="panel__title">신청 목록</h2>
-        <ul className="app__list">
-          {apps.map(a => (
-            <li key={a.id} className="app__item">
-              <div className="left">
-                <img src={a.photoUrl || '/placeholder-dog.png'} alt="" />
-                <div>
-                  <div className="title">{a.petName} <span className="muted">({a.petBreed})</span></div>
-                  <div className="sub">
-                    {a.mode} · {a.days?.join(', ')} · {a.slot}
-                  </div>
-                  <div className="sub">
-                    <b>시니어</b> {a.userName} / 나이 {a.userAge || '-'} / {a.userPhone}
-                  </div>
-                  <div className="sub">
-                    <b>주소</b> {a.address}
-                  </div>
-                </div>
+      <section className="mgr-list">
+        <h2>신청 목록</h2>
+        {apps.map(app => (
+          <div className="mgr-card" key={app.id}>
+            <div className="mgr-card__media">
+              <img src={app.pet?.photoUrl || dog1} alt="동물" onError={(e)=>{ e.currentTarget.src = dog1; }}/>
+            </div>
+            <div className="mgr-card__body">
+              <div className="mgr-card__title">
+                {app.pet?.name || '(이름 미정)'} {app.pet?.breed ? `(${app.pet.breed})` : ''}
               </div>
-              <div className="right">
-                <StatusChip s={a.status} />
-                <div className="rowbtn">
-                  <Button disabled={a.status==='APPROVED'} onClick={()=>approve(a.id)}>승인</Button>
-                  <Button presetName="secondary" disabled={a.status==='REJECTED'} onClick={()=>reject(a.id)}>거절</Button>
-                </div>
-              </div>
-            </li>
-          ))}
-          {apps.length === 0 && <li className="empty">접수된 신청이 없습니다.</li>}
-        </ul>
+              <div className="mgr-kv"><span>체험</span><b>{app.mode} · {app.slot || '-'}</b></div>
+              <div className="mgr-kv"><span>날짜</span><b>{app.dayLabel || '-'}</b></div>
+              <div className="mgr-kv"><span>시니어</span><b>{app.applicant?.name || '-'}</b></div>
+              <div className="mgr-kv"><span>연락처</span><b>{app.applicant?.phone || '-'}</b></div>
+              {app.schedule?.confirmed && (
+                <div className="mgr-kv"><span>확정</span><b>{app.schedule.date} · {app.schedule.slot}</b></div>
+              )}
+            </div>
+            <div className="mgr-card__actions">
+              {app.status === 'PENDING' && (<><Button onClick={()=>approve(app.id)}>승인(보호소로)</Button><Button onClick={()=>reject(app.id)} presetName="secondary">거절</Button></>)}
+              {app.status === 'FORWARDED' && <span className="mgr-status mgr-status--wait">보호소 검토중</span>}
+              {app.status === 'APPROVED' && <span className="mgr-status mgr-status--ok">보호소 승인</span>}
+              {app.status === 'REJECTED' && <span className="mgr-status mgr-status--bad">거절</span>}
+            </div>
+          </div>
+        ))}
       </section>
     </div>
   );
